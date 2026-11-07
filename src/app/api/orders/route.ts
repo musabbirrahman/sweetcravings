@@ -5,6 +5,7 @@ import {
   getShopSettings, 
   getAllOrders, 
   getCouponByCode, 
+  getCustomerLoyalty,
   incrementCouponUsage 
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
@@ -17,6 +18,9 @@ export const dynamic = 'force-dynamic';
 const ALLOWED_PAYMENT_METHODS = ['cod', 'bkash', 'nagad'] as const;
 
 export async function POST(request: Request) {
+  // Set inside the order transaction when a coupon's last use is taken by
+  // another order first; the catch below turns it into a clear 400.
+  let couponExhausted = false;
   try {
     const ip = getClientIp(request);
     const limit = checkRateLimit(`order-create:${ip}`, 10, 60 * 1000);
@@ -201,29 +205,47 @@ export async function POST(request: Request) {
       });
     }
 
-    // Validate coupon if provided
+    // Validate coupon if provided. A code the customer typed in must
+    // either apply or stop the order with a clear reason — never silently
+    // charge full price while the customer believes a discount applied.
     let discountAmount = 0;
     let appliedCouponCode: string | null = null;
     if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
       const coupon = getCouponByCode(couponCode.trim());
-      if (coupon && coupon.active) {
-        const isExpired = coupon.expires_at ? new Date(coupon.expires_at) < new Date() : false;
-        const isOverLimit = coupon.usage_limit !== null && coupon.times_used >= coupon.usage_limit;
-        const meetsMin = subtotal >= coupon.min_order_amount;
-
-        if (!isExpired && !isOverLimit && meetsMin) {
-          if (coupon.discount_type === 'fixed') {
-            discountAmount = Math.min(subtotal, coupon.discount_value);
-          } else if (coupon.discount_type === 'percentage') {
-            let raw = Math.round((subtotal * coupon.discount_value) / 100);
-            if (coupon.max_discount_amount) {
-              raw = Math.min(raw, coupon.max_discount_amount);
-            }
-            discountAmount = Math.min(subtotal, raw);
-          }
-          appliedCouponCode = coupon.code;
+      if (!coupon) {
+        return NextResponse.json({ success: false, error: 'This coupon code is not recognised.' }, { status: 400 });
+      }
+      if (!coupon.active) {
+        return NextResponse.json({ success: false, error: 'This coupon is currently inactive.' }, { status: 400 });
+      }
+      if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) {
+        return NextResponse.json({ success: false, error: 'This coupon has expired.' }, { status: 400 });
+      }
+      if (coupon.usage_limit !== null && coupon.times_used >= coupon.usage_limit) {
+        return NextResponse.json({ success: false, error: 'This coupon has reached its maximum usage limit.' }, { status: 400 });
+      }
+      if (subtotal < coupon.min_order_amount) {
+        return NextResponse.json({ success: false, error: `Minimum order amount of ৳${coupon.min_order_amount} required to use this coupon.` }, { status: 400 });
+      }
+      // The loyalty reward code is earned, not public: one reward per
+      // 5 completed orders, and each earned reward can be used only once.
+      if (coupon.code === 'SWEETREWARD') {
+        const loyalty = getCustomerLoyalty(cleanPhone);
+        if (loyalty.rewardsAvailable <= 0) {
+          return NextResponse.json({ success: false, error: 'The Sweet Reward unlocks after 5 completed orders, and each reward can be used only once.' }, { status: 400 });
         }
       }
+
+      if (coupon.discount_type === 'fixed') {
+        discountAmount = Math.min(subtotal, coupon.discount_value);
+      } else if (coupon.discount_type === 'percentage') {
+        let raw = Math.round((subtotal * coupon.discount_value) / 100);
+        if (coupon.max_discount_amount) {
+          raw = Math.min(raw, coupon.max_discount_amount);
+        }
+        discountAmount = Math.min(subtotal, raw);
+      }
+      appliedCouponCode = coupon.code;
     }
 
     // Recalculate delivery fee
@@ -321,9 +343,14 @@ export async function POST(request: Request) {
           `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), totalAmount, now, 'pending');
         }
 
-        // Increment coupon usage
+        // Reserve one coupon use atomically. If another order just took
+        // the last use, abort this order instead of charging full price
+        // while the customer believed a discount applied.
         if (appliedCouponCode) {
-          incrementCouponUsage(appliedCouponCode);
+          if (!incrementCouponUsage(appliedCouponCode)) {
+            couponExhausted = true;
+            throw new Error('COUPON_EXHAUSTED');
+          }
         }
 
         db.exec('COMMIT;');
@@ -379,6 +406,9 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Error placing order:', error);
+    if (couponExhausted) {
+      return NextResponse.json({ success: false, error: 'This coupon has just reached its usage limit. Please try again without it.' }, { status: 400 });
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

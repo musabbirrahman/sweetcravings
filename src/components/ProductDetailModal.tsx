@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Product, ProductVariant } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
-import { X, Clock, AlertCircle, ShoppingBag, Plus, Minus, Check, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, Clock, AlertCircle, ShoppingBag, Plus, Minus, Check, Sparkles } from 'lucide-react';
 
 interface ProductDetailModalProps {
   product: Product | null;

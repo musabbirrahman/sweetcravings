@@ -16,7 +16,6 @@ export default function CartPage() {
     subtotal, 
     deliveryFee, 
     totalAmount,
-    freeDeliveryThreshold,
     remainingForFreeDelivery 
   } = useCart();
   const { lang, t } = useLanguage();

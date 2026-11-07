@@ -14,9 +14,10 @@ interface LoyaltyStampCardProps {
 export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: LoyaltyStampCardProps) {
   const { lang } = useLanguage();
 
-  const totalSlots = 5;
   const currentStamps = loyalty.stamps;
-  const isRewardReady = (loyalty.rewardsEarned > 0) || (currentStamps === 0 && loyalty.completedOrders > 0);
+  // Ready only when an earned reward is still unused. Checking the
+  // earned count alone would keep offering a reward already redeemed.
+  const isRewardReady = loyalty.rewardsAvailable > 0;
 
   return (
     <div className="bg-gradient-to-br from-[#2C1E19] via-[#3A2720] to-[#201612] text-white rounded-3xl p-5 sm:p-6 shadow-card border border-brand-caramel/30 relative overflow-hidden">

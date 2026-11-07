@@ -7,7 +7,7 @@ import { Product, Category } from '@/lib/types';
 import { Plus, Search, Trash2 } from 'lucide-react';
 
 export default function AdminProductsPage() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,10 +24,10 @@ export default function AdminProductsPage() {
   const [leadTimeBn, setLeadTimeBn] = useState('একই দিনে (২-৩ ঘন্টা)');
   const [descriptionEn, setDescriptionEn] = useState('');
   const [descriptionBn, setDescriptionBn] = useState('');
-  const [ingredientsEn, setIngredientsEn] = useState('');
-  const [ingredientsBn, setIngredientsBn] = useState('');
-  const [allergensEn, setAllergensEn] = useState('Contains Milk, Eggs');
-  const [allergensBn, setAllergensBn] = useState('দুধ ও ডিম রয়েছে');
+  const [ingredientsEn] = useState('');
+  const [ingredientsBn] = useState('');
+  const [allergensEn] = useState('Contains Milk, Eggs');
+  const [allergensBn] = useState('দুধ ও ডিম রয়েছে');
   const [imageUrl, setImageUrl] = useState('/sweet-cravings-logo.jpg');
 
   const fetchCatalog = () => {

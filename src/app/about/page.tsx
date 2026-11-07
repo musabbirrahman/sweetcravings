@@ -4,7 +4,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
-import { Heart, ShieldCheck, ArrowRight, Sparkles, Award, Clock, MapPin, CheckCircle2 } from 'lucide-react';
+import { Heart, ShieldCheck, ArrowRight, Sparkles, Award, Clock, CheckCircle2 } from 'lucide-react';
 
 export default function AboutPage() {
   const { lang, t } = useLanguage();

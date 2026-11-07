@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Sparkles, Home, ShoppingBag } from 'lucide-react';
+import { Sparkles, Home, ShoppingBag } from 'lucide-react';
 
 export default function NotFound() {
   return (

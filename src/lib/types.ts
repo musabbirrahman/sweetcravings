@@ -200,6 +200,7 @@ export interface LoyaltyInfo {
   stampsNeeded: number; // 5
   stampsToNextReward: number;
   rewardsEarned: number;
+  rewardsAvailable: number; // earned rewards not yet redeemed (0 until 5 completed orders, then earned minus used)
   tier: string;
   tierBn: string;
   rewardCouponCode: string;

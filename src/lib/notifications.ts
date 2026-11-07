@@ -1,5 +1,4 @@
 import { getShopSettings } from './db';
-import { Order, OrderItem } from './types';
 
 export interface NotificationPayload {
   order: {

@@ -13,15 +13,14 @@ import {
   Trash2, 
   Send, 
   AlertCircle,
-  HelpCircle,
   ToggleLeft,
   ToggleRight
 } from 'lucide-react';
 
 export default function AdminSettingsPage() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [settings, setSettings] = useState<ShopSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successNotice, setSuccessNotice] = useState(false);
 

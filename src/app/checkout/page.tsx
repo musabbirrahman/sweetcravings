@@ -12,19 +12,16 @@ import {
   Phone, 
   User, 
   Clock, 
-  CreditCard, 
   Copy, 
   Check, 
   AlertCircle,
   Truck,
   Sparkles,
   ChevronRight,
-  Info,
   Banknote,
   ArrowLeft,
   Tag,
   Gift,
-  Heart,
   X
 } from 'lucide-react';
 import LoyaltyStampCard from '@/components/LoyaltyStampCard';
@@ -60,7 +57,7 @@ const ALL_RAJSHAHI_AREAS = [
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, subtotal, deliveryFee, totalAmount, clearCart } = useCart();
+  const { items, subtotal, deliveryFee, clearCart } = useCart();
   const { lang, t } = useLanguage();
 
   const [customerName, setCustomerName] = useState('');
@@ -98,13 +95,11 @@ export default function CheckoutPage() {
 
   // Loyalty Rewards State
   const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
-  const [isLoadingLoyalty, setIsLoadingLoyalty] = useState(false);
 
   // Auto-lookup loyalty when phone number reaches 11 digits
   useEffect(() => {
     const digits = customerPhone.replace(/\D/g, '');
     if (digits.length >= 11) {
-      setIsLoadingLoyalty(true);
       fetch(`/api/loyalty?phone=${encodeURIComponent(digits)}`)
         .then((r) => r.json())
         .then((data) => {
@@ -116,8 +111,7 @@ export default function CheckoutPage() {
             }
           }
         })
-        .catch(() => {})
-        .finally(() => setIsLoadingLoyalty(false));
+        .catch(() => {});
     } else {
       setLoyalty(null);
     }
@@ -157,7 +151,9 @@ export default function CheckoutPage() {
       const res = await fetch('/api/coupons/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, subtotal }),
+        // The phone lets the server check loyalty-reward eligibility;
+        // the order endpoint re-checks it authoritatively at checkout.
+        body: JSON.stringify({ code, subtotal, phone: customerPhone || undefined }),
       });
       const data = await res.json();
 

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useLanguage } from '@/context/LanguageContext';
 import { Order } from '@/lib/types';
 import { 
@@ -11,12 +10,9 @@ import {
   Check, 
   AlertCircle, 
   ArrowRight,
-  Clock,
   MapPin,
-  Phone,
   MessageCircle,
   Truck,
-  Sparkles,
   ShoppingBag
 } from 'lucide-react';
 

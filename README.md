@@ -88,3 +88,5 @@ http://localhost:3000
 - Menu: `http://localhost:3000/menu`
 - Track Order: `http://localhost:3000/track`
 - Admin Operations Portal: `http://localhost:3000/admin` (requires `ADMIN_PASSWORD` to be set — see `.env.example`)
+
+> **Deployment is not decided yet.** The site currently runs locally with its built-in SQLite file (`data/sweetcravings.db`). The Turso code and migration script are leftovers from the starter and are not wired in — the app does not use them. Do not deploy to Vercel Hobby for this shop (see the blueprint); decide the deployment shape first.

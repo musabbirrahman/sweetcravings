@@ -16,7 +16,7 @@ import {
 export default function AdminTodayDashboard() {
   const { lang, t } = useLanguage();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/orders')

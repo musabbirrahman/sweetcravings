@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getCouponByCode } from '@/lib/db';
+import { getCouponByCode, getCustomerLoyalty } from '@/lib/db';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const limit = checkRateLimit(`coupon-validate:${ip}`, 20, 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, valid: false, error: `Too many attempts. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
-    const { code, subtotal = 0 } = body;
+    const { code, subtotal = 0, phone } = body;
 
     if (!code || typeof code !== 'string' || !code.trim()) {
       return NextResponse.json(
@@ -61,6 +71,19 @@ export async function POST(request: Request) {
         },
         { status: 400 }
       );
+    }
+
+    // The loyalty reward is earned, not public. When the caller's phone
+    // is known, check an unused reward actually exists for them. The
+    // order endpoint re-checks this authoritatively at checkout.
+    if (coupon.code === 'SWEETREWARD' && phone && typeof phone === 'string') {
+      const loyalty = getCustomerLoyalty(phone);
+      if (loyalty.rewardsAvailable <= 0) {
+        return NextResponse.json(
+          { success: false, valid: false, error: 'The Sweet Reward unlocks after 5 completed orders, and each reward can be used only once.' },
+          { status: 400 }
+        );
+      }
     }
 
     // Calculate discount amount

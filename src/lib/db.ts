@@ -577,39 +577,6 @@ export function getProducts(options: { categoryId?: number; status?: string; inc
   return products;
 }
 
-export function getProductBySlug(slug: string): Product | null {
-  const db = getDb();
-  const sql = `
-    SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
-    FROM products p
-    LEFT JOIN categories c ON p.category_id = c.id
-    WHERE p.slug = ?
-  `;
-  const product = db.prepare(sql).get(slug) as unknown as Product | null;
-  if (!product) return null;
-
-  product.variants = db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1 ORDER BY sort_order ASC').all(product.id) as unknown as ProductVariant[];
-  try {
-    const soldRow = db.prepare(`
-      SELECT COALESCE(SUM(oi.quantity), 0) as sold_today
-      FROM order_items oi
-      JOIN orders o ON oi.order_id = o.id
-      WHERE oi.product_id = ?
-        AND date(o.created_at) = date('now')
-        AND o.order_status != 'cancelled'
-    `).get(product.id) as { sold_today: number } | undefined;
-    const sold = Number(soldRow?.sold_today || 0);
-    product.sold_today = sold;
-    product.daily_batch_limit = Number(product.daily_batch_limit ?? 15);
-    product.remaining_today = Math.max(0, product.daily_batch_limit - sold);
-  } catch {
-    product.sold_today = 0;
-    product.daily_batch_limit = 15;
-    product.remaining_today = 15;
-  }
-  return product;
-}
-
 export function generatePublicOrderCode(): string {
   // Generate human-friendly non-sequential code: e.g. SC-78241
   const randomNum = Math.floor(10000 + Math.random() * 90000);
@@ -732,10 +699,16 @@ export function getCouponByCode(code: string): Coupon | null {
   return coupon;
 }
 
-export function incrementCouponUsage(code: string): void {
+export function incrementCouponUsage(code: string): boolean {
   const db = getDb();
   const cleanCode = code.trim().toUpperCase();
-  db.prepare('UPDATE coupons SET times_used = times_used + 1 WHERE UPPER(code) = ?').run(cleanCode);
+  // Atomic reservation: the counter only moves when the coupon still has
+  // uses left, so two orders racing at the usage limit cannot both redeem.
+  // Returns false when the coupon is already exhausted.
+  const result = db.prepare(
+    'UPDATE coupons SET times_used = times_used + 1 WHERE UPPER(code) = ? AND (usage_limit IS NULL OR times_used < usage_limit)'
+  ).run(cleanCode);
+  return result.changes > 0;
 }
 
 export function getAllCoupons(): Coupon[] {
@@ -782,19 +755,24 @@ export function deleteCoupon(id: number): void {
 
 export function getCustomerLoyalty(phone: string): LoyaltyInfo {
   const db = getDb();
-  // Strip non-digits and take last 10-11 digits (e.g. 01712345678 or 1712345678)
-  const cleanDigits = phone.replace(/\D/g, '');
-  const searchPattern = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+  // Full 11-digit number only (e.g. 01712345678). Stored numbers are
+  // digits-only and may carry the 88 country prefix, so match on the
+  // last 11 digits. Short or partial numbers never match — a few digits
+  // must not reveal another customer's name, orders or spending.
+  const digits = phone.replace(/\D/g, '');
+  const fullPhone = digits.length === 13 && digits.startsWith('88') ? digits.slice(2) : digits;
+  const validPhone = /^01[3-9]\d{8}$/.test(fullPhone) ? fullPhone : '';
 
+  const phoneMatch = `substr(replace(replace(customer_phone, ' ', ''), '-', ''), -11) = ?`;
   const row = db.prepare(`
     SELECT 
       COUNT(*) as total_orders,
       SUM(CASE WHEN order_status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
       SUM(CASE WHEN order_status != 'cancelled' THEN total_amount ELSE 0 END) as total_spent,
-      (SELECT customer_name FROM orders WHERE replace(replace(customer_phone, ' ', ''), '-', '') LIKE '%' || ? ORDER BY id DESC LIMIT 1) as customer_name
+      (SELECT customer_name FROM orders WHERE ${phoneMatch} ORDER BY id DESC LIMIT 1) as customer_name
     FROM orders 
-    WHERE replace(replace(customer_phone, ' ', ''), '-', '') LIKE '%' || ?
-  `).get(searchPattern, searchPattern) as {
+    WHERE ${phoneMatch}
+  `).get(validPhone, validPhone) as {
     total_orders: number;
     completed_orders: number;
     total_spent: number;
@@ -805,6 +783,15 @@ export function getCustomerLoyalty(phone: string): LoyaltyInfo {
   const stamps = completed % 5;
   const stampsToNext = stamps === 0 && completed > 0 ? 0 : 5 - stamps;
   const rewardsEarned = Math.floor(completed / 5);
+
+  // Rewards already used up: non-cancelled orders that redeemed the
+  // loyalty reward code. A reward is only available when earned > used.
+  const redeemedRow = db.prepare(`
+    SELECT COUNT(*) as redeemed FROM orders
+    WHERE ${phoneMatch} AND coupon_code = 'SWEETREWARD' AND order_status != 'cancelled'
+  `).get(validPhone) as { redeemed: number } | undefined;
+  const rewardsRedeemed = Number(redeemedRow?.redeemed || 0);
+  const rewardsAvailable = Math.max(0, rewardsEarned - rewardsRedeemed);
 
   let tier = 'Sweet Explorer';
   let tierBn = 'মিষ্টিপ্রেমী শুরু';
@@ -820,7 +807,7 @@ export function getCustomerLoyalty(phone: string): LoyaltyInfo {
   }
 
   return {
-    phone: cleanDigits,
+    phone: fullPhone,
     customerName: row?.customer_name || null,
     totalOrders: Number(row?.total_orders || 0),
     completedOrders: completed,
@@ -829,6 +816,7 @@ export function getCustomerLoyalty(phone: string): LoyaltyInfo {
     stampsNeeded: 5,
     stampsToNextReward: stampsToNext,
     rewardsEarned,
+    rewardsAvailable,
     tier,
     tierBn,
     rewardCouponCode: 'SWEETREWARD'

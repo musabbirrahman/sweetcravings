@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useLanguage } from '@/context/LanguageContext';
 import { Order } from '@/lib/types';
 import Confetti from '@/components/Confetti';
@@ -10,18 +9,15 @@ import {
   CheckCircle, 
   Clock, 
   MapPin, 
-  Phone, 
   CreditCard, 
   Send, 
   Check, 
   Copy, 
   ArrowRight,
   ShieldCheck,
-  AlertCircle,
   Printer,
   Sparkles,
   ShoppingBag,
-  ExternalLink,
   MessageCircle,
   Gift
 } from 'lucide-react';

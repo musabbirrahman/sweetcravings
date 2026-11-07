@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
-import { ShoppingBag, Menu, X, Globe, Phone, MapPin, Sparkles } from 'lucide-react';
+import { ShoppingBag, Menu, X, Globe, Phone } from 'lucide-react';
 
 export default function Navbar() {
   const { lang, setLang, toggleLang, t } = useLanguage();

@@ -14,15 +14,12 @@ import {
   Heart, 
   Clock, 
   ChevronRight,
-  ShieldCheck,
   CheckCircle2,
   Star,
-  Cake,
   Truck,
   Award,
   ChevronDown,
   ShoppingBag,
-  MessageCircle,
   HelpCircle
 } from 'lucide-react';
 
