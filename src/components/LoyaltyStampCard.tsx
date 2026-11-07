@@ -20,23 +20,23 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
   const isRewardReady = loyalty.rewardsAvailable > 0;
 
   return (
-    <div className="bg-gradient-to-br from-[#2C1E19] via-[#3A2720] to-[#201612] text-white rounded-3xl p-5 sm:p-6 shadow-card border border-brand-caramel/30 relative overflow-hidden">
+    <div className="bg-gradient-to-br from-brand-chocolate via-[#3A2720] to-brand-chocolate text-white rounded-3xl p-5 sm:p-6 shadow-card border border-brand-caramel/30 relative overflow-hidden">
       {/* Decorative background glow */}
       <div className="absolute top-0 right-0 w-48 h-48 bg-brand-caramel/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-gold-light/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-cream/10 rounded-full blur-2xl pointer-events-none" />
 
       {/* Header */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-2xl bg-brand-caramel/25 border border-brand-caramel/40 flex items-center justify-center shrink-0">
-            <Award className="w-5 h-5 text-brand-gold-light" />
+            <Award className="w-5 h-5 text-brand-cream" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-heading font-bold text-base sm:text-lg text-brand-gold-light">
+              <h4 className="font-heading font-bold text-base sm:text-lg text-brand-cream">
                 {lang === 'bn' ? 'সুইট রিওয়ার্ডস স্ট্যাম্প কার্ড' : 'Sweet Rewards Loyalty Card'}
               </h4>
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-caramel/30 text-brand-gold-light border border-brand-caramel/40 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-caramel/30 text-brand-cream border border-brand-caramel/40 px-2 py-0.5 rounded-full">
                 {lang === 'bn' ? loyalty.tierBn : loyalty.tier}
               </span>
             </div>
@@ -52,7 +52,7 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
           <span className="text-[11px] text-brand-cream/60 block">
             {lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed Orders'}
           </span>
-          <span className="font-heading font-extrabold text-lg text-brand-gold-light">
+          <span className="font-heading font-extrabold text-lg text-brand-cream">
             {loyalty.completedOrders} <span className="text-xs font-normal text-white/50">/ 5 {lang === 'bn' ? 'স্ট্যাম্প' : 'stamps'}</span>
           </span>
         </div>
@@ -73,7 +73,7 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
                 <div
                   className={`relative w-full aspect-square max-w-[64px] rounded-2xl flex flex-col items-center justify-center transition-all duration-300 ${
                     isStamped
-                      ? 'bg-gradient-to-br from-brand-caramel via-[#B67645] to-[#8C5228] text-white shadow-soft border-2 border-brand-gold-light scale-102 ring-2 ring-brand-caramel/30'
+                      ? 'bg-gradient-to-br from-brand-caramel via-brand-caramel to-brand-chocolate text-white shadow-soft border-2 border-brand-cream scale-102 ring-2 ring-brand-caramel/30'
                       : isTarget
                       ? 'bg-white/5 border-2 border-dashed border-brand-caramel/50 text-brand-caramel/80 hover:border-brand-caramel'
                       : 'bg-white/5 border border-dashed border-white/20 text-white/30'
@@ -82,9 +82,9 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
                   {isStamped ? (
                     <div className="flex flex-col items-center justify-center animate-fade-in">
                       {isTarget ? (
-                        <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold-light animate-bounce" />
+                        <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-brand-cream animate-bounce" />
                       ) : (
-                        <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-brand-gold-light" />
+                        <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-brand-cream" />
                       )}
                       <span className="text-[9px] sm:text-[10px] font-extrabold tracking-tighter uppercase mt-0.5 text-white/90">
                         {lang === 'bn' ? `স্ট্যাম্প ${slotNum}` : `Stamp ${slotNum}`}
@@ -94,8 +94,8 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
                     <div className="flex flex-col items-center justify-center">
                       {isTarget ? (
                         <>
-                          <Gift className="w-4 h-4 text-brand-gold-light/60 mb-0.5" />
-                          <span className="text-[8px] sm:text-[9px] font-bold text-brand-gold-light/80 text-center leading-none">
+                          <Gift className="w-4 h-4 text-brand-cream/60 mb-0.5" />
+                          <span className="text-[8px] sm:text-[9px] font-bold text-brand-cream/80 text-center leading-none">
                             FREE
                           </span>
                         </>
@@ -123,8 +123,8 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
       <div className="relative z-10 pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           {isRewardReady ? (
-            <p className="text-xs sm:text-sm text-brand-gold-light font-bold flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-brand-gold-light" />
+            <p className="text-xs sm:text-sm text-brand-cream font-bold flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-brand-cream" />
               <span>
                 {lang === 'bn' 
                   ? 'অভিনন্দন! আপনার ৫টি অর্ডারের উপহার সক্রিয় হয়েছে।' 
@@ -146,7 +146,7 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
         {onApplyCoupon && (
           <div>
             {isApplied ? (
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-forest-light bg-brand-forest/30 border border-brand-forest/50 px-3 py-1.5 rounded-xl">
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-forest/10 bg-brand-forest/30 border border-brand-forest/50 px-3 py-1.5 rounded-xl">
                 <Check className="w-3.5 h-3.5" />
                 <span>{lang === 'bn' ? 'রিওয়ার্ড কুপন যোগ হয়েছে' : 'Reward Applied!'}</span>
               </span>
@@ -157,7 +157,7 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
                 disabled={!isRewardReady}
                 className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all shadow-soft flex items-center gap-1.5 ${
                   isRewardReady
-                    ? 'bg-gradient-to-r from-brand-caramel to-[#B67645] hover:brightness-110 text-white cursor-pointer active:scale-95'
+                    ? 'bg-gradient-to-r from-brand-caramel to-brand-caramel hover:brightness-110 text-white cursor-pointer active:scale-95'
                     : 'bg-white/10 text-white/40 cursor-not-allowed'
                 }`}
               >

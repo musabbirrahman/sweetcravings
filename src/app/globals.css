@@ -1,14 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,400;1,500;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+/* Self-hosted fonts only — no Google Fonts request at runtime or build.
+   Two families: Fraunces (display headings) + Hind Siliguri (body + Bangla). */
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/fraunces/wght-italic.css';
+@import '@fontsource/hind-siliguri/400.css';
+@import '@fontsource/hind-siliguri/500.css';
+@import '@fontsource/hind-siliguri/600.css';
+@import '@fontsource/hind-siliguri/700.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Fraunces Variable', 'Hind Siliguri', Georgia, serif;
+  --font-sans: 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-bengali: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
-  --font-editorial: 'Playfair Display', 'Outfit', Georgia, serif;
+  --font-editorial: 'Fraunces Variable', 'Hind Siliguri', Georgia, serif;
 }
 
 body {
@@ -27,14 +34,13 @@ body {
   letter-spacing: 0.015em;
 }
 
-/* Headings use Outfit for a soft, natural, readable luxury feel */
+/* Headings use Fraunces for a warm, distinctive bakery voice */
 h1, h2, h3, h4, .font-heading {
   font-family: var(--font-heading);
-  letter-spacing: -0.022em;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.01em;
 }
 
-/* Editorial quote flourishes */
+/* Editorial quote flourishes — Fraunces italic, not Playfair */
 .font-editorial, .font-serif-brand {
   font-family: var(--font-editorial);
   font-style: italic;
@@ -51,33 +57,33 @@ html {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #F5EFE6;
+  background: #FAF7F2;
 }
 ::-webkit-scrollbar-thumb {
-  background: #E0D2C3;
+  background: rgba(44, 30, 25, 0.18);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #C29B63;
+  background: #9C6237;
 }
 
 /* Custom UI Polish Classes with softer tones */
 .bg-caramel-gradient {
-  background: linear-gradient(135deg, #2C1E19 0%, #3D291F 50%, #523526 100%);
+  background: linear-gradient(135deg, #2C1E19 0%, #241811 100%);
 }
 
 .bg-cream-mesh {
   background-color: #FAF7F2;
-  background-image: radial-gradient(at 0% 0%, rgba(235, 220, 204, 0.35) 0px, transparent 55%),
-                    radial-gradient(at 100% 100%, rgba(194, 155, 99, 0.12) 0px, transparent 50%);
+  background-image: radial-gradient(at 0% 0%, rgba(44, 30, 25, 0.04) 0px, transparent 55%),
+                    radial-gradient(at 100% 100%, rgba(156, 98, 55, 0.08) 0px, transparent 50%);
 }
 
 .gold-glow {
-  box-shadow: 0 0 50px -10px rgba(194, 155, 99, 0.25);
+  box-shadow: 0 0 50px -10px rgba(156, 98, 55, 0.25);
 }
 
 .bg-mesh-glow {
-  background: radial-gradient(circle at 50% 0%, rgba(235, 220, 204, 0.3) 0%, rgba(250, 247, 242, 0) 65%);
+  background: radial-gradient(circle at 50% 0%, rgba(44, 30, 25, 0.05) 0%, rgba(250, 247, 242, 0) 65%);
 }
 
 .glass-nav {
@@ -93,7 +99,7 @@ html {
 }
 
 .badge-subtle {
-  background-color: #F7EFE8;
+  background-color: rgba(156, 98, 55, 0.08);
   color: #9C6237;
   border: 1px solid rgba(156, 98, 55, 0.15);
 }
@@ -108,5 +114,5 @@ html {
 
 /* Subtle border lines */
 .border-divider {
-  border-color: #EAE3D6;
+  border-color: rgba(44, 30, 25, 0.12);
 }

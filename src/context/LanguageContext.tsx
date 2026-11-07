@@ -23,6 +23,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Keep <html lang> in step with the switcher (layout.tsx hardcodes
+  // lang="bn"; screen readers and search engines read it from the DOM).
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   const setLang = (newLang: Language) => {
     setLangState(newLang);
     localStorage.setItem('sc_lang', newLang);

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 import { 
   ShieldCheck, 
   MapPin, 
@@ -89,7 +90,9 @@ export default function CheckoutPage() {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [shopSettings, setShopSettings] = useState<any>(null);
+  // Shop settings come from the shared catalogue (fetched once per page
+  // load); null until it arrives, same as before.
+  const { settings: shopSettings } = useCatalog();
 
   const [idempotencyToken] = useState(() => `ord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
 
@@ -130,15 +133,6 @@ export default function CheckoutPage() {
   const codAvailable = !walletSettingsLoaded || shopSettings.cod_enabled !== false;
   const bkashAvailable = !walletSettingsLoaded || (shopSettings.bkash_enabled !== false && bkashNumber !== '');
   const nagadAvailable = !walletSettingsLoaded || (shopSettings.nagad_enabled !== false && nagadNumber !== '');
-
-  useEffect(() => {
-    fetch('/api/products')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.settings) setShopSettings(data.settings);
-      })
-      .catch(() => {});
-  }, []);
 
   const handleApplyCoupon = async (codeToApply?: string) => {
     const code = (codeToApply || couponInput).trim();
@@ -293,7 +287,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-6">
-        <div className="w-20 h-20 mx-auto rounded-full bg-brand-cream-subtle flex items-center justify-center text-brand-caramel shadow-soft">
+        <div className="w-20 h-20 mx-auto rounded-full bg-brand-cream flex items-center justify-center text-brand-caramel shadow-soft">
           <Truck className="w-10 h-10 stroke-[1.5]" />
         </div>
         <div className="space-y-2">
@@ -309,7 +303,7 @@ export default function CheckoutPage() {
         <div>
           <Link
             href="/menu"
-            className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-caramel-dark text-white font-bold py-3.5 px-8 rounded-full shadow-soft hover:shadow-soft-hover transition-all"
+            className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white font-bold py-3.5 px-8 rounded-full shadow-soft hover:shadow-soft-hover transition-all"
           >
             <Sparkles className="w-4 h-4" />
             <span>{lang === 'bn' ? 'মেনু দেখুন' : 'Explore Fresh Sweets'}</span>
@@ -323,7 +317,7 @@ export default function CheckoutPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-8 font-sans">
       
       {/* Checkout Progress Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-brand-cream-dark/70 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-brand-chocolate/10 pb-6">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-brand-caramel mb-1">
             <Link href="/menu" className="flex items-center gap-1 hover:underline text-brand-taupe">
@@ -340,18 +334,18 @@ export default function CheckoutPage() {
 
         {/* 3 Step Pill Indicator */}
         <div className="flex items-center gap-2 text-xs">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-chocolate text-brand-gold-light font-semibold shadow-soft">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-chocolate text-brand-cream font-semibold shadow-soft">
             <span className="w-4 h-4 rounded-full bg-brand-caramel text-white text-[10px] flex items-center justify-center font-bold">1</span>
             <span>{lang === 'bn' ? 'ঠিকানা' : 'Delivery'}</span>
           </div>
-          <ChevronRight className="w-3.5 h-3.5 text-brand-cream-dark" />
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cream-subtle text-brand-chocolate font-semibold">
-            <span className="w-4 h-4 rounded-full bg-brand-cream-dark text-brand-chocolate text-[10px] flex items-center justify-center font-bold">2</span>
+          <ChevronRight className="w-3.5 h-3.5 text-brand-cream" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cream text-brand-chocolate font-semibold">
+            <span className="w-4 h-4 rounded-full bg-brand-chocolate/5 text-brand-chocolate text-[10px] flex items-center justify-center font-bold">2</span>
             <span>{lang === 'bn' ? 'পেমেন্ট' : 'Payment'}</span>
           </div>
-          <ChevronRight className="w-3.5 h-3.5 text-brand-cream-dark" />
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cream-subtle text-brand-taupe/60 font-medium">
-            <span className="w-4 h-4 rounded-full bg-brand-cream-dark/60 text-brand-taupe text-[10px] flex items-center justify-center font-bold">3</span>
+          <ChevronRight className="w-3.5 h-3.5 text-brand-cream" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cream text-brand-taupe/60 font-medium">
+            <span className="w-4 h-4 rounded-full bg-brand-chocolate/5 text-brand-taupe text-[10px] flex items-center justify-center font-bold">3</span>
             <span>{lang === 'bn' ? 'কনফার্ম' : 'Bake'}</span>
           </div>
         </div>
@@ -359,7 +353,7 @@ export default function CheckoutPage() {
 
       {/* Error notification banner */}
       {errorMessage && (
-        <div className="bg-brand-strawberry-light border border-brand-strawberry/20 text-brand-strawberry p-4 rounded-2xl flex items-start gap-3 shadow-soft animate-shake">
+        <div className="bg-brand-caramel/10 border border-brand-chocolate/20 text-brand-chocolate p-4 rounded-2xl flex items-start gap-3 shadow-soft animate-shake">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-bold">{lang === 'bn' ? 'ত্রুটি' : 'Action Required'}</p>
@@ -374,9 +368,9 @@ export default function CheckoutPage() {
         <div className="lg:col-span-7 space-y-6">
           
           {/* Step 1: Customer Info */}
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-cream-dark shadow-soft space-y-5">
-            <div className="flex items-center gap-2.5 border-b border-brand-cream-dark pb-3.5">
-              <div className="w-7 h-7 rounded-full bg-brand-caramel-subtle text-brand-caramel flex items-center justify-center font-bold text-xs">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-brand-chocolate/10 pb-3.5">
+              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-xs">
                 1
               </div>
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -387,7 +381,7 @@ export default function CheckoutPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                  {t('checkout.nameLabel')} <span className="text-brand-strawberry">*</span>
+                  {t('checkout.nameLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-taupe/50" />
@@ -397,14 +391,14 @@ export default function CheckoutPage() {
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder={t('checkout.namePlaceholder')}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel-subtle text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                  {t('checkout.phoneLabel')} <span className="text-brand-strawberry">*</span>
+                  {t('checkout.phoneLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-taupe/50" />
@@ -414,7 +408,7 @@ export default function CheckoutPage() {
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder={t('checkout.phonePlaceholder')}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel-subtle text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
                   />
                 </div>
                 <p className="text-[11px] text-brand-taupe mt-1">
@@ -436,9 +430,9 @@ export default function CheckoutPage() {
           </div>
 
           {/* Step 2: Rajshahi Delivery Details */}
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-cream-dark shadow-soft space-y-5">
-            <div className="flex items-center gap-2.5 border-b border-brand-cream-dark pb-3.5">
-              <div className="w-7 h-7 rounded-full bg-brand-caramel-subtle text-brand-caramel flex items-center justify-center font-bold text-xs">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-brand-chocolate/10 pb-3.5">
+              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-xs">
                 2
               </div>
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -451,7 +445,7 @@ export default function CheckoutPage() {
               {/* Popular area chips for 1-click select */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                  {t('checkout.areaLabel')} <span className="text-brand-strawberry">*</span>
+                  {t('checkout.areaLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 
                 {/* Quick Area Pills */}
@@ -467,7 +461,7 @@ export default function CheckoutPage() {
                         className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
                           isSelected
                             ? 'bg-brand-caramel text-white border-brand-caramel font-semibold shadow-xs'
-                            : 'bg-brand-cream-subtle/60 text-brand-chocolate hover:bg-brand-cream border-brand-cream-dark'
+                            : 'bg-brand-cream/60 text-brand-chocolate hover:bg-brand-cream border-brand-chocolate/10'
                         }`}
                       >
                         {shortName}
@@ -482,7 +476,7 @@ export default function CheckoutPage() {
                     required
                     value={areaLandmark}
                     onChange={(e) => setAreaLandmark(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate transition-all appearance-none cursor-pointer"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate transition-all appearance-none cursor-pointer"
                   >
                     <option value="">{t('checkout.areaSelectDefault')}</option>
                     {ALL_RAJSHAHI_AREAS.map((a) => (
@@ -495,7 +489,7 @@ export default function CheckoutPage() {
               {areaLandmark === 'Other Area in Rajshahi (অন্যান্য এলাকা)' && (
                 <div className="animate-fadeIn">
                   <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                    {lang === 'bn' ? 'এলাকার নাম লিখুন' : 'Specify Rajshahi Area'} <span className="text-brand-strawberry">*</span>
+                    {lang === 'bn' ? 'এলাকার নাম লিখুন' : 'Specify Rajshahi Area'} <span className="text-brand-chocolate">*</span>
                   </label>
                   <input
                     type="text"
@@ -503,14 +497,14 @@ export default function CheckoutPage() {
                     value={otherArea}
                     onChange={(e) => setOtherArea(e.target.value)}
                     placeholder={t('checkout.otherAreaPlaceholder')}
-                    className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate"
+                    className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate"
                   />
                 </div>
               )}
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                  {t('checkout.addressLabel')} <span className="text-brand-strawberry">*</span>
+                  {t('checkout.addressLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 <textarea
                   required
@@ -518,7 +512,7 @@ export default function CheckoutPage() {
                   value={deliveryAddress}
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                   placeholder={t('checkout.addressPlaceholder')}
-                  className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all resize-none"
                 />
               </div>
 
@@ -532,7 +526,7 @@ export default function CheckoutPage() {
                     value={deliveryInstructions}
                     onChange={(e) => setDeliveryInstructions(e.target.value)}
                     placeholder={t('checkout.instructionsPlaceholder')}
-                    className="w-full px-4 py-2.5 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
+                    className="w-full px-4 py-2.5 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
                   />
                 </div>
 
@@ -547,7 +541,7 @@ export default function CheckoutPage() {
                       value={requestedTime}
                       onChange={(e) => setRequestedTime(e.target.value)}
                       placeholder={t('checkout.timePlaceholder')}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
                     />
                   </div>
                   <p className="text-[10px] text-brand-taupe mt-1">
@@ -560,13 +554,13 @@ export default function CheckoutPage() {
           </div>
 
           {/* Optional Gift & Surprise Delivery Module */}
-          <div className="bg-gradient-to-br from-white to-[#FDF9F5] p-5 sm:p-7 rounded-3xl border border-brand-cream-dark/90 shadow-card space-y-4">
+          <div className="bg-gradient-to-br from-white to-[#FDF9F5] p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-card space-y-4">
             <div className="flex items-center justify-between">
               <label 
                 htmlFor="gift-toggle"
                 className="flex items-center gap-3 cursor-pointer select-none"
               >
-                <div className="w-9 h-9 rounded-full bg-brand-caramel-subtle text-brand-caramel flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center shrink-0">
                   <Gift className="w-4 h-4" />
                 </div>
                 <div>
@@ -592,7 +586,7 @@ export default function CheckoutPage() {
             </div>
 
             {isGift && (
-              <div className="pt-3 border-t border-brand-cream-dark/60 space-y-3.5 animate-fadeIn">
+              <div className="pt-3 border-t border-brand-chocolate/10 space-y-3.5 animate-fadeIn">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1">
@@ -603,7 +597,7 @@ export default function CheckoutPage() {
                       value={recipientName}
                       onChange={(e) => setRecipientName(e.target.value)}
                       placeholder={lang === 'bn' ? 'যেমন: আয়েশা সিদ্দিকা' : 'e.g. Ayesha Siddika'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-brand-cream-dark bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-brand-chocolate/10 bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate"
                     />
                   </div>
 
@@ -616,7 +610,7 @@ export default function CheckoutPage() {
                       value={recipientPhone}
                       onChange={(e) => setRecipientPhone(e.target.value)}
                       placeholder={lang === 'bn' ? '01XXXXXXXXX' : '01XXXXXXXXX'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-brand-cream-dark bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-brand-chocolate/10 bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate"
                     />
                   </div>
                 </div>
@@ -636,7 +630,7 @@ export default function CheckoutPage() {
                     placeholder={lang === 'bn' 
                       ? 'যেমন: শুভ জন্মদিন প্রিয় বন্ধু! জীবনের প্রতিটি দিন মিষ্টি হোক...' 
                       : 'e.g. Happy Birthday! Wishing you a sweet day filled with joy & delicious treats...'}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-brand-cream-dark bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-brand-chocolate/10 bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate resize-none"
                   />
                   <p className="text-[10px] text-brand-caramel flex items-center gap-1 mt-1">
                     <Sparkles className="w-3 h-3 shrink-0" />
@@ -652,9 +646,9 @@ export default function CheckoutPage() {
           </div>
 
           {/* Step 3: Payment Method with Elevated Branded Cards */}
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-cream-dark shadow-soft space-y-5">
-            <div className="flex items-center gap-2.5 border-b border-brand-cream-dark pb-3.5">
-              <div className="w-7 h-7 rounded-full bg-brand-caramel-subtle text-brand-caramel flex items-center justify-center font-bold text-xs">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-brand-chocolate/10 pb-3.5">
+              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-xs">
                 3
               </div>
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -670,8 +664,8 @@ export default function CheckoutPage() {
                 onClick={() => setPaymentMethod('cod')}
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'cod'
-                    ? 'border-brand-caramel bg-brand-caramel-subtle/30 shadow-soft ring-1 ring-brand-caramel/20'
-                    : 'border-brand-cream-dark hover:border-brand-caramel/40 bg-white'
+                    ? 'border-brand-caramel bg-brand-caramel/10 shadow-soft ring-1 ring-brand-caramel/20'
+                    : 'border-brand-chocolate/10 hover:border-brand-caramel/40 bg-white'
                 }`}
               >
                 <div className="pt-0.5">
@@ -689,7 +683,7 @@ export default function CheckoutPage() {
                       <Banknote className="w-4 h-4 text-brand-caramel" />
                       {t('checkout.codLabel')}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-cream-subtle px-2 py-0.5 rounded text-brand-taupe">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-cream px-2 py-0.5 rounded text-brand-taupe">
                       {lang === 'bn' ? 'জনপ্রিয়' : 'Standard'}
                     </span>
                   </div>
@@ -707,7 +701,7 @@ export default function CheckoutPage() {
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'bkash'
                     ? 'border-[#E2136E] bg-[#FFF5F8] shadow-soft ring-1 ring-[#E2136E]/20'
-                    : 'border-brand-cream-dark hover:border-[#E2136E]/40 bg-white'
+                    : 'border-brand-chocolate/10 hover:border-[#E2136E]/40 bg-white'
                 }`}
               >
                 <div className="pt-0.5">
@@ -802,7 +796,7 @@ export default function CheckoutPage() {
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'nagad'
                     ? 'border-[#F7941D] bg-[#FFF9F2] shadow-soft ring-1 ring-[#F7941D]/20'
-                    : 'border-brand-cream-dark hover:border-[#F7941D]/40 bg-white'
+                    : 'border-brand-chocolate/10 hover:border-[#F7941D]/40 bg-white'
                 }`}
               >
                 <div className="pt-0.5">
@@ -897,13 +891,13 @@ export default function CheckoutPage() {
 
         {/* Right Sticky Column: Order Summary & Review */}
         <div className="lg:col-span-5">
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-cream-dark shadow-soft space-y-6 sticky top-28">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-6 sticky top-28">
             
-            <div className="border-b border-brand-cream-dark pb-3.5 flex items-center justify-between">
+            <div className="border-b border-brand-chocolate/10 pb-3.5 flex items-center justify-between">
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
                 {t('checkout.orderSummary')}
               </h2>
-              <span className="text-xs bg-brand-cream-subtle px-2.5 py-0.5 rounded-full text-brand-taupe font-semibold">
+              <span className="text-xs bg-brand-cream px-2.5 py-0.5 rounded-full text-brand-taupe font-semibold">
                 {items.reduce((s, i) => s + i.quantity, 0)} {lang === 'bn' ? 'আইটেম' : 'items'}
               </span>
             </div>
@@ -912,7 +906,7 @@ export default function CheckoutPage() {
             <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1">
               {items.map((item, idx) => (
                 <div key={idx} className="flex gap-3 items-center text-xs">
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-brand-cream-subtle shrink-0 border border-brand-cream-dark">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-brand-cream shrink-0 border border-brand-chocolate/10">
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
@@ -943,7 +937,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Promo / Coupon Code Section */}
-            <div className="border-t border-brand-cream-dark pt-3.5 space-y-2">
+            <div className="border-t border-brand-chocolate/10 pt-3.5 space-y-2">
               <label className="block text-xs font-bold text-brand-chocolate flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-brand-caramel" />
@@ -957,7 +951,7 @@ export default function CheckoutPage() {
               </label>
 
               {appliedCoupon ? (
-                <div className="flex items-center justify-between bg-brand-forest-light border border-brand-forest/20 text-brand-forest px-3.5 py-2.5 rounded-xl text-xs">
+                <div className="flex items-center justify-between bg-brand-forest/10 border border-brand-forest/20 text-brand-forest px-3.5 py-2.5 rounded-xl text-xs">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-brand-forest" />
                     <div>
@@ -982,19 +976,19 @@ export default function CheckoutPage() {
                       value={couponInput}
                       onChange={(e) => setCouponInput(e.target.value)}
                       placeholder={lang === 'bn' ? 'কুপন কোড লিখুন' : 'Enter coupon code'}
-                      className="flex-1 px-3 py-2 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/50 text-xs font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
+                      className="flex-1 px-3 py-2 rounded-xl border border-brand-chocolate/10 bg-brand-cream/50 text-xs font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
                     />
                     <button
                       type="button"
                       disabled={isValidatingCoupon || !couponInput.trim()}
                       onClick={() => handleApplyCoupon()}
-                      className="bg-brand-chocolate hover:bg-brand-chocolate-light text-brand-gold-light px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                      className="bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
                     >
                       {isValidatingCoupon ? 'Checking...' : 'Apply'}
                     </button>
                   </div>
                   {couponError && (
-                    <p className="text-[11px] text-brand-strawberry animate-fadeIn flex items-center gap-1">
+                    <p className="text-[11px] text-brand-chocolate animate-fadeIn flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" />
                       <span>{couponError}</span>
                     </p>
@@ -1004,7 +998,7 @@ export default function CheckoutPage() {
             </div>
 
             {/* Price Breakdown */}
-            <div className="border-t border-brand-cream-dark pt-4 space-y-2.5 text-sm">
+            <div className="border-t border-brand-chocolate/10 pt-4 space-y-2.5 text-sm">
               <div className="flex justify-between text-brand-taupe text-xs sm:text-sm">
                 <span>{t('cart.subtotal')}</span>
                 <span className="font-semibold text-brand-chocolate">৳{subtotal}</span>
@@ -1027,7 +1021,7 @@ export default function CheckoutPage() {
                 </span>
                 <span className="font-semibold">
                   {deliveryFee === 0 ? (
-                    <span className="text-brand-forest font-bold bg-brand-forest-light px-2 py-0.5 rounded text-xs">
+                    <span className="text-brand-forest font-bold bg-brand-forest/10 px-2 py-0.5 rounded text-xs">
                       {lang === 'bn' ? 'ফ্রি ডেলিভারি' : 'FREE'}
                     </span>
                   ) : (
@@ -1036,7 +1030,7 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
-              <div className="border-t border-brand-cream-dark pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate items-baseline">
+              <div className="border-t border-brand-chocolate/10 pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate items-baseline">
                 <div>
                   <span>{t('cart.total')}</span>
                   <span className="text-[10px] text-brand-taupe block font-normal font-sans">
@@ -1053,8 +1047,8 @@ export default function CheckoutPage() {
               disabled={isSubmitting}
               className={`w-full py-4 px-6 rounded-2xl font-semibold text-sm shadow-soft transition-all flex items-center justify-center gap-2 btn-press ${
                 isSubmitting
-                  ? 'bg-brand-cream-dark text-brand-taupe cursor-wait'
-                  : 'bg-brand-caramel hover:bg-brand-caramel-hover text-white hover:shadow-card'
+                  ? 'bg-brand-chocolate/5 text-brand-taupe cursor-wait'
+                  : 'bg-brand-caramel hover:bg-brand-chocolate text-white hover:shadow-card'
               }`}
             >
               {isSubmitting ? (
@@ -1071,7 +1065,7 @@ export default function CheckoutPage() {
             </button>
 
             {/* Security Guarantee */}
-            <div className="space-y-2 text-[11px] text-brand-taupe text-center pt-1 border-t border-brand-cream-dark">
+            <div className="space-y-2 text-[11px] text-brand-taupe text-center pt-1 border-t border-brand-chocolate/10">
               <p className="flex items-center justify-center gap-1.5 text-brand-chocolate/80 font-medium">
                 <ShieldCheck className="w-4 h-4 text-brand-forest shrink-0" />
                 <span>{lang === 'bn' ? 'নিরাপদ ঘরোয়া অর্ডার • তাজা বেকিং গ্যারান্টি' : 'Safe Guest Order • Fresh Baking Guarantee'}</span>

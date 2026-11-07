@@ -80,7 +80,7 @@ export default function TrackOrderPage() {
       
       {/* Header */}
       <div className="text-center space-y-3 max-w-xl mx-auto">
-        <div className="inline-flex items-center gap-1.5 bg-brand-caramel-subtle text-brand-caramel text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
+        <div className="inline-flex items-center gap-1.5 bg-brand-caramel/10 text-brand-caramel text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
           <Truck className="w-3.5 h-3.5" />
           <span>{lang === 'bn' ? 'লাইভ অর্ডার ট্র্যাকিং' : 'Live Order Tracking'}</span>
         </div>
@@ -93,12 +93,12 @@ export default function TrackOrderPage() {
       </div>
 
       {/* Lookup Form */}
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-cream-dark shadow-soft space-y-5">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
         <form onSubmit={handleTrack} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                {t('track.codeLabel')} <span className="text-brand-strawberry">*</span>
+                {t('track.codeLabel')} <span className="text-brand-chocolate">*</span>
               </label>
               <input
                 type="text"
@@ -106,13 +106,13 @@ export default function TrackOrderPage() {
                 value={orderCode}
                 onChange={(e) => setOrderCode(e.target.value)}
                 placeholder={t('track.codePlaceholder')}
-                className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm uppercase font-mono tracking-wider text-brand-chocolate transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm uppercase font-mono tracking-wider text-brand-chocolate transition-all"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
-                {t('track.phoneLabel')} <span className="text-brand-strawberry">*</span>
+                {t('track.phoneLabel')} <span className="text-brand-chocolate">*</span>
               </label>
               <input
                 type="tel"
@@ -120,7 +120,7 @@ export default function TrackOrderPage() {
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder={t('track.phonePlaceholder')}
-                className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate transition-all"
               />
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function TrackOrderPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel-dark text-white py-3.5 px-6 rounded-2xl font-bold text-sm shadow-soft hover:shadow-soft-hover transition-all active:scale-98"
+            className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-3.5 px-6 rounded-2xl font-bold text-sm shadow-soft hover:shadow-soft-hover transition-all active:scale-98"
           >
             {loading ? (
               <>
@@ -152,7 +152,7 @@ export default function TrackOrderPage() {
 
       {/* Not Found Alert */}
       {searched && errorMsg && !order && (
-        <div className="bg-brand-strawberry-light border border-brand-strawberry/20 text-brand-strawberry p-5 rounded-2xl text-sm flex items-start gap-3 shadow-soft animate-shake">
+        <div className="bg-brand-caramel/10 border border-brand-chocolate/20 text-brand-chocolate p-5 rounded-2xl text-sm flex items-start gap-3 shadow-soft animate-shake">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-bold">{lang === 'bn' ? 'অর্ডার পাওয়া যায়নি' : 'Order Not Found'}</p>
@@ -166,9 +166,9 @@ export default function TrackOrderPage() {
         <div className="space-y-6 animate-fadeIn">
           
           {/* Main Status Header */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-cream-dark shadow-soft space-y-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-brand-chocolate/10 shadow-soft space-y-6">
             
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-cream-dark pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-chocolate/10 pb-4">
               <div>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-brand-taupe block">
                   {lang === 'bn' ? 'অর্ডার নম্বর' : 'Order Reference'}
@@ -179,10 +179,10 @@ export default function TrackOrderPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-brand-caramel-subtle text-brand-caramel border border-brand-caramel/20 capitalize">
+                <span className="text-xs font-bold px-3.5 py-1 rounded-full bg-brand-caramel/10 text-brand-caramel border border-brand-caramel/20 capitalize">
                   {order.order_status.replace(/_/g, ' ')}
                 </span>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-cream-subtle text-brand-chocolate capitalize">
+                <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-cream text-brand-chocolate capitalize">
                   {order.payment_method.toUpperCase()}
                 </span>
               </div>
@@ -203,10 +203,10 @@ export default function TrackOrderPage() {
                         <div
                           className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-xs ${
                             isCurrent
-                              ? 'bg-brand-caramel text-white ring-4 ring-brand-caramel-subtle'
+                              ? 'bg-brand-caramel text-white ring-4 ring-brand-caramel/10'
                               : isPast
                               ? 'bg-brand-forest text-white'
-                              : 'bg-brand-cream-subtle text-brand-taupe/40 border border-brand-cream-dark'
+                              : 'bg-brand-cream text-brand-taupe/40 border border-brand-chocolate/10'
                           }`}
                         >
                           {isPast ? <Check className="w-4 h-4" /> : idx + 1}
@@ -226,12 +226,12 @@ export default function TrackOrderPage() {
             </div>
 
             {/* Order Items Summary */}
-            <div className="border-t border-brand-cream-dark pt-4 space-y-3">
+            <div className="border-t border-brand-chocolate/10 pt-4 space-y-3">
               <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-chocolate">
                 <ShoppingBag className="w-4 h-4 text-brand-caramel" />
                 <span>{lang === 'bn' ? 'অর্ডারকৃত মিষ্টি' : 'Ordered Desserts'}</span>
               </div>
-              <div className="space-y-2 divide-y divide-brand-cream-subtle text-xs">
+              <div className="space-y-2 divide-y divide-brand-cream text-xs">
                 {order.items?.map((item, idx) => (
                   <div key={idx} className="pt-2 first:pt-0 flex justify-between items-center">
                     <div>
@@ -247,14 +247,14 @@ export default function TrackOrderPage() {
                 ))}
               </div>
 
-              <div className="border-t border-brand-cream-dark pt-3 flex justify-between font-heading font-bold text-brand-chocolate text-base items-baseline">
+              <div className="border-t border-brand-chocolate/10 pt-3 flex justify-between font-heading font-bold text-brand-chocolate text-base items-baseline">
                 <span>{t('cart.total')}</span>
                 <span className="text-brand-caramel text-xl font-extrabold">৳{order.total_amount}</span>
               </div>
             </div>
 
             {/* Delivery Destination */}
-            <div className="bg-brand-cream-subtle/50 rounded-2xl p-4 border border-brand-cream-dark text-xs space-y-1.5">
+            <div className="bg-brand-cream/50 rounded-2xl p-4 border border-brand-chocolate/10 text-xs space-y-1.5">
               <p className="font-bold text-brand-chocolate flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-brand-caramel" />
                 <span>{lang === 'bn' ? 'ডেলিভারি ঠিকানা' : 'Delivery Address'}</span>
@@ -270,7 +270,7 @@ export default function TrackOrderPage() {
                 href={waUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 bg-brand-forest hover:bg-[#1E4330] text-white py-3 px-6 rounded-full font-bold text-xs shadow-soft transition-all"
+                className="flex-1 flex items-center justify-center gap-2 bg-brand-forest hover:bg-brand-chocolate text-white py-3 px-6 rounded-full font-bold text-xs shadow-soft transition-all"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>{lang === 'bn' ? 'হোয়াটসঅ্যাপে আপডেট জানুন' : 'Live WhatsApp Updates'}</span>
@@ -279,7 +279,7 @@ export default function TrackOrderPage() {
 
               <Link
                 href={`/order/${order.public_code}`}
-                className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-brand-cream text-brand-chocolate py-3 px-6 rounded-full font-semibold text-xs border border-brand-cream-dark shadow-xs transition-all"
+                className="flex-1 flex items-center justify-center gap-2 bg-white hover:bg-brand-cream text-brand-chocolate py-3 px-6 rounded-full font-semibold text-xs border border-brand-chocolate/10 shadow-xs transition-all"
               >
                 <span>{lang === 'bn' ? 'সম্পূর্ণ রশিদ দেখুন' : 'View Full Receipt'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />

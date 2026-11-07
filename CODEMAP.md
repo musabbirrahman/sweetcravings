@@ -16,7 +16,12 @@ The sister runs it from an admin area on her phone.
   shareable page (photo, sizes, ingredients, batch left, add to bag),
   `/cart` the basket, `/checkout` name, phone, address, area, payment
   choice, `/order/[code]` the confirmation page, `/track` look up an
-  order (code + phone)
+  order (code + phone). The confirmation page has a Download Receipt
+  button: it saves a one-page-style PDF (`Sweet-Cravings-SC-XXXXX.pdf`)
+  built from an off-screen receipt card (`src/components/OrderReceipt.tsx`)
+  with html2canvas + jsPDF — the browser draws the Bangla text, so the
+  letters keep their proper joined shapes in the file. There is no print
+  button; printing the page is not a receipt.
 
 ## How an order works
 1. The basket lives in the browser only (remembered on the phone).
@@ -44,9 +49,18 @@ The sister runs it from an admin area on her phone.
 ## The admin area (`/admin`, sister only)
 - Today: new orders, unpaid wallet payments, pause-the-kitchen switch
 - Orders: open one, call/WhatsApp the customer, change status/payment
-- Products: add/edit desserts, prices, photos, sold out. Photos can
-  be uploaded from the phone (JPG/PNG/WebP, under 5 MB — shrunk to
-  at most 1200px wide on the server) or pasted in as a web link.
+- Products: add/edit desserts, prices, photos, sold out. Every field
+  can be changed on an existing dessert — name, category, price,
+  sizes, photo, lead time, ingredients, allergen note, availability.
+  Photos can be uploaded from the phone (JPG/PNG/WebP, under 5 MB —
+  shrunk to at most 1200px wide on the server) or pasted in as a web
+  link. Closing a pop-up window (the X, tapping outside it, or the
+  Escape key) throws away unsaved changes.
+- Categories: a separate tab where new food categories are created
+  (English + Bangla name — the web address is made from the English
+  name), edited, archived, or deleted. A category with desserts in it
+  cannot be deleted; archive it instead. A new category shows up in
+  the dessert form and on the menu straight away.
 - Settings: delivery fee, wallet numbers, WhatsApp, homepage text,
   coupons, and a one-click backup download of all orders. A backup
   file can also be restored from here — it is checked first, and

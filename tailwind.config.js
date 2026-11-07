@@ -8,45 +8,27 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Three core colours + one accent. Everything else in the old
+        // palette was a near-duplicate tint of one of these and is gone:
+        // borders use chocolate at low opacity, tints use caramel/forest
+        // at low opacity, light text on dark surfaces is cream.
         brand: {
-          chocolate: "#2C1E19", // Softer warm espresso (replaces harsh #241814)
-          "chocolate-dark": "#201612", // Softer deep cocoa
-          "chocolate-light": "#3D2C24",
-          taupe: "#6D5C53", // Softer hazelnut cocoa for readable body text
-          "taupe-light": "#9C8C82",
-          "taupe-subtle": "#C2B5AC",
-          
-          caramel: "#9C6237", // Warm, appetizing golden caramel (replaces heavy #8C5630)
-          "caramel-dark": "#74431F",
-          "caramel-hover": "#89532B",
-          "caramel-light": "#EBDCCC",
-          "caramel-subtle": "#F7EFE8", // Whipped Chantilly cream tint
-          
-          gold: "#C29B63", // Soft champagne gold
-          "gold-light": "#F4ECE1",
-          "gold-muted": "#9B7C50",
-          
-          cream: "#FAF7F2", // Ultra-soft warm cashmere background (zero glare, gentle on eyes)
-          "cream-pure": "#FDFBF8",
-          "cream-subtle": "#F5EFE6",
-          "cream-dark": "#EAE3D6", // Delicate, clean whisper-soft hairline border
-          vanilla: "#FAF5ED",
-          surface: "#FFFFFF",
-          
-          strawberry: "#9B4348", // Soft glazed raspberry
-          "strawberry-light": "#FDF2F2",
-          
-          forest: "#2D5943", // Soft botanical sage
-          "forest-light": "#EEF5F1",
-          "forest-border": "#C8DFD2",
+          chocolate: "#2C1E19", // Deep cocoa — text, buttons, dark surfaces
+          caramel: "#9C6237", // Warm caramel — the one accent colour for CTAs
+          cream: "#FAF7F2", // Warm cream — page background, light text on dark
+          taupe: "#6D5C53", // Muted cocoa — body text on cream
+          gold: "#8A6B3F", // Darkened gold — small text that must pass contrast
+          forest: "#2D5943", // Deep green — success, WhatsApp, secondary accent
         }
       },
       fontFamily: {
-        heading: ["Outfit", "Plus Jakarta Sans", "sans-serif"],
-        sans: ["Plus Jakarta Sans", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        // Two self-hosted families only (@fontsource, no Google request):
+        // Fraunces for display headings, Hind Siliguri for body + Bangla.
+        heading: ["Fraunces Variable", "Hind Siliguri", "Georgia", "serif"],
+        sans: ["Hind Siliguri", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
         bengali: ["Hind Siliguri", "Noto Sans Bengali", "sans-serif"],
-        editorial: ["Playfair Display", "Outfit", "Georgia", "serif"],
-        serif: ["Playfair Display", "Outfit", "Georgia", "serif"],
+        editorial: ["Fraunces Variable", "Hind Siliguri", "Georgia", "serif"],
+        serif: ["Fraunces Variable", "Hind Siliguri", "Georgia", "serif"],
       },
       boxShadow: {
         'soft': '0 2px 16px -2px rgba(60, 40, 30, 0.04)',

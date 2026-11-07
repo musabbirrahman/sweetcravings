@@ -14,8 +14,8 @@ export default function AboutPage() {
       
       {/* Hero Header */}
       <div className="text-center space-y-4 max-w-2xl mx-auto">
-        <div className="inline-flex items-center gap-2 bg-brand-caramel-subtle text-brand-caramel text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
-          <Heart className="w-3.5 h-3.5 fill-brand-strawberry/20 text-brand-strawberry" />
+        <div className="inline-flex items-center gap-2 bg-brand-caramel/10 text-brand-caramel text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+          <Heart className="w-3.5 h-3.5 fill-brand-chocolate/20 text-brand-chocolate" />
           <span>{lang === 'bn' ? 'আমাদের গল্প ও দর্শন' : 'Our Story & Philosophy'}</span>
         </div>
         <h1 className="font-heading text-4xl sm:text-6xl font-semibold text-brand-chocolate tracking-tight">
@@ -30,28 +30,29 @@ export default function AboutPage() {
       <div className="relative rounded-3xl overflow-hidden bg-caramel-gradient p-8 sm:p-14 text-white flex flex-col md:flex-row items-center gap-10 shadow-float border border-white/10">
         
         {/* Subtle Ambient Glow */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-brand-gold/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-brand-caramel/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl shrink-0 bg-white gold-glow">
           <Image
             src="/sweet-cravings-logo.jpg"
             alt="Sweet Cravings Brand Emblem"
-            fill
-            className="object-cover"
+            width={448}
+            height={448}
+            className="object-cover w-full h-full"
           />
         </div>
 
         <div className="space-y-4 text-center md:text-left z-10">
-          <div className="inline-block bg-white/10 text-brand-gold-light text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+          <div className="inline-block bg-white/10 text-brand-cream text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
             Rajshahi, Bangladesh
           </div>
-          <p className="font-editorial text-2xl sm:text-3xl text-brand-gold-light italic tracking-normal">
+          <p className="font-editorial text-2xl sm:text-3xl text-brand-cream italic tracking-normal">
             {lang === 'bn' ? '“একটু মিষ্টি, অনেকটা আনন্দ।”' : '“A Little Sweetness, A Lot of Happiness.”'}
           </p>
-          <p className="text-sm sm:text-base text-brand-cream-subtle/85 leading-relaxed font-normal">
+          <p className="text-sm sm:text-base text-brand-cream/85 leading-relaxed font-normal">
             {t('about.storyP1')}
           </p>
-          <p className="text-sm text-brand-cream-subtle/80 leading-relaxed font-normal">
+          <p className="text-sm text-brand-cream/80 leading-relaxed font-normal">
             {t('about.storyP2')}
           </p>
         </div>
@@ -59,8 +60,8 @@ export default function AboutPage() {
 
       {/* 4 Pillars of Excellence */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-brand-cream-dark shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-caramel-subtle text-brand-caramel flex items-center justify-center">
+        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-caramel/10 text-brand-caramel flex items-center justify-center">
             <Award className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">100% Real Dairy</h3>
@@ -69,8 +70,8 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-brand-cream-dark shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-forest-light text-brand-forest flex items-center justify-center">
+        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-forest/10 text-brand-forest flex items-center justify-center">
             <Clock className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">Small-Batch Fresh</h3>
@@ -79,8 +80,8 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-brand-cream-dark shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-cream-subtle text-brand-caramel flex items-center justify-center">
+        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-cream text-brand-caramel flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">Gourmet Ingredients</h3>
@@ -89,8 +90,8 @@ export default function AboutPage() {
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-brand-cream-dark shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-strawberry-light text-brand-strawberry flex items-center justify-center">
+        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+          <div className="w-10 h-10 rounded-xl bg-brand-caramel/10 text-brand-chocolate flex items-center justify-center">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">Surgical Hygiene</h3>
@@ -101,7 +102,7 @@ export default function AboutPage() {
       </div>
 
       {/* Kitchen Standards Checklist */}
-      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-brand-cream-dark shadow-soft space-y-8">
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-brand-chocolate/10 shadow-soft space-y-8">
         <div className="text-center space-y-2 max-w-xl mx-auto">
           <span className="text-xs font-bold uppercase tracking-widest text-brand-caramel">
             Commitment to Purity
@@ -115,7 +116,7 @@ export default function AboutPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards1')}</p>
@@ -123,7 +124,7 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards2')}</p>
@@ -131,7 +132,7 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards3')}</p>
@@ -139,7 +140,7 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards4')}</p>
@@ -153,7 +154,7 @@ export default function AboutPage() {
       <div className="text-center pt-4">
         <Link
           href="/menu"
-          className="inline-flex items-center gap-2.5 bg-brand-caramel hover:bg-brand-caramel-dark text-white font-bold py-4 px-9 rounded-full shadow-card hover:shadow-card-hover transition-all text-sm btn-press"
+          className="inline-flex items-center gap-2.5 bg-brand-caramel hover:bg-brand-caramel text-white font-bold py-4 px-9 rounded-full shadow-card hover:shadow-card-hover transition-all text-sm btn-press"
         >
           <span>{t('hero.ctaMenu')}</span>
           <ArrowRight className="w-4 h-4" />

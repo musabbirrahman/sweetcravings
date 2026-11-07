@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         </p>
       </div>
 
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-cream-dark shadow-soft space-y-4 text-sm text-brand-taupe leading-relaxed">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-4 text-sm text-brand-taupe leading-relaxed">
         <div className="flex items-center gap-2 text-brand-forest font-bold">
           <ShieldCheck className="w-5 h-5" />
           <span>Sweet Cravings Privacy Commitment</span>

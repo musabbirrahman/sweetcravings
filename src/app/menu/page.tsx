@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 import ProductCard from '@/components/ProductCard';
-import { Product, Category } from '@/lib/types';
 import { 
   Search, 
   Sparkles, 
@@ -20,25 +20,11 @@ function MenuContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category');
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Catalogue comes from the shared provider (fetched once per page load).
+  const { products, categories, loading } = useCatalog();
   const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/products')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setProducts(data.products || []);
-          setCategories(data.categories || []);
-        }
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
 
   useEffect(() => {
     if (categoryParam) {
@@ -87,7 +73,7 @@ function MenuContent() {
       
       {/* Header Banner */}
       <div className="text-center max-w-2xl mx-auto space-y-3 relative">
-        <div className="inline-flex items-center gap-1.5 bg-brand-caramel-subtle text-brand-caramel text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
+        <div className="inline-flex items-center gap-1.5 bg-brand-caramel/10 text-brand-caramel text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
           <Sparkles className="w-3.5 h-3.5" />
           <span>{lang === 'bn' ? 'তাজা ঘরোয়া মেনু' : 'Fresh Homemade Patisserie'}</span>
         </div>
@@ -113,7 +99,7 @@ function MenuContent() {
       </div>
 
       {/* Filter, Search and Sort Bar */}
-      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-brand-cream-dark shadow-soft space-y-4">
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-4">
         
         {/* Search & Sort Controls */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -126,12 +112,12 @@ function MenuContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('menu.searchPlaceholder')}
-              className="w-full pl-10 pr-10 py-2.5 rounded-full border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel-subtle text-sm text-brand-chocolate placeholder:text-brand-taupe/60 transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-full border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/60 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-brand-taupe hover:text-brand-chocolate hover:bg-brand-cream-dark/30 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-brand-taupe hover:text-brand-chocolate hover:bg-brand-chocolate/5 transition-colors"
                 title="Clear search"
               >
                 <X className="w-3.5 h-3.5" />
@@ -145,7 +131,7 @@ function MenuContent() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-full border border-brand-cream-dark bg-brand-cream-subtle/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-xs font-semibold text-brand-chocolate cursor-pointer transition-all"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-full border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-xs font-semibold text-brand-chocolate cursor-pointer transition-all"
             >
               <option value="featured">{lang === 'bn' ? 'জনপ্রিয় ডেজার্ট' : 'Featured Desserts'}</option>
               <option value="price-asc">{lang === 'bn' ? 'মূল্য: কম থেকে বেশি' : 'Price: Low to High'}</option>
@@ -155,18 +141,18 @@ function MenuContent() {
         </div>
 
         {/* Categories Tab Scroll with Dynamic Item Counts */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none justify-start sm:justify-center border-t border-brand-cream-dark/60 pt-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none justify-start sm:justify-center border-t border-brand-chocolate/10 pt-3">
           <button
             onClick={() => setSelectedCategory('all')}
             className={`whitespace-nowrap px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
               selectedCategory === 'all'
                 ? 'bg-brand-caramel text-white shadow-soft'
-                : 'bg-brand-cream-subtle/70 text-brand-chocolate hover:bg-brand-cream border border-transparent'
+                : 'bg-brand-cream/70 text-brand-chocolate hover:bg-brand-cream border border-transparent'
             }`}
           >
             <span>{t('menu.allCategories')}</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-              selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-brand-cream-dark/60 text-brand-taupe'
+              selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-brand-chocolate/5 text-brand-taupe'
             }`}>
               {categoryCounts.all || 0}
             </span>
@@ -182,12 +168,12 @@ function MenuContent() {
                 className={`whitespace-nowrap px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
                   isSelected
                     ? 'bg-brand-caramel text-white shadow-soft'
-                    : 'bg-brand-cream-subtle/70 text-brand-chocolate hover:bg-brand-cream border border-transparent'
+                    : 'bg-brand-cream/70 text-brand-chocolate hover:bg-brand-cream border border-transparent'
                 }`}
               >
                 <span>{lang === 'bn' ? cat.name_bn : cat.name_en}</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-brand-cream-dark/60 text-brand-taupe'
+                  isSelected ? 'bg-white/20 text-white' : 'bg-brand-chocolate/5 text-brand-taupe'
                 }`}>
                   {count}
                 </span>
@@ -207,7 +193,7 @@ function MenuContent() {
         </span>
         {searchQuery && (
           <span className="italic">
-            Search: &ldquo;{searchQuery}&rdquo;
+            {lang === 'bn' ? 'খুঁজছেন:' : 'Search:'} &ldquo;{searchQuery}&rdquo;
           </span>
         )}
       </div>
@@ -216,12 +202,12 @@ function MenuContent() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-3xl h-80 animate-pulse border border-brand-cream-dark" />
+            <div key={i} className="bg-white rounded-3xl h-80 animate-pulse border border-brand-chocolate/10" />
           ))}
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-brand-cream-dark p-8 space-y-4 shadow-soft max-w-md mx-auto">
-          <div className="w-16 h-16 mx-auto rounded-full bg-brand-cream-subtle flex items-center justify-center text-brand-caramel">
+        <div className="text-center py-20 bg-white rounded-3xl border border-brand-chocolate/10 p-8 space-y-4 shadow-soft max-w-md mx-auto">
+          <div className="w-16 h-16 mx-auto rounded-full bg-brand-cream flex items-center justify-center text-brand-caramel">
             <Cake className="w-8 h-8 stroke-[1.5]" />
           </div>
           <div className="space-y-1">
@@ -234,7 +220,7 @@ function MenuContent() {
           </div>
           <button
             onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
-            className="inline-flex items-center gap-1.5 bg-brand-caramel text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-soft hover:bg-brand-caramel-dark transition-all"
+            className="inline-flex items-center gap-1.5 bg-brand-caramel text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-soft hover:bg-brand-caramel transition-all"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{lang === 'bn' ? 'সকল ডেজার্ট দেখুন' : 'Show All Sweets'}</span>

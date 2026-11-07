@@ -520,6 +520,102 @@ export function getCategories(includeInactive: boolean = false): Category[] {
   return db.prepare(query).all() as unknown as Category[];
 }
 
+/** URL-safe slug from an English name: lowercased, words joined with '-'. */
+export function slugifyCategoryName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 60);
+}
+
+/** How many products (any status except archived) use a category. */
+export function countProductsInCategory(categoryId: number): number {
+  const db = getDb();
+  const row = db.prepare(
+    `SELECT COUNT(*) as count FROM products WHERE category_id = ? AND status != 'archived'`
+  ).get(categoryId) as { count: number } | undefined;
+  return Number(row?.count || 0);
+}
+
+export function createCategory(input: {
+  name_en: string;
+  name_bn: string;
+  description_en?: string;
+  description_bn?: string;
+  sort_order?: number;
+  active?: number;
+}): Category {
+  const db = getDb();
+  const slug = slugifyCategoryName(input.name_en);
+  if (!slug) throw new Error('Category name must contain letters or numbers for a web address.');
+  const existing = db.prepare('SELECT id FROM categories WHERE slug = ?').get(slug);
+  if (existing) throw new Error(`A category with the web address "${slug}" already exists. Please use a different English name.`);
+  const sortOrder = input.sort_order ?? ((db.prepare('SELECT COALESCE(MAX(sort_order), 0) as m FROM categories').get() as { m: number }).m + 1);
+  const result = db.prepare(`
+    INSERT INTO categories (slug, sort_order, active, name_en, name_bn, description_en, description_bn)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(slug, sortOrder, input.active ?? 1, input.name_en.trim(), input.name_bn.trim(), input.description_en?.trim() || '', input.description_bn?.trim() || '');
+  const id = Number(result.lastInsertRowid);
+  db.prepare(`
+    INSERT INTO audit_log (actor, action, entity, details, created_at)
+    VALUES ('admin', 'CREATE_CATEGORY', ?, ?, ?)
+  `).run(`category_${id}`, `Created ${input.name_en}`, new Date().toISOString());
+  return db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as unknown as Category;
+}
+
+export function updateCategory(id: number, input: {
+  name_en?: string;
+  name_bn?: string;
+  description_en?: string;
+  description_bn?: string;
+  sort_order?: number;
+  active?: number;
+}): Category | null {
+  const db = getDb();
+  const now = new Date().toISOString();
+  // The slug stays as created (stable web address) even if the name changes.
+  db.prepare(`
+    UPDATE categories
+    SET name_en = COALESCE(?, name_en),
+        name_bn = COALESCE(?, name_bn),
+        description_en = COALESCE(?, description_en),
+        description_bn = COALESCE(?, description_bn),
+        sort_order = COALESCE(?, sort_order),
+        active = COALESCE(?, active)
+    WHERE id = ?
+  `).run(
+    input.name_en?.trim() || null,
+    input.name_bn?.trim() || null,
+    input.description_en?.trim() ?? null,
+    input.description_bn?.trim() ?? null,
+    input.sort_order ?? null,
+    input.active ?? null,
+    id
+  );
+  db.prepare(`
+    INSERT INTO audit_log (actor, action, entity, details, created_at)
+    VALUES ('admin', 'UPDATE_CATEGORY', ?, ?, ?)
+  `).run(`category_${id}`, 'Category updated', now);
+  return db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as unknown as Category | null;
+}
+
+/**
+ * Delete a category only when no live product uses it.
+ * Returns { deleted: true } or { deleted: false, productCount }.
+ */
+export function deleteCategory(id: number): { deleted: boolean; productCount: number } {
+  const db = getDb();
+  const productCount = countProductsInCategory(id);
+  if (productCount > 0) return { deleted: false, productCount };
+  db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+  db.prepare(`
+    INSERT INTO audit_log (actor, action, entity, details, created_at)
+    VALUES ('admin', 'DELETE_CATEGORY', ?, ?, ?)
+  `).run(`category_${id}`, 'Category deleted', new Date().toISOString());
+  return { deleted: true, productCount: 0 };
+}
+
 export function getProducts(options: { categoryId?: number; status?: string; includeArchived?: boolean } = {}): Product[] {
   const db = getDb();
   let sql = `
@@ -601,6 +697,38 @@ export function getProductBySlug(slug: string): Product | null {
   if (!product) return null;
   attachProductExtras(db, product);
   return product;
+}
+
+// Related products for the /menu/:slug page: same category first (up to 4),
+// topped up with other published products when the category has too few.
+// The current product is always excluded.
+export function getRelatedProducts(product: Product, limit = 4): Product[] {
+  const db = getDb();
+  const sameCategory = db.prepare(`
+    SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.status = 'published' AND p.id != ? AND p.category_id = ?
+    ORDER BY p.sort_order ASC, p.id ASC
+    LIMIT ?
+  `).all(product.id, product.category_id, limit) as unknown as Product[];
+
+  const related = sameCategory.slice();
+  if (related.length < limit) {
+    const excludeIds = [product.id, ...related.map((p) => p.id)];
+    const fillers = db.prepare(`
+      SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.status = 'published' AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})
+      ORDER BY p.sort_order ASC, p.id ASC
+      LIMIT ?
+    `).all(...excludeIds, limit - related.length) as unknown as Product[];
+    related.push(...fillers);
+  }
+
+  for (const p of related) attachProductExtras(db, p);
+  return related;
 }
 
 export function generatePublicOrderCode(): string {

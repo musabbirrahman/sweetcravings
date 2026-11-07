@@ -1,25 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 
 export default function FloatingWhatsAppButton() {
   const pathname = usePathname();
   const { lang } = useLanguage();
-  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const { settings } = useCatalog();
 
-  useEffect(() => {
-    fetch('/api/products')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.settings?.whatsapp_number) {
-          setWhatsappNumber(data.settings.whatsapp_number);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  // WhatsApp number comes from the shared catalogue (fetched once per
+  // page load); empty until the shop configures it.
+  const whatsappNumber = settings?.whatsapp_number || '';
 
   if (pathname?.startsWith('/admin')) {
     return null;

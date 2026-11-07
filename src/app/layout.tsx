@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { CatalogProvider } from '@/context/CatalogContext';
 import { CartProvider } from '@/context/CartContext';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -66,6 +67,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col bg-brand-cream text-brand-chocolate antialiased selection:bg-brand-caramel selection:text-white">
         <LanguageProvider>
+          <CatalogProvider>
           <CartProvider>
             <Navbar />
             <main className="flex-1">
@@ -77,6 +79,7 @@ export default function RootLayout({
             <InstallPwaBanner />
             <Footer />
           </CartProvider>
+          </CatalogProvider>
         </LanguageProvider>
       </body>
     </html>

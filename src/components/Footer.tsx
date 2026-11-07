@@ -1,32 +1,27 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 import { Heart, Phone, MapPin, ShieldCheck, Clock } from 'lucide-react';
 
 export default function Footer() {
   const { lang, t } = useLanguage();
+  const { settings } = useCatalog();
   const pathname = usePathname();
-  const [phoneNum, setPhoneNum] = React.useState('');
 
-  React.useEffect(() => {
-    fetch('/api/products')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.settings?.whatsapp_number) setPhoneNum(d.settings.whatsapp_number);
-      })
-      .catch(() => {});
-  }, []);
+  // WhatsApp number comes from the shared catalogue (fetched once per
+  // page load); empty until the shop configures it.
+  const phoneNum = settings?.whatsapp_number || '';
 
   if (pathname?.startsWith('/admin')) {
     return null;
   }
 
   return (
-    <footer className="bg-[#241813] text-[#F5EFE6] border-t border-[#38271E] mt-24">
+    <footer className="bg-brand-chocolate text-[#F5EFE6] border-t border-white/10 mt-24">
       {/* Upper footer */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -38,27 +33,28 @@ export default function Footer() {
                 <Image 
                   src="/sweet-cravings-logo.jpg" 
                   alt="Sweet Cravings" 
-                  fill 
-                  className="object-cover"
+                  width={112}
+                  height={112}
+                  className="object-cover w-full h-full"
                 />
               </div>
               <div>
-                <span className="font-heading text-2xl font-bold text-brand-gold-light tracking-tight block">
+                <span className="font-heading text-2xl font-bold text-brand-cream tracking-tight block">
                   Sweet Cravings
                 </span>
-                <span className="font-editorial text-sm text-brand-gold-light/90 italic block">
+                <span className="font-editorial text-sm text-brand-cream/90 italic block">
                   {lang === 'bn' ? '“একটু মিষ্টি, অনেকটা আনন্দ।”' : '“A Little Sweetness, A Lot of Happiness.”'}
                 </span>
               </div>
             </div>
 
-            <p className="text-brand-cream-subtle/80 text-sm max-w-md leading-relaxed">
+            <p className="text-brand-cream/80 text-sm max-w-md leading-relaxed">
               {lang === 'bn'
                 ? 'রাজশাহীর নিজস্ব ঘরোয়া কিচেন থেকে শতভাগ খাঁটি উপাদান, আসল মাখন ও পরম ভালোবাসায় তৈরি তাজা ডেজার্ট পৌঁছে দিচ্ছি আপনার দোরগোড়ায়।'
                 : 'Handcrafting authentic, small-batch artisanal desserts in Rajshahi with 100% pure dairy cream, butter, and love.'}
             </p>
 
-            <div className="flex items-center gap-3 text-xs text-brand-gold-light/90 pt-1">
+            <div className="flex items-center gap-3 text-xs text-brand-cream/90 pt-1">
               <MapPin className="w-4 h-4 text-brand-caramel" />
               <span>{lang === 'bn' ? 'রাজশাহী শহরজুড়ে হোম ডেলিভারি' : 'Citywide Delivery across Rajshahi'}</span>
             </div>
@@ -66,10 +62,10 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-brand-gold-light font-bold text-xs uppercase tracking-wider mb-3">
+            <h4 className="text-brand-cream font-bold text-xs uppercase tracking-wider mb-3">
               {lang === 'bn' ? 'প্রয়োজনীয় লিংক' : 'Quick Navigation'}
             </h4>
-            <ul className="space-y-2.5 text-sm text-brand-cream-subtle/75">
+            <ul className="space-y-2.5 text-sm text-brand-cream/75">
               <li>
                 <Link href="/menu" className="hover:text-white transition-colors">
                   {t('nav.menu')}
@@ -100,10 +96,10 @@ export default function Footer() {
 
           {/* Contact & Hours */}
           <div>
-            <h4 className="text-brand-gold-light font-bold text-xs uppercase tracking-wider mb-3">
+            <h4 className="text-brand-cream font-bold text-xs uppercase tracking-wider mb-3">
               {lang === 'bn' ? 'অর্ডার ও যোগাযোগ' : 'Order & Inquiries'}
             </h4>
-            <div className="space-y-3 text-sm text-brand-cream-subtle/75">
+            <div className="space-y-3 text-sm text-brand-cream/75">
               {phoneNum && (
               <p className="flex items-start gap-2">
                 <Phone className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
@@ -129,7 +125,7 @@ export default function Footer() {
               <div className="pt-2">
                 <Link 
                   href="/admin" 
-                  className="inline-flex items-center gap-1.5 text-xs text-brand-gold-light/80 hover:text-white border border-white/10 px-3 py-1.5 rounded-full transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs text-brand-cream/80 hover:text-white border border-white/10 px-3 py-1.5 rounded-full transition-colors"
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>{lang === 'bn' ? 'এডমিন পোর্টাল' : 'Admin Portal'}</span>
@@ -142,12 +138,12 @@ export default function Footer() {
       </div>
 
       {/* Bottom copyright */}
-      <div className="border-t border-[#38271E] py-5 px-4 text-center text-xs text-brand-cream-subtle/50">
+      <div className="border-t border-white/10 py-5 px-4 text-center text-xs text-brand-cream/50">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>© {new Date().getFullYear()} Sweet Cravings Homemade Desserts. Rajshahi, Bangladesh.</p>
           <p className="flex items-center gap-1">
             <span>Baked with</span>
-            <Heart className="w-3.5 h-3.5 text-brand-strawberry fill-brand-strawberry" />
+            <Heart className="w-3.5 h-3.5 text-brand-chocolate fill-brand-chocolate" />
             <span>for dessert lovers.</span>
           </p>
         </div>

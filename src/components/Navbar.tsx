@@ -1,28 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
 import { ShoppingBag, Menu, X, Globe, Phone } from 'lucide-react';
 
 export default function Navbar() {
   const { lang, setLang, toggleLang, t } = useLanguage();
+  const { settings } = useCatalog();
   const { totalItemsCount, subtotal, setIsCartOpen } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [phoneNum, setPhoneNum] = useState('');
   const pathname = usePathname();
 
-  React.useEffect(() => {
-    fetch('/api/products')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.settings?.whatsapp_number) setPhoneNum(d.settings.whatsapp_number);
-      })
-      .catch(() => {});
-  }, []);
+  // WhatsApp number comes from the shared catalogue (fetched once per
+  // page load); empty until the shop configures it.
+  const phoneNum = settings?.whatsapp_number || '';
 
   // Hide customer navbar completely on operator admin portal pages
   if (pathname?.startsWith('/admin')) {
@@ -40,14 +36,13 @@ export default function Navbar() {
   return (
     <>
       {/* Top Announcement Bar: Ultra-clean, subtle luxury feel */}
-      <div className="bg-[#261A15] text-[#EDE4DA] text-[11px] font-medium py-2 px-4 border-b border-white/5">
+      <div className="bg-brand-chocolate text-brand-cream text-[11px] font-medium py-2 px-4 border-b border-white/5">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-brand-gold-light/95 tracking-wide">
+            <span className="text-brand-cream/95 tracking-wide">
               {lang === 'bn' 
                 ? 'রাজশাহীতে তাজা ঘরে তৈরি প্রিমিয়াম ডেজার্ট ডেলিভারি চালু আছে' 
                 : 'Artisanal Desserts Baking Daily • Rajshahi Citywide Delivery Active'}
@@ -60,7 +55,7 @@ export default function Navbar() {
               href={`https://wa.me/${phoneNum.replace(/\D/g, '').startsWith('88') ? phoneNum.replace(/\D/g, '') : '88' + phoneNum.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 text-brand-gold-light/90 hover:text-white transition-colors"
+              className="hidden sm:flex items-center gap-1.5 text-brand-cream/90 hover:text-white transition-colors"
             >
               <Phone className="w-3 h-3 text-emerald-400" />
               <span className="tracking-wide">{phoneNum}</span>
@@ -73,7 +68,7 @@ export default function Navbar() {
               className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-full border border-white/10 text-brand-cream text-[11px] font-semibold transition-all btn-press"
               title="Change Language"
             >
-              <Globe className="w-3 h-3 text-brand-gold" />
+              <Globe className="w-3 h-3 text-brand-cream" />
               <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
             </button>
           </div>
@@ -81,17 +76,18 @@ export default function Navbar() {
       </div>
 
       {/* Main Navigation: Sticky Frosted Glass */}
-      <header className="sticky top-0 z-40 glass-nav border-b border-brand-cream-dark/70 shadow-soft transition-all">
+      <header className="sticky top-0 z-40 glass-nav border-b border-brand-chocolate/10 shadow-soft transition-all">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           
           {/* Logo & Brand Title */}
           <Link href="/" className="flex items-center gap-3.5 group">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden border border-brand-cream-dark shadow-sm group-hover:scale-105 transition-transform bg-white ring-2 ring-brand-caramel/10">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden border border-brand-chocolate/10 shadow-sm group-hover:scale-105 transition-transform bg-white ring-2 ring-brand-caramel/10">
               <Image 
                 src="/sweet-cravings-logo.jpg" 
                 alt="Sweet Cravings Homemade Desserts" 
-                fill 
-                className="object-cover"
+                width={96}
+                height={96}
+                className="object-cover w-full h-full"
                 priority
               />
             </div>
@@ -106,7 +102,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-brand-cream-subtle/50 p-1 rounded-full border border-brand-cream-dark/60">
+          <nav className="hidden md:flex items-center gap-1 bg-brand-cream/50 p-1 rounded-full border border-brand-chocolate/10">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
@@ -129,11 +125,11 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative flex items-center gap-2.5 bg-brand-chocolate hover:bg-brand-chocolate-light text-brand-gold-light px-4 py-2.5 rounded-full shadow-card hover:shadow-card-hover transition-all duration-200 btn-press group"
+              className="relative flex items-center gap-2.5 bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-4 py-2.5 rounded-full shadow-card hover:shadow-card-hover transition-all duration-200 btn-press group"
               aria-label="View Shopping Cart"
             >
               <div className="relative">
-                <ShoppingBag className="w-4 h-4 text-brand-gold-light group-hover:scale-110 transition-transform" />
+                <ShoppingBag className="w-4 h-4 text-brand-cream group-hover:scale-110 transition-transform" />
                 {totalItemsCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-brand-caramel text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center border-2 border-brand-chocolate animate-pulse">
                     {totalItemsCount}
@@ -148,7 +144,7 @@ export default function Navbar() {
             {/* Mobile menu toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-brand-chocolate hover:bg-brand-cream-subtle rounded-xl transition-colors"
+              className="md:hidden p-2 text-brand-chocolate hover:bg-brand-cream rounded-xl transition-colors"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -158,7 +154,7 @@ export default function Navbar() {
 
         {/* Mobile Dropdown Menu with frosted glass */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white/98 backdrop-blur-xl border-b border-brand-cream-dark px-5 pt-3 pb-6 space-y-2 shadow-xl animate-fade-in-up">
+          <div className="md:hidden bg-white/98 backdrop-blur-xl border-b border-brand-chocolate/10 px-5 pt-3 pb-6 space-y-2 shadow-xl animate-fade-in-up">
             <div className="space-y-1">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
@@ -169,8 +165,8 @@ export default function Navbar() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`block px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
                       isActive 
-                        ? 'bg-brand-caramel-subtle text-brand-caramel font-bold' 
-                        : 'text-brand-chocolate hover:bg-brand-cream-subtle'
+                        ? 'bg-brand-caramel/10 text-brand-caramel font-bold' 
+                        : 'text-brand-chocolate hover:bg-brand-cream'
                     }`}
                   >
                     {link.label}
@@ -179,7 +175,7 @@ export default function Navbar() {
               })}
             </div>
 
-            <div className="pt-3 border-t border-brand-cream-dark flex items-center justify-between">
+            <div className="pt-3 border-t border-brand-chocolate/10 flex items-center justify-between">
               <span className="text-xs text-brand-taupe font-medium">
                 {lang === 'bn' ? 'ভাষা নির্বাচন করুন:' : 'Language:'}
               </span>
@@ -187,7 +183,7 @@ export default function Navbar() {
                 <button
                   onClick={() => { setLang('bn'); setMobileMenuOpen(false); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    lang === 'bn' ? 'bg-brand-chocolate text-brand-gold-light' : 'bg-brand-cream-subtle text-brand-chocolate'
+                    lang === 'bn' ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-cream text-brand-chocolate'
                   }`}
                 >
                   বাংলা
@@ -195,7 +191,7 @@ export default function Navbar() {
                 <button
                   onClick={() => { setLang('en'); setMobileMenuOpen(false); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    lang === 'en' ? 'bg-brand-chocolate text-brand-gold-light' : 'bg-brand-cream-subtle text-brand-chocolate'
+                    lang === 'en' ? 'bg-brand-chocolate text-brand-cream' : 'bg-brand-cream text-brand-chocolate'
                   }`}
                 >
                   English

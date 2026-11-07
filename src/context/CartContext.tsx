@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { CartItem } from '@/lib/types';
+import { useCatalog } from '@/context/CatalogContext';
 
 interface CartContextType {
   items: CartItem[];
@@ -26,6 +27,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [deliveryFeeSetting, setDeliveryFeeSetting] = useState(50);
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(1200);
+  // Delivery fee settings come from the shared catalogue (fetched once
+  // per page load) instead of a second /api/products call.
+  const { settings } = useCatalog();
 
   // Load from local storage
   useEffect(() => {
@@ -37,22 +41,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
-
-    // Fetch live delivery fee settings from public API
-    fetch('/api/products')
-      .then(r => r.json())
-      .then(data => {
-        if (data.settings) {
-          if (typeof data.settings.delivery_fee === 'number') {
-            setDeliveryFeeSetting(data.settings.delivery_fee);
-          }
-          if (typeof data.settings.free_delivery_threshold === 'number') {
-            setFreeDeliveryThreshold(data.settings.free_delivery_threshold);
-          }
-        }
-      })
-      .catch(() => {});
   }, []);
+
+  // Apply live delivery fee settings when the catalogue loads
+  useEffect(() => {
+    if (!settings) return;
+    if (typeof settings.delivery_fee === 'number') {
+      setDeliveryFeeSetting(settings.delivery_fee);
+    }
+    if (typeof settings.free_delivery_threshold === 'number') {
+      setFreeDeliveryThreshold(settings.free_delivery_threshold);
+    }
+  }, [settings]);
 
   // Save to local storage on change
   useEffect(() => {

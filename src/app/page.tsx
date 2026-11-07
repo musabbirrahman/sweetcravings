@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 import ProductCard from '@/components/ProductCard';
-import { Product, Category } from '@/lib/types';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -15,7 +15,6 @@ import {
   Clock, 
   ChevronRight,
   CheckCircle2,
-  Star,
   Truck,
   Award,
   ChevronDown,
@@ -25,11 +24,10 @@ import {
 
 export default function HomePage() {
   const { lang, t } = useLanguage();
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Catalogue (products, categories, settings) comes from the shared
+  // provider, fetched once per page load — not a separate API call here.
+  const { products: featuredProducts, categories, settings, loading } = useCatalog();
   const [selectedCat, setSelectedCat] = useState<number | 'all'>('all');
-  const [settings, setSettings] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
   // WhatsApp number from settings; empty until the shop configures it, in
@@ -39,20 +37,6 @@ export default function HomePage() {
   const whatsappUrl = whatsappDigits
     ? `https://wa.me/${whatsappDigits.startsWith('88') ? whatsappDigits : '88' + whatsappDigits}`
     : '';
-
-  useEffect(() => {
-    fetch('/api/products')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setFeaturedProducts(data.products || []);
-          setCategories(data.categories || []);
-          if (data.settings) setSettings(data.settings);
-        }
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
 
   const displayProducts = selectedCat === 'all'
     ? featuredProducts
@@ -95,11 +79,7 @@ export default function HomePage() {
     <div className="space-y-16 sm:space-y-28 font-sans">
       
       {/* Hero Section: Editorial Boutique Patisserie Experience */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#FAF7F2] via-[#F7EFE6] to-[#FAF7F2] border-b border-brand-cream-dark/70 pt-12 pb-16 sm:py-24 px-4 sm:px-6">
-        
-        {/* Subtle warm ambient glow lights */}
-        <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-brand-gold-light/25 rounded-full blur-[150px] pointer-events-none" />
-        <div className="absolute bottom-0 left-10 w-[500px] h-[500px] bg-brand-caramel-subtle/35 rounded-full blur-[130px] pointer-events-none" />
+      <section className="relative overflow-hidden bg-brand-cream border-b border-brand-chocolate/10 pt-12 pb-16 sm:py-24 px-4 sm:px-6">
 
         <div className="max-w-6xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           
@@ -107,8 +87,8 @@ export default function HomePage() {
           <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
             
             {/* Boutique Badge */}
-            <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-semibold text-brand-caramel border border-brand-cream-dark shadow-xs tracking-wider uppercase">
-              <span className="w-2 h-2 rounded-full bg-brand-caramel animate-ping" />
+            <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-semibold text-brand-caramel border border-brand-chocolate/10 shadow-xs tracking-wider uppercase">
+              <span className="w-2 h-2 rounded-full bg-brand-caramel" />
               <span>{lang === 'bn' ? 'রাজশাহীর ঘরোয়া প্রিমিয়াম পেটিসারি' : 'Boutique Homemade Patisserie • Rajshahi'}</span>
             </div>
 
@@ -139,7 +119,7 @@ export default function HomePage() {
             </p>
 
             {/* Delivery Coverage Capsule */}
-            <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl text-xs sm:text-sm text-brand-chocolate font-medium border border-brand-cream-dark shadow-xs">
+            <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl text-xs sm:text-sm text-brand-chocolate font-medium border border-brand-chocolate/10 shadow-xs">
               <MapPin className="w-4 h-4 text-brand-caramel shrink-0" />
               <span>{t('hero.coverageNote')}</span>
             </div>
@@ -148,7 +128,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 pt-2">
               <Link
                 href="/menu"
-                className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-brand-caramel hover:bg-brand-caramel-hover text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all duration-200 btn-press group text-sm"
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-brand-caramel hover:bg-brand-chocolate text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all duration-200 btn-press group text-sm"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>{t('hero.ctaMenu')}</span>
@@ -160,7 +140,7 @@ export default function HomePage() {
                 href={`${whatsappUrl}?text=${encodeURIComponent('Salam! I would like to order homemade desserts from Sweet Cravings.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-brand-forest hover:bg-[#234937] text-white font-semibold py-3.5 px-7 rounded-full shadow-soft hover:shadow-card transition-all duration-200 btn-press text-sm"
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-brand-forest hover:bg-brand-chocolate text-white font-semibold py-3.5 px-7 rounded-full shadow-soft hover:shadow-card transition-all duration-200 btn-press text-sm"
               >
                 <Phone className="w-4 h-4" />
                 <span>{t('hero.ctaWhatsApp')}</span>
@@ -172,15 +152,15 @@ export default function HomePage() {
             <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-5 text-xs text-brand-taupe">
               <span className="flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-brand-forest" />
-                <span>100% Pure Dairy & Butter</span>
+                <span>{lang === 'bn' ? '১০০% খাঁটি দুধ ও মাখন' : '100% Pure Dairy & Butter'}</span>
               </span>
               <span className="flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-brand-forest" />
-                <span>Baked Fresh Upon Order</span>
+                <span>{lang === 'bn' ? 'অর্ডারের পর তৈরি' : 'Baked Fresh Upon Order'}</span>
               </span>
               <span className="flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-brand-forest" />
-                <span>Cash on Delivery & bKash</span>
+                <span>{lang === 'bn' ? 'ক্যাশ অন ডেলিভারি ও বিকাশ' : 'Cash on Delivery & bKash'}</span>
               </span>
             </div>
 
@@ -191,8 +171,8 @@ export default function HomePage() {
             <div className="relative w-full max-w-md">
               
               {/* Main Dessert Photography Card */}
-              <div className="relative rounded-3xl overflow-hidden bg-white/95 p-3 shadow-card hover:shadow-card-hover border border-brand-cream-dark transition-all duration-500 hover:scale-[1.01]">
-                <div className="relative aspect-4/3 sm:aspect-square w-full rounded-2xl overflow-hidden bg-brand-cream-subtle">
+              <div className="relative rounded-3xl overflow-hidden bg-white/95 p-3 shadow-card hover:shadow-card-hover border border-brand-chocolate/10 transition-all duration-500 hover:scale-[1.01]">
+                <div className="relative aspect-[4/3] sm:aspect-square w-full rounded-2xl overflow-hidden bg-brand-cream">
                   <Image
                     src="https://images.unsplash.com/photo-1541783245831-57d6fb0926d3?w=800&auto=format&fit=crop&q=80"
                     alt="Signature Caramel Custard Flan"
@@ -200,7 +180,7 @@ export default function HomePage() {
                     className="object-cover"
                     priority
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
                   
                   {/* Photo Title Overlay */}
                   <div className="absolute bottom-4 left-4 right-4 text-white">
@@ -210,45 +190,22 @@ export default function HomePage() {
                     <p className="font-heading font-semibold text-lg leading-tight">
                       Caramel Custard Flan
                     </p>
-                    <p className="text-xs text-brand-gold-light/90">
+                    <p className="text-xs text-brand-cream/90">
                       Silky baked custard with golden amber drizzle
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Floating Official Brand Crest Seal */}
-              <div className="absolute -top-6 -left-6 sm:-top-8 sm:-left-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 border-white shadow-card bg-white ring-4 ring-brand-caramel/15 animate-float">
+              {/* Brand crest seal — the only floating element on the hero */}
+              <div className="absolute -top-6 -left-6 sm:-top-8 sm:-left-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 border-white shadow-card bg-white ring-4 ring-brand-caramel/15">
                 <Image
                   src="/sweet-cravings-logo.jpg"
                   alt="Sweet Cravings Seal"
-                  fill
-                  className="object-cover"
+                  width={224}
+                  height={224}
+                  className="object-cover w-full h-full"
                 />
-              </div>
-
-              {/* Floating Live Kitchen Pulse Badge */}
-              <div className="absolute -top-3 -right-3 bg-white/95 backdrop-blur-md text-brand-chocolate px-4 py-2 rounded-2xl shadow-card border border-brand-cream-dark flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-brand-forest">Rajshahi Kitchen</p>
-                  <p className="text-xs font-semibold text-brand-chocolate">Baking Fresh Today</p>
-                </div>
-              </div>
-
-              {/* Floating Review Praise Chip */}
-              <div className="absolute -bottom-6 -right-2 sm:-bottom-8 sm:-right-4 bg-white/95 backdrop-blur-md text-brand-chocolate p-3.5 rounded-2xl shadow-card border border-brand-cream-dark max-w-[210px] animate-float-delayed">
-                <div className="flex items-center gap-0.5 text-amber-500 mb-1">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  ))}
-                </div>
-                <p className="text-[11px] font-semibold text-brand-chocolate leading-tight">
-                  {lang === 'bn' ? '“মুখে দিলেই গলে যায়, অসম্ভব টেস্টি!”' : '“Silky, rich, and truly melt-in-mouth!”'}
-                </p>
-                <span className="text-[9px] text-brand-taupe uppercase font-semibold tracking-wider mt-1 block">
-                  — Dr. Sabrina, Kazihata
-                </span>
               </div>
 
             </div>
@@ -261,36 +218,36 @@ export default function HomePage() {
       <section className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
           
-          <div className="bg-white/95 p-5 rounded-2xl border border-brand-cream-dark/90 shadow-card space-y-2 text-center sm:text-left">
-            <div className="w-10 h-10 rounded-xl bg-brand-caramel-subtle text-brand-caramel flex items-center justify-center mx-auto sm:mx-0">
+          <div className="bg-white/95 p-5 rounded-2xl border border-brand-chocolate/10 shadow-card space-y-2 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-xl bg-brand-caramel/10 text-brand-caramel flex items-center justify-center mx-auto sm:mx-0">
               <Award className="w-5 h-5" />
             </div>
-            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">100% Real Dairy</h3>
-            <p className="text-xs text-brand-taupe leading-relaxed">Pure cow milk, butter & sweet cream. Zero margarine.</p>
+            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? '১০০% আসল দুধ' : '100% Real Dairy'}</h3>
+            <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'খাঁটি গরুর দুধ, মাখন ও ক্রিম। কোনো মার্জারিন নেই।' : 'Pure cow milk, butter & sweet cream. Zero margarine.'}</p>
           </div>
 
-          <div className="bg-white/95 p-5 rounded-2xl border border-brand-cream-dark/90 shadow-card space-y-2 text-center sm:text-left">
-            <div className="w-10 h-10 rounded-xl bg-brand-forest-light text-brand-forest flex items-center justify-center mx-auto sm:mx-0">
+          <div className="bg-white/95 p-5 rounded-2xl border border-brand-chocolate/10 shadow-card space-y-2 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-xl bg-brand-forest/10 text-brand-forest flex items-center justify-center mx-auto sm:mx-0">
               <Clock className="w-5 h-5" />
             </div>
-            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">Baked to Order</h3>
-            <p className="text-xs text-brand-taupe leading-relaxed">Never frozen or pre-stocked. Fresh from the oven.</p>
+            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? 'অর্ডারে তৈরি' : 'Baked to Order'}</h3>
+            <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'আগে থেকে বানানো নয় — সরাসরি ওভেন থেকে।' : 'Never frozen or pre-stocked. Fresh from the oven.'}</p>
           </div>
 
-          <div className="bg-white/95 p-5 rounded-2xl border border-brand-cream-dark/90 shadow-card space-y-2 text-center sm:text-left">
-            <div className="w-10 h-10 rounded-xl bg-brand-cream-subtle text-brand-caramel flex items-center justify-center mx-auto sm:mx-0">
+          <div className="bg-white/95 p-5 rounded-2xl border border-brand-chocolate/10 shadow-card space-y-2 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-xl bg-brand-cream text-brand-caramel flex items-center justify-center mx-auto sm:mx-0">
               <Truck className="w-5 h-5" />
             </div>
-            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">Chilled Delivery</h3>
-            <p className="text-xs text-brand-taupe leading-relaxed">Citywide Rajshahi delivery in insulated food packaging.</p>
+            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? 'ঠান্ডা ডেলিভারি' : 'Chilled Delivery'}</h3>
+            <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'রাজশাহীজুড়ে ঠান্ডা রাখা প্যাকেজিংয়ে ডেলিভারি।' : 'Citywide Rajshahi delivery in insulated food packaging.'}</p>
           </div>
 
-          <div className="bg-white/95 p-5 rounded-2xl border border-brand-cream-dark/90 shadow-card space-y-2 text-center sm:text-left">
-            <div className="w-10 h-10 rounded-xl bg-brand-strawberry-light text-brand-strawberry flex items-center justify-center mx-auto sm:mx-0">
-              <Heart className="w-5 h-5 fill-brand-strawberry/20" />
+          <div className="bg-white/95 p-5 rounded-2xl border border-brand-chocolate/10 shadow-card space-y-2 text-center sm:text-left">
+            <div className="w-10 h-10 rounded-xl bg-brand-caramel/10 text-brand-chocolate flex items-center justify-center mx-auto sm:mx-0">
+              <Heart className="w-5 h-5 fill-brand-chocolate/20" />
             </div>
-            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">Homemade Care</h3>
-            <p className="text-xs text-brand-taupe leading-relaxed">Sister-run kitchen with meticulous hygiene standards.</p>
+            <h3 className="font-heading font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? 'ঘরের যত্ন' : 'Homemade Care'}</h3>
+            <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'বোনের নিজের রান্নাঘর, পরিচ্ছন্নতায় যত্ন।' : 'Sister-run kitchen with meticulous hygiene standards.'}</p>
           </div>
 
         </div>
@@ -298,7 +255,7 @@ export default function HomePage() {
 
       {/* Curated Menu & Category Switcher Section */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-brand-cream-dark/70 pb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-brand-chocolate/10 pb-6">
           <div>
             <span className="text-xs font-semibold uppercase tracking-widest text-brand-caramel block mb-1">
               {lang === 'bn' ? 'আমাদের মিষ্টি আয়োজন' : 'Curated Artisanal Menu'}
@@ -313,7 +270,7 @@ export default function HomePage() {
 
           <Link
             href="/menu"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-brand-caramel hover:text-brand-caramel-hover transition-colors self-start md:self-auto"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-brand-caramel hover:text-brand-chocolate transition-colors self-start md:self-auto"
           >
             <span>{t('home.viewAllMenu')}</span>
             <ChevronRight className="w-4 h-4" />
@@ -326,8 +283,8 @@ export default function HomePage() {
             onClick={() => setSelectedCat('all')}
             className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition-all ${
               selectedCat === 'all'
-                ? 'bg-brand-chocolate text-brand-gold-light shadow-soft'
-                : 'bg-white/90 border border-brand-cream-dark/90 text-brand-taupe hover:text-brand-chocolate hover:bg-white'
+                ? 'bg-brand-chocolate text-brand-cream shadow-soft'
+                : 'bg-white/90 border border-brand-chocolate/10 text-brand-taupe hover:text-brand-chocolate hover:bg-white'
             }`}
           >
             {t('menu.allCategories')}
@@ -338,8 +295,8 @@ export default function HomePage() {
               onClick={() => setSelectedCat(cat.id)}
               className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-semibold transition-all ${
                 selectedCat === cat.id
-                  ? 'bg-brand-chocolate text-brand-gold-light shadow-soft'
-                  : 'bg-white/90 border border-brand-cream-dark/90 text-brand-taupe hover:text-brand-chocolate hover:bg-white'
+                  ? 'bg-brand-chocolate text-brand-cream shadow-soft'
+                  : 'bg-white/90 border border-brand-chocolate/10 text-brand-taupe hover:text-brand-chocolate hover:bg-white'
               }`}
             >
               {lang === 'bn' ? cat.name_bn : cat.name_en}
@@ -351,7 +308,7 @@ export default function HomePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[1, 2, 3, 4, 5, 6].map((n) => (
-              <div key={n} className="bg-white/80 rounded-3xl h-88 animate-pulse border border-brand-cream-dark/60" />
+              <div key={n} className="bg-white/80 rounded-3xl h-80 animate-pulse border border-brand-chocolate/10" />
             ))}
           </div>
         ) : (
@@ -365,7 +322,7 @@ export default function HomePage() {
         <div className="text-center pt-4">
           <Link
             href="/menu"
-            className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-caramel-hover text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all btn-press text-sm"
+            className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-chocolate text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all btn-press text-sm"
           >
             <span>{t('home.viewAllMenu')}</span>
             <ArrowRight className="w-4 h-4" />
@@ -374,11 +331,11 @@ export default function HomePage() {
       </section>
 
       {/* Artisanal Difference & Ingredient Transparency Feature */}
-      <section className="bg-white border-y border-brand-cream-dark py-16 sm:py-24 px-4 sm:px-6">
+      <section className="bg-white border-y border-brand-chocolate/10 py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           <div className="lg:col-span-6 space-y-6">
-            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-caramel bg-brand-caramel-subtle px-3 py-1 rounded-full">
+            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-brand-caramel bg-brand-caramel/10 px-3 py-1 rounded-full">
               <Sparkles className="w-3.5 h-3.5" />
               <span>{lang === 'bn' ? 'খাঁটি উপাদানের নিশ্চয়তা' : 'Uncompromising Quality'}</span>
             </div>
@@ -395,161 +352,73 @@ export default function HomePage() {
 
             <div className="space-y-3.5 pt-2">
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-brand-forest-light text-brand-forest flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-full bg-brand-forest/10 text-brand-forest flex items-center justify-center shrink-0 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-brand-chocolate">Zero Artificial Preservatives</h4>
-                  <p className="text-xs text-brand-taupe leading-relaxed">Clean, wholesome desserts that are safe and delightful for the whole family.</p>
+                  <h4 className="font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? 'কোনো কৃত্রিম প্রিজারভেটিভ নয়' : 'Zero Artificial Preservatives'}</h4>
+                  <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'পরিবারের সবার জন্য নিরাপদ, পরিচ্ছন্ন মিষ্টি।' : 'Clean, wholesome desserts that are safe and delightful for the whole family.'}</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-brand-forest-light text-brand-forest flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-full bg-brand-forest/10 text-brand-forest flex items-center justify-center shrink-0 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-brand-chocolate">Fresh Slow-Baking Technique</h4>
-                  <p className="text-xs text-brand-taupe leading-relaxed">Slow-cooked water bath custards and tender sponges that melt smoothly in your mouth.</p>
+                  <h4 className="font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? 'ধীরে ধীরে তৈরি, সতেজ বেক' : 'Fresh Slow-Baking Technique'}</h4>
+                  <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'ধীরে রান্না করা কাস্টার্ড ও নরম স্পঞ্জ, মুখে দিলেই গলে যায়।' : 'Slow-cooked water bath custards and tender sponges that melt smoothly in your mouth.'}</p>
                 </div>
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-brand-forest-light text-brand-forest flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-full bg-brand-forest/10 text-brand-forest flex items-center justify-center shrink-0 mt-0.5">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-sm text-brand-chocolate">Hygienic Home Kitchen Setting</h4>
-                  <p className="text-xs text-brand-taupe leading-relaxed">Prepared with surgical cleanliness and utmost care right here in Rajshahi.</p>
+                  <h4 className="font-semibold text-sm text-brand-chocolate">{lang === 'bn' ? 'পরিচ্ছন্ন ঘরের রান্নাঘর' : 'Hygienic Home Kitchen Setting'}</h4>
+                  <p className="text-xs text-brand-taupe leading-relaxed">{lang === 'bn' ? 'রাজশাহীতেই যত্ন ও পরিচ্ছন্নতায় তৈরি।' : 'Prepared with surgical cleanliness and utmost care right here in Rajshahi.'}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Right Comparison Card */}
-          <div className="lg:col-span-6 bg-brand-cream-subtle/50 p-6 sm:p-8 rounded-3xl border border-brand-cream-dark/90 shadow-card space-y-6">
-            <h3 className="font-heading font-semibold text-xl text-brand-chocolate border-b border-brand-cream-dark/70 pb-3">
+          <div className="lg:col-span-6 bg-brand-cream/50 p-6 sm:p-8 rounded-3xl border border-brand-chocolate/10 shadow-card space-y-6">
+            <h3 className="font-heading font-semibold text-xl text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
               {lang === 'bn' ? 'আমাদের মানদণ্ড বনাম সাধারণ বেকারি' : 'Artisanal Standards vs Commercial Bakeries'}
             </h3>
 
             <div className="space-y-3.5 text-xs sm:text-sm">
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/95 border border-brand-cream-dark/80">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/95 border border-brand-chocolate/10">
                 <div>
-                  <span className="text-[10px] font-semibold text-brand-taupe uppercase tracking-wider block">Butter & Cream</span>
-                  <span className="font-semibold text-brand-chocolate">100% Pure Dairy Butter</span>
+                  <span className="text-[10px] font-semibold text-brand-taupe uppercase tracking-wider block">{lang === 'bn' ? 'মাখন ও ক্রিম' : 'Butter & Cream'}</span>
+                  <span className="font-semibold text-brand-chocolate">{lang === 'bn' ? '১০০% খাঁটি দুধের মাখন' : '100% Pure Dairy Butter'}</span>
                 </div>
-                <span className="text-xs font-semibold text-brand-forest bg-brand-forest-light px-2.5 py-1 rounded-full">
+                <span className="text-xs font-semibold text-brand-forest bg-brand-forest/10 px-2.5 py-1 rounded-full">
                   Sweet Cravings
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/95 border border-brand-cream-dark/80">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/95 border border-brand-chocolate/10">
                 <div>
-                  <span className="text-[10px] font-semibold text-brand-taupe uppercase tracking-wider block">Freshness</span>
-                  <span className="font-semibold text-brand-chocolate">Baked Today After Order</span>
+                  <span className="text-[10px] font-semibold text-brand-taupe uppercase tracking-wider block">{lang === 'bn' ? 'সতেজতা' : 'Freshness'}</span>
+                  <span className="font-semibold text-brand-chocolate">{lang === 'bn' ? 'অর্ডারের পর আজই বেক করা' : 'Baked Today After Order'}</span>
                 </div>
-                <span className="text-xs font-semibold text-brand-forest bg-brand-forest-light px-2.5 py-1 rounded-full">
-                  Never Frozen
+                <span className="text-xs font-semibold text-brand-forest bg-brand-forest/10 px-2.5 py-1 rounded-full">
+                  {lang === 'bn' ? 'কখনো ফ্রোজেন নয়' : 'Never Frozen'}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/95 border border-brand-cream-dark/80">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/95 border border-brand-chocolate/10">
                 <div>
-                  <span className="text-[10px] font-semibold text-brand-taupe uppercase tracking-wider block">Flavors</span>
-                  <span className="font-semibold text-brand-chocolate">Natural Vanilla Bean & Cocoa</span>
+                  <span className="text-[10px] font-semibold text-brand-taupe uppercase tracking-wider block">{lang === 'bn' ? 'স্বাদ' : 'Flavors'}</span>
+                  <span className="font-semibold text-brand-chocolate">{lang === 'bn' ? 'আসল ভ্যানিলা ও কোকো' : 'Natural Vanilla Bean & Cocoa'}</span>
                 </div>
-                <span className="text-xs font-semibold text-brand-forest bg-brand-forest-light px-2.5 py-1 rounded-full">
-                  Authentic
+                <span className="text-xs font-semibold text-brand-forest bg-brand-forest/10 px-2.5 py-1 rounded-full">
+                  {lang === 'bn' ? 'খাঁটি' : 'Authentic'}
                 </span>
               </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Verified Rajshahi Customer Reviews Section */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
-        <div className="text-center max-w-xl mx-auto space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-widest text-brand-caramel">
-            {lang === 'bn' ? 'গ্রাহকদের মিষ্টি অনুভূতি' : 'Customer Love'}
-          </span>
-          <h2 className="font-heading text-3xl sm:text-4xl font-semibold text-brand-chocolate">
-            {lang === 'bn' ? 'রাজশাহীবাসীর প্রিয় মিষ্টি কথা' : 'Loved by Dessert Lovers in Rajshahi'}
-          </h2>
-          <p className="text-xs sm:text-sm text-brand-taupe">
-            {lang === 'bn' ? 'শত শত পরিবারের আনন্দঘন মুহূর্তের অংশ হতে পেরে আমরা কৃতজ্ঞ' : 'Real reviews from verified foodies across Rajshahi'}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* Review 1 */}
-          <div className="bg-white/95 p-6 sm:p-7 rounded-3xl border border-brand-cream-dark/80 shadow-card hover:shadow-card-hover space-y-4 hover:border-brand-caramel/30 transition-all">
-            <div className="flex items-center gap-1 text-amber-500">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-              ))}
-            </div>
-            <p className="font-editorial text-sm sm:text-base text-brand-chocolate/90 leading-relaxed italic">
-              {lang === 'bn'
-                ? '“ক্যারামেল ফ্ল্যানটা এক কথায় অসাধারণ! মুখের ভেতরেই মোলায়েমভাবে গলে যায়, আর মিষ্টির পরিমাণটা একদম পারফেক্ট।”'
-                : '“The Caramel Custard Flan is pure magic! Perfectly balanced sweetness and an exceptionally silky texture. Best dessert in Rajshahi!”'}
-            </p>
-            <div className="border-t border-brand-cream-dark/60 pt-3 flex items-center justify-between text-xs">
-              <div>
-                <p className="font-semibold text-brand-chocolate">Dr. Sabrina Rahman</p>
-                <p className="text-[11px] text-brand-taupe">Kazihata, Rajshahi</p>
-              </div>
-              <span className="text-[10px] font-semibold text-brand-forest bg-brand-forest-light px-2 py-0.5 rounded">
-                Verified
-              </span>
-            </div>
-          </div>
-
-          {/* Review 2 */}
-          <div className="bg-white/95 p-6 sm:p-7 rounded-3xl border border-brand-cream-dark/80 shadow-card hover:shadow-card-hover space-y-4 hover:border-brand-caramel/30 transition-all">
-            <div className="flex items-center gap-1 text-amber-500">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-              ))}
-            </div>
-            <p className="font-editorial text-sm sm:text-base text-brand-chocolate/90 leading-relaxed italic">
-              {lang === 'bn'
-                ? '“আমার বোনের জন্মদিনে বিসকফ জার কেক অর্ডার করেছিলাম। সময়মতো ঠান্ডা অবস্থায় পৌঁছেছে, প্যাকেজিং ছিল খুব চমৎকার।”'
-                : '“Ordered the Lotus Biscoff Jar Cakes for my sister’s birthday at RU Campus. Arrived perfectly chilled and the packaging was super premium.”'}
-            </p>
-            <div className="border-t border-brand-cream-dark/60 pt-3 flex items-center justify-between text-xs">
-              <div>
-                <p className="font-semibold text-brand-chocolate">Tanvir Hasan</p>
-                <p className="text-[11px] text-brand-taupe">Talaimari / RU Campus</p>
-              </div>
-              <span className="text-[10px] font-semibold text-brand-forest bg-brand-forest-light px-2 py-0.5 rounded">
-                Verified
-              </span>
-            </div>
-          </div>
-
-          {/* Review 3 */}
-          <div className="bg-white/95 p-6 sm:p-7 rounded-3xl border border-brand-cream-dark/80 shadow-card hover:shadow-card-hover space-y-4 hover:border-brand-caramel/30 transition-all">
-            <div className="flex items-center gap-1 text-amber-500">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-              ))}
-            </div>
-            <p className="font-editorial text-sm sm:text-base text-brand-chocolate/90 leading-relaxed italic">
-              {lang === 'bn'
-                ? '“বেলজিয়ান চকলেট ফাজ কেকটা খুবই রিচ ও ডার্ক। আসল মাখনের ঘ্রাণ পাওয়া যায়। উপশহরে ডেলিভারি পেয়েছি খুব দ্রুত।”'
-                : '“The Royal Chocolate Fudge Cake is rich, dense, and deeply satisfying. You can tell they use genuine Dutch cocoa. Truly impressed!”'}
-            </p>
-            <div className="border-t border-brand-cream-dark/60 pt-3 flex items-center justify-between text-xs">
-              <div>
-                <p className="font-semibold text-brand-chocolate">Nusrat Jahan</p>
-                <p className="text-[11px] text-brand-taupe">Upashahar, Rajshahi</p>
-              </div>
-              <span className="text-[10px] font-semibold text-brand-forest bg-brand-forest-light px-2 py-0.5 rounded">
-                Verified
-              </span>
             </div>
           </div>
 
@@ -576,7 +445,7 @@ export default function HomePage() {
             return (
               <div
                 key={idx}
-                className="bg-white/95 rounded-2xl border border-brand-cream-dark/80 shadow-card overflow-hidden transition-all hover:border-brand-caramel/30"
+                className="bg-white/95 rounded-2xl border border-brand-chocolate/10 shadow-card overflow-hidden transition-all hover:border-brand-caramel/30"
               >
                 <button
                   type="button"
@@ -594,7 +463,7 @@ export default function HomePage() {
                   />
                 </button>
                 {isOpen && (
-                  <div className="px-5 pb-5 text-xs sm:text-sm text-brand-taupe leading-[1.78] border-t border-brand-cream-dark/60 pt-3 animate-fadeIn">
+                  <div className="px-5 pb-5 text-xs sm:text-sm text-brand-taupe leading-[1.78] border-t border-brand-chocolate/10 pt-3 animate-fadeIn">
                     {lang === 'bn' ? faq.aBn : faq.aEn}
                   </div>
                 )}
@@ -606,15 +475,15 @@ export default function HomePage() {
 
       {/* WhatsApp VIP Concierge Callout Banner */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="bg-gradient-to-r from-[#244535] to-[#1C362A] rounded-3xl p-8 sm:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-card border border-emerald-900/30">
+        <div className="bg-brand-forest rounded-3xl p-8 sm:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-card border border-white/10">
           <div className="space-y-2 text-center md:text-left">
-            <span className="bg-white/10 text-brand-forest-border text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="bg-white/10 text-brand-cream text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
               {lang === 'bn' ? 'কাস্টম ও জরুরি অর্ডার' : 'Custom & Celebration Boxes'}
             </span>
             <h3 className="font-heading text-2xl sm:text-3xl font-semibold">
               {lang === 'bn' ? 'হোয়াটসঅ্যাপে সরাসরি কথা বলুন' : 'Direct WhatsApp Concierge'}
             </h3>
-            <p className="text-brand-forest-border/85 text-xs sm:text-sm max-w-lg leading-relaxed">
+            <p className="text-brand-cream/85 text-xs sm:text-sm max-w-lg leading-relaxed">
               {lang === 'bn' 
                 ? 'কোনো বিশেষ জন্মদিন, পরিবারের দাওয়াত বা স্পেশাল উপহার বক্সের প্রয়োজন? আমাদের সাথে সরাসরি যোগাযোগ করুন।' 
                 : 'Need custom celebration dessert sets or special gift packaging in Rajshahi? Chat directly with our bakery sister.'}
@@ -626,7 +495,7 @@ export default function HomePage() {
             href={`${whatsappUrl}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-2 bg-brand-forest hover:bg-[#234937] border border-white/20 text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all btn-press text-sm"
+            className="shrink-0 flex items-center gap-2 bg-brand-forest hover:bg-brand-chocolate border border-white/20 text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all btn-press text-sm"
           >
             <Phone className="w-4 h-4" />
             <span>{whatsappNumber}</span>

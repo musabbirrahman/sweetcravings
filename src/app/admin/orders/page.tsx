@@ -145,7 +145,7 @@ Sweet Cravings Kitchen`;
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search code, name, phone..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-brand-cream-dark bg-white text-xs focus:outline-none focus:border-brand-caramel shadow-soft"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-brand-chocolate/10 bg-white text-xs focus:outline-none focus:border-brand-caramel shadow-soft"
           />
         </div>
       </div>
@@ -158,8 +158,8 @@ Sweet Cravings Kitchen`;
             onClick={() => setSelectedStatus(f.id)}
             className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
               selectedStatus === f.id
-                ? 'bg-brand-chocolate text-brand-gold-light shadow-soft'
-                : 'bg-white border border-brand-cream-dark text-brand-taupe hover:text-brand-chocolate'
+                ? 'bg-brand-chocolate text-brand-cream shadow-soft'
+                : 'bg-white border border-brand-chocolate/10 text-brand-taupe hover:text-brand-chocolate'
             }`}
           >
             {lang === 'bn' ? f.labelBn : f.labelEn}
@@ -173,7 +173,7 @@ Sweet Cravings Kitchen`;
           Loading orders...
         </div>
       ) : filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-brand-cream-dark p-12 text-center text-brand-taupe shadow-soft">
+        <div className="bg-white rounded-2xl border border-brand-chocolate/10 p-12 text-center text-brand-taupe shadow-soft">
           <p className="text-sm font-semibold">No orders found.</p>
         </div>
       ) : (
@@ -186,10 +186,10 @@ Sweet Cravings Kitchen`;
             return (
               <div
                 key={ord.id}
-                className="bg-white rounded-2xl border border-brand-cream-dark shadow-soft p-5 space-y-4 hover:border-brand-caramel/40 transition-colors"
+                className="bg-white rounded-2xl border border-brand-chocolate/10 shadow-soft p-5 space-y-4 hover:border-brand-caramel/40 transition-colors"
               >
                 {/* Order Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-cream-dark pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-chocolate/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-base font-bold text-brand-chocolate">
                       #{ord.public_code}
@@ -203,12 +203,12 @@ Sweet Cravings Kitchen`;
                     {/* Order Status Badge */}
                     <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       ord.order_status === 'new'
-                        ? 'bg-brand-vanilla text-brand-caramel border border-brand-cream-dark'
+                        ? 'bg-brand-cream text-brand-caramel border border-brand-chocolate/10'
                         : ord.order_status === 'completed'
-                        ? 'bg-brand-forest-light text-brand-forest border border-brand-forest-border'
+                        ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/25'
                         : ord.order_status === 'cancelled'
-                        ? 'bg-brand-strawberry-light text-brand-strawberry border border-brand-strawberry/20'
-                        : 'bg-brand-cream-subtle text-brand-chocolate border border-brand-cream-dark'
+                        ? 'bg-brand-caramel/10 text-brand-chocolate border border-brand-chocolate/20'
+                        : 'bg-brand-cream text-brand-chocolate border border-brand-chocolate/10'
                     }`}>
                       {ord.order_status.replace(/_/g, ' ')}
                     </span>
@@ -216,10 +216,10 @@ Sweet Cravings Kitchen`;
                     {/* Payment Status Badge */}
                     <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       ord.payment_status === 'confirmed'
-                        ? 'bg-brand-forest-light text-brand-forest border border-brand-forest-border'
+                        ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/25'
                         : ord.payment_status === 'submitted'
-                        ? 'bg-brand-vanilla text-brand-caramel border border-brand-cream-dark'
-                        : 'bg-brand-cream-subtle text-brand-taupe'
+                        ? 'bg-brand-cream text-brand-caramel border border-brand-chocolate/10'
+                        : 'bg-brand-cream text-brand-taupe'
                     }`}>
                       {ord.payment_method.toUpperCase()} • {ord.payment_status}
                     </span>
@@ -237,11 +237,11 @@ Sweet Cravings Kitchen`;
                             👑 VIP ({ord.completed_orders_count} orders)
                           </span>
                         ) : ord.completed_orders_count > 0 ? (
-                          <span className="text-[10px] font-semibold bg-brand-cream-subtle text-brand-chocolate px-2 py-0.5 rounded-full border border-brand-cream-dark">
+                          <span className="text-[10px] font-semibold bg-brand-cream text-brand-chocolate px-2 py-0.5 rounded-full border border-brand-chocolate/10">
                             ⭐ {ord.completed_orders_count} orders
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium bg-brand-forest-light text-brand-forest px-1.5 py-0.5 rounded-full">
+                          <span className="text-[10px] font-medium bg-brand-forest/10 text-brand-forest px-1.5 py-0.5 rounded-full">
                             🌱 1st Order
                           </span>
                         )
@@ -275,7 +275,7 @@ Sweet Cravings Kitchen`;
 
                   {/* Gift Order Details */}
                   {Boolean(ord.is_gift) && (
-                    <div className="sm:col-span-2 bg-gradient-to-r from-brand-caramel/10 via-brand-vanilla to-brand-cream-subtle border border-brand-caramel/30 rounded-xl p-3 text-xs space-y-1.5">
+                    <div className="sm:col-span-2 bg-gradient-to-r from-brand-caramel/10 via-brand-cream to-brand-cream border border-brand-caramel/30 rounded-xl p-3 text-xs space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-brand-caramel font-bold">
                           <Gift className="w-4 h-4 text-brand-caramel" />
@@ -305,7 +305,7 @@ Sweet Cravings Kitchen`;
                 </div>
 
                 {/* Items snapshot */}
-                <div className="bg-brand-cream-subtle/50 rounded-xl p-3 text-xs space-y-1.5 border border-brand-cream-dark">
+                <div className="bg-brand-cream/50 rounded-xl p-3 text-xs space-y-1.5 border border-brand-chocolate/10">
                   {ord.items?.map((it) => (
                     <div key={it.id} className="flex justify-between items-center text-brand-chocolate">
                       <span>
@@ -321,7 +321,7 @@ Sweet Cravings Kitchen`;
                       <span className="font-mono font-bold">-৳{ord.discount_amount}</span>
                     </div>
                   ) : null}
-                  <div className="border-t border-brand-cream-dark pt-1.5 flex justify-between font-bold text-brand-chocolate text-xs">
+                  <div className="border-t border-brand-chocolate/10 pt-1.5 flex justify-between font-bold text-brand-chocolate text-xs">
                     <span>Total (incl. delivery ৳{ord.delivery_fee}):</span>
                     <span className="text-brand-caramel text-sm font-mono font-extrabold">৳{ord.total_amount}</span>
                   </div>
@@ -329,7 +329,7 @@ Sweet Cravings Kitchen`;
 
                 {/* TrxID if submitted */}
                 {ord.payment_submissions && ord.payment_submissions.length > 0 && (
-                  <div className="bg-brand-vanilla/90 border border-brand-cream-dark p-2.5 rounded-xl text-xs space-y-1">
+                  <div className="bg-brand-cream/90 border border-brand-chocolate/10 p-2.5 rounded-xl text-xs space-y-1">
                     <span className="font-bold text-brand-chocolate block">Customer Submitted TrxID:</span>
                     {ord.payment_submissions.map((sub) => (
                       <div key={sub.id} className="flex justify-between font-mono text-[11px] text-brand-chocolate">
@@ -341,13 +341,13 @@ Sweet Cravings Kitchen`;
                 )}
 
                 {/* Action Controls for Sister / Admin */}
-                <div className="border-t border-brand-cream-dark pt-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="border-t border-brand-chocolate/10 pt-3 flex flex-wrap items-center justify-between gap-3">
                   
                   {/* Direct Contact Buttons */}
                   <div className="flex items-center gap-2">
                     <a
                       href={`tel:${ord.customer_phone}`}
-                      className="inline-flex items-center gap-1.5 bg-brand-cream-subtle hover:bg-brand-cream text-brand-chocolate border border-brand-cream-dark px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 bg-brand-cream hover:bg-brand-cream text-brand-chocolate border border-brand-chocolate/10 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                     >
                       <Phone className="w-3.5 h-3.5 text-brand-taupe" />
                       <span>{t('admin.actionCall')}</span>
@@ -356,7 +356,7 @@ Sweet Cravings Kitchen`;
                       href={waLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-brand-forest-light hover:bg-brand-forest/15 text-brand-forest border border-brand-forest-border px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 bg-brand-forest/10 hover:bg-brand-forest/15 text-brand-forest border border-brand-forest/25 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-brand-forest" />
                       <span>{t('admin.actionWhatsApp')}</span>
@@ -380,7 +380,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'accepted', undefined, 'Order confirmed by kitchen')}
-                        className="bg-brand-forest hover:bg-[#1E4330] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft"
+                        className="bg-brand-forest hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft"
                       >
                         Accept Order
                       </button>
@@ -391,7 +391,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'preparing', undefined, 'Baking started')}
-                        className="bg-brand-caramel hover:bg-brand-caramel-dark text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-caramel hover:bg-brand-caramel text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <ChefHat className="w-3.5 h-3.5" />
                         <span>Start Baking</span>
@@ -403,7 +403,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'ready', undefined, 'Dessert packed & ready')}
-                        className="bg-brand-chocolate hover:bg-brand-chocolate-light text-brand-gold-light px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <Check className="w-3.5 h-3.5" />
                         <span>Mark Ready</span>
@@ -415,7 +415,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'out_for_delivery', undefined, 'Handed to delivery partner')}
-                        className="bg-brand-caramel hover:bg-brand-caramel-dark text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-caramel hover:bg-brand-caramel text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <Truck className="w-3.5 h-3.5" />
                         <span>Dispatch for Delivery</span>
@@ -427,7 +427,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'completed', ord.payment_method === 'cod' ? 'confirmed' : undefined, 'Delivered & fulfilled')}
-                        className="bg-brand-forest hover:bg-[#1E4330] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-forest hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Mark Delivered</span>
@@ -439,7 +439,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, undefined, 'confirmed', 'Admin confirmed wallet receipt')}
-                        className="bg-brand-forest-light hover:bg-brand-forest/20 text-brand-forest border border-brand-forest-border px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                        className="bg-brand-forest/10 hover:bg-brand-forest/20 text-brand-forest border border-brand-forest/25 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                       >
                         ✓ Confirm Payment
                       </button>
@@ -455,7 +455,7 @@ Sweet Cravings Kitchen`;
                             handleUpdateStatus(ord.id, 'cancelled', undefined, `Cancelled: ${reason}`);
                           }
                         }}
-                        className="text-brand-taupe/60 hover:text-brand-strawberry p-1.5 rounded text-xs transition-colors"
+                        className="text-brand-taupe/60 hover:text-brand-chocolate p-1.5 rounded text-xs transition-colors"
                         title="Cancel Order"
                       >
                         <X className="w-4 h-4" />

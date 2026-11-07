@@ -1,21 +1,15 @@
 'use client';
 
-import React from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useCatalog } from '@/context/CatalogContext';
 import { Phone, MapPin, Clock, MessageSquare } from 'lucide-react';
 
 export default function ContactPage() {
   const { lang, t } = useLanguage();
-  const [phoneNum, setPhoneNum] = React.useState('');
-
-  React.useEffect(() => {
-    fetch('/api/products')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.settings?.whatsapp_number) setPhoneNum(d.settings.whatsapp_number);
-      })
-      .catch(() => {});
-  }, []);
+  // WhatsApp number comes from the shared catalogue (fetched once per
+  // page load); empty until the shop configures it.
+  const { settings } = useCatalog();
+  const phoneNum = settings?.whatsapp_number || '';
 
   const clean = phoneNum.replace(/\D/g, '');
   const waPhone = clean.startsWith('88') ? clean : `88${clean}`;
@@ -25,7 +19,7 @@ export default function ContactPage() {
       
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-1.5 bg-brand-caramel-subtle text-brand-caramel text-xs font-bold px-3 py-1 rounded-full uppercase">
+        <div className="inline-flex items-center gap-1.5 bg-brand-caramel/10 text-brand-caramel text-xs font-bold px-3 py-1 rounded-full uppercase">
           <MessageSquare className="w-3.5 h-3.5" />
           <span>{lang === 'bn' ? 'আমাদের সাথে যোগাযোগ' : 'Connect with Us'}</span>
         </div>
@@ -40,8 +34,8 @@ export default function ContactPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
         {/* WhatsApp & Call Direct */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-cream-dark shadow-soft space-y-6">
-          <h2 className="font-heading font-bold text-xl text-brand-chocolate border-b border-brand-cream-dark pb-3">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-6">
+          <h2 className="font-heading font-bold text-xl text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
             {t('contact.reachUs')}
           </h2>
 
@@ -51,7 +45,7 @@ export default function ContactPage() {
               href={`https://wa.me/${waPhone}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings.')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3.5 p-4 rounded-2xl bg-brand-forest-light border border-brand-forest-border/80 text-brand-forest hover:bg-brand-forest/10 transition-colors"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-brand-forest/10 border border-brand-forest/25 text-brand-forest hover:bg-brand-forest/10 transition-colors"
             >
               <div className="w-10 h-10 rounded-full bg-brand-forest text-white flex items-center justify-center shrink-0">
                 <Phone className="w-5 h-5" />
@@ -66,14 +60,14 @@ export default function ContactPage() {
               </div>
             </a>
             ) : (
-            <p className="text-xs text-brand-taupe p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+            <p className="text-xs text-brand-taupe p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
               {lang === 'bn'
                 ? 'হোয়াটসঅ্যাপ নম্বর এখনো দেওয়া হয়নি — অর্ডার করতে মেনু থেকে সরাসরি অর্ডার করুন।'
                 : 'Our WhatsApp number is not listed yet — please order directly from the menu.'}
             </p>
             )}
 
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
               <Clock className="w-5 h-5 text-brand-caramel shrink-0 mt-0.5" />
               <div className="text-xs text-brand-taupe space-y-1">
                 <p className="font-bold text-brand-chocolate text-sm">
@@ -87,8 +81,8 @@ export default function ContactPage() {
         </div>
 
         {/* Coverage & Location Statement */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-cream-dark shadow-soft space-y-6">
-          <h2 className="font-heading font-bold text-xl text-brand-chocolate border-b border-brand-cream-dark pb-3">
+        <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-6">
+          <h2 className="font-heading font-bold text-xl text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
             {t('contact.locationTitle')}
           </h2>
 
@@ -105,7 +99,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="bg-brand-vanilla p-4 rounded-2xl border border-brand-cream-dark text-xs space-y-1">
+            <div className="bg-brand-cream p-4 rounded-2xl border border-brand-chocolate/10 text-xs space-y-1">
               <p className="font-bold text-brand-chocolate">
                 {lang === 'bn' ? 'পিকআপ সংক্রান্ত তথ্য:' : 'Self-Pickup Information:'}
               </p>

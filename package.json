@@ -10,8 +10,12 @@
     "db:turso-sync": "node scripts/turso-migrate.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource/hind-siliguri": "^5.3.0",
     "@libsql/client": "^0.18.0",
     "clsx": "^2.1.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.475.0",
     "next": "^14.2.24",
     "react": "^18.3.1",

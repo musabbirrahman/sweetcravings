@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug } from '@/lib/db';
+import { getProductBySlug, getRelatedProducts } from '@/lib/db';
 import ProductDetailView from '@/components/ProductDetailView';
 
 interface ProductPageProps {
@@ -36,5 +36,11 @@ export default function ProductPage({ params }: ProductPageProps) {
   // Ordering them is blocked server-side in POST /api/orders.
   // NOTE: rows from node:sqlite carry a null prototype, which Next.js
   // refuses to pass to a Client Component — serialize to a plain object.
-  return <ProductDetailView product={JSON.parse(JSON.stringify(product))} />;
+  const related = getRelatedProducts(product);
+  return (
+    <ProductDetailView
+      product={JSON.parse(JSON.stringify(product))}
+      related={JSON.parse(JSON.stringify(related))}
+    />
+  );
 }

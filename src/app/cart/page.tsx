@@ -23,7 +23,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-5">
-        <div className="w-24 h-24 mx-auto rounded-full bg-brand-cream-subtle flex items-center justify-center text-brand-caramel border border-brand-cream-dark">
+        <div className="w-24 h-24 mx-auto rounded-full bg-brand-cream flex items-center justify-center text-brand-caramel border border-brand-chocolate/10">
           <ShoppingBag className="w-12 h-12 stroke-[1.5]" />
         </div>
         <h1 className="font-heading text-3xl font-semibold text-brand-chocolate">
@@ -34,7 +34,7 @@ export default function CartPage() {
         </p>
         <Link
           href="/menu"
-          className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-caramel-hover text-white font-semibold py-3.5 px-8 rounded-full shadow-soft transition-all btn-press"
+          className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-chocolate text-white font-semibold py-3.5 px-8 rounded-full shadow-soft transition-all btn-press"
         >
           <span>{t('cart.explore')}</span>
           <ArrowRight className="w-4 h-4" />
@@ -47,7 +47,7 @@ export default function CartPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-8">
       
       {/* Title */}
-      <div className="flex items-center justify-between border-b border-brand-cream-dark/70 pb-4">
+      <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-4">
         <div>
           <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-brand-chocolate">
             {t('cart.title')}
@@ -58,14 +58,14 @@ export default function CartPage() {
         </div>
         <button
           onClick={clearCart}
-          className="text-xs font-semibold text-brand-taupe hover:text-brand-strawberry transition-colors"
+          className="text-xs font-semibold text-brand-taupe hover:text-brand-chocolate transition-colors"
         >
           {t('cart.clearCart')}
         </button>
       </div>
 
       {/* Free delivery notice */}
-      <div className="bg-brand-vanilla border border-brand-cream-dark p-3.5 rounded-2xl flex items-center justify-between text-xs sm:text-sm">
+      <div className="bg-brand-cream border border-brand-chocolate/10 p-3.5 rounded-2xl flex items-center justify-between text-xs sm:text-sm">
         <div className="flex items-center gap-2 text-brand-chocolate">
           <Sparkles className="w-4 h-4 text-brand-caramel shrink-0" />
           <span>
@@ -90,9 +90,9 @@ export default function CartPage() {
           {items.map((item, idx) => (
             <div
               key={`${item.productId}-${item.variantId || 'base'}-${idx}`}
-              className="bg-white p-4 rounded-2xl border border-brand-cream-dark shadow-soft flex gap-4 items-center"
+              className="bg-white p-4 rounded-2xl border border-brand-chocolate/10 shadow-soft flex gap-4 items-center"
             >
-              <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-brand-cream-subtle">
+              <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-brand-cream">
                 <Image
                   src={item.imageUrl || '/sweet-cravings-logo.jpg'}
                   alt={item.name_en}
@@ -108,7 +108,7 @@ export default function CartPage() {
                   </h3>
                   <button
                     onClick={() => removeItem(item.productId, item.variantId)}
-                    className="text-brand-taupe/60 hover:text-brand-strawberry p-1 transition-colors"
+                    className="text-brand-taupe/60 hover:text-brand-chocolate p-1 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -121,7 +121,7 @@ export default function CartPage() {
                 )}
 
                 <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center border border-brand-cream-dark bg-brand-cream-subtle/50 rounded-lg overflow-hidden">
+                  <div className="flex items-center border border-brand-chocolate/10 bg-brand-cream/50 rounded-lg overflow-hidden">
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity - 1, item.variantId)}
                       className="px-2.5 py-1 hover:bg-brand-cream text-brand-chocolate transition-colors"
@@ -150,8 +150,8 @@ export default function CartPage() {
 
         {/* Order Summary Card */}
         <div className="md:col-span-5">
-          <div className="bg-white p-6 rounded-2xl border border-brand-cream-dark shadow-soft space-y-5 sticky top-28">
-            <h2 className="font-heading font-bold text-lg text-brand-chocolate border-b border-brand-cream-dark pb-3">
+          <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-5 sticky top-28">
+            <h2 className="font-heading font-bold text-lg text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
               {t('checkout.orderSummary')}
             </h2>
 
@@ -172,7 +172,7 @@ export default function CartPage() {
                   )}
                 </span>
               </div>
-              <div className="border-t border-brand-cream-dark pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate">
+              <div className="border-t border-brand-chocolate/10 pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate">
                 <span>{t('cart.total')}</span>
                 <span className="text-brand-caramel font-extrabold text-xl">৳{totalAmount}</span>
               </div>
@@ -180,7 +180,7 @@ export default function CartPage() {
 
             <Link
               href="/checkout"
-              className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel-dark text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft hover:shadow-soft-hover transition-all"
+              className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft hover:shadow-soft-hover transition-all"
             >
               <span>{t('cart.checkout')}</span>
               <ArrowRight className="w-4 h-4" />

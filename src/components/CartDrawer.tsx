@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -24,6 +24,17 @@ export default function CartDrawer() {
   } = useCart();
   const { lang, t } = useLanguage();
 
+  // Close the drawer with the Escape key (the X button and the
+  // backdrop click already close it).
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsCartOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isCartOpen, setIsCartOpen]);
+
   if (!isCartOpen || pathname?.startsWith('/admin')) return null;
 
   // Free delivery progress calculation
@@ -33,7 +44,7 @@ export default function CartDrawer() {
     <div className="fixed inset-0 z-50 overflow-hidden">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-[#201612]/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-brand-chocolate/60 backdrop-blur-sm transition-opacity"
         onClick={() => setIsCartOpen(false)}
       />
 
@@ -41,13 +52,13 @@ export default function CartDrawer() {
         <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col">
           
           {/* Drawer Header */}
-          <div className="p-5 border-b border-brand-cream-dark/80 flex items-center justify-between bg-[#FAF7F2]">
+          <div className="p-5 border-b border-brand-chocolate/10 flex items-center justify-between bg-[#FAF7F2]">
             <div className="flex items-center gap-2.5">
               <ShoppingBag className="w-5 h-5 text-brand-caramel" />
               <h2 className="font-heading text-lg font-semibold text-brand-chocolate">
                 {t('cart.title')}
               </h2>
-              <span className="bg-brand-caramel-subtle text-brand-caramel text-xs px-2.5 py-0.5 rounded-full font-bold">
+              <span className="bg-brand-caramel/10 text-brand-caramel text-xs px-2.5 py-0.5 rounded-full font-bold">
                 {items.length}
               </span>
             </div>
@@ -62,7 +73,7 @@ export default function CartDrawer() {
 
           {/* Dynamic Free Delivery Progress Bar */}
           {subtotal > 0 && (
-            <div className="bg-[#F7EFE8]/70 px-5 py-3 border-b border-brand-cream-dark/70 space-y-2">
+            <div className="bg-[#F7EFE8]/70 px-5 py-3 border-b border-brand-chocolate/10 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5 font-medium text-brand-chocolate">
                   <Sparkles className="w-4 h-4 text-brand-caramel shrink-0" />
@@ -80,7 +91,7 @@ export default function CartDrawer() {
                   {progressPercent}%
                 </span>
               </div>
-              <div className="w-full bg-brand-cream-dark/80 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-brand-chocolate/5 h-2 rounded-full overflow-hidden">
                 <div 
                   className={`h-full transition-all duration-500 rounded-full ${
                     remainingForFreeDelivery === 0 ? 'bg-brand-forest' : 'bg-brand-caramel'
@@ -95,7 +106,7 @@ export default function CartDrawer() {
           <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
             {items.length === 0 ? (
               <div className="text-center py-20 space-y-4">
-                <div className="w-20 h-20 mx-auto bg-brand-cream-subtle rounded-3xl flex items-center justify-center text-brand-caramel border border-brand-cream-dark">
+                <div className="w-20 h-20 mx-auto bg-brand-cream rounded-3xl flex items-center justify-center text-brand-caramel border border-brand-chocolate/10">
                   <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
                 </div>
                 <div>
@@ -108,7 +119,7 @@ export default function CartDrawer() {
                 </div>
                 <button
                   onClick={() => setIsCartOpen(false)}
-                  className="inline-block bg-brand-chocolate text-brand-gold-light text-xs font-bold px-6 py-3 rounded-full hover:bg-brand-chocolate-light transition-all btn-press shadow-soft"
+                  className="inline-block bg-brand-chocolate text-brand-cream text-xs font-bold px-6 py-3 rounded-full hover:bg-brand-chocolate transition-all btn-press shadow-soft"
                 >
                   {t('cart.explore')}
                 </button>
@@ -117,10 +128,10 @@ export default function CartDrawer() {
               items.map((item, idx) => (
                 <div 
                   key={`${item.productId}-${item.variantId || 'base'}-${idx}`}
-                  className="flex gap-3.5 bg-brand-cream-subtle/30 border border-brand-cream-dark rounded-2xl p-3.5 shadow-sm hover:border-brand-caramel/30 transition-colors"
+                  className="flex gap-3.5 bg-brand-cream/30 border border-brand-chocolate/10 rounded-2xl p-3.5 shadow-sm hover:border-brand-caramel/30 transition-colors"
                 >
                   {/* Item Image */}
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-brand-cream-subtle border border-brand-cream-dark/60">
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-brand-cream border border-brand-chocolate/10">
                     <Image 
                       src={item.imageUrl || '/sweet-cravings-logo.jpg'} 
                       alt={item.name_en} 
@@ -137,7 +148,7 @@ export default function CartDrawer() {
                       </h4>
                       <button
                         onClick={() => removeItem(item.productId, item.variantId)}
-                        className="text-brand-taupe/50 hover:text-brand-strawberry transition-colors p-1"
+                        className="text-brand-taupe/50 hover:text-brand-chocolate transition-colors p-1"
                         title="Remove item"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -156,10 +167,10 @@ export default function CartDrawer() {
                       </span>
 
                       {/* Stepper */}
-                      <div className="flex items-center border border-brand-cream-dark bg-white rounded-xl overflow-hidden shadow-sm">
+                      <div className="flex items-center border border-brand-chocolate/10 bg-white rounded-xl overflow-hidden shadow-sm">
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity - 1, item.variantId)}
-                          className="px-2.5 py-1 hover:bg-brand-cream-subtle text-brand-chocolate transition-colors"
+                          className="px-2.5 py-1 hover:bg-brand-cream text-brand-chocolate transition-colors"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
@@ -168,7 +179,7 @@ export default function CartDrawer() {
                         </span>
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity + 1, item.variantId)}
-                          className="px-2.5 py-1 hover:bg-brand-cream-subtle text-brand-chocolate transition-colors"
+                          className="px-2.5 py-1 hover:bg-brand-cream text-brand-chocolate transition-colors"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
@@ -182,7 +193,7 @@ export default function CartDrawer() {
 
           {/* Drawer Footer (Subtotal & Checkout CTA) */}
           {items.length > 0 && (
-            <div className="p-5 border-t border-brand-cream-dark bg-brand-cream-subtle/50 space-y-3.5">
+            <div className="p-5 border-t border-brand-chocolate/10 bg-brand-cream/50 space-y-3.5">
               <div className="space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between text-brand-taupe">
                   <span>{t('cart.subtotal')}</span>
@@ -200,7 +211,7 @@ export default function CartDrawer() {
                     )}
                   </span>
                 </div>
-                <div className="border-t border-brand-cream-dark pt-2.5 flex justify-between font-heading text-base font-bold text-brand-chocolate">
+                <div className="border-t border-brand-chocolate/10 pt-2.5 flex justify-between font-heading text-base font-bold text-brand-chocolate">
                   <span>{t('cart.total')}</span>
                   <span className="text-brand-caramel font-extrabold text-xl">৳{totalAmount}</span>
                 </div>
@@ -209,7 +220,7 @@ export default function CartDrawer() {
               <Link
                 href="/checkout"
                 onClick={() => setIsCartOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel-dark text-white py-4 px-6 rounded-2xl font-bold text-sm shadow-card hover:shadow-card-hover transition-all btn-press"
+                className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-4 px-6 rounded-2xl font-bold text-sm shadow-card hover:shadow-card-hover transition-all btn-press"
               >
                 <span>{t('cart.checkout')}</span>
                 <ArrowRight className="w-4 h-4" />
