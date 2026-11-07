@@ -17,8 +17,8 @@ export async function PATCH(
     const body = await request.json();
     const { orderStatus, paymentStatus, note, adminName = 'Sister / Owner' } = body;
 
-    const db = getDb();
-    const current = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId) as any;
+    const db = await getDb();
+    const current = await db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId) as any;
 
     if (!current) {
       return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
@@ -30,7 +30,7 @@ export async function PATCH(
 
     if (orderStatus && orderStatus !== current.order_status) {
       updatedOrderStatus = orderStatus;
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(orderId, current.order_status, orderStatus, adminName, note || `Status changed to ${orderStatus}`, now);
@@ -38,7 +38,7 @@ export async function PATCH(
 
     if (paymentStatus && paymentStatus !== current.payment_status) {
       updatedPaymentStatus = paymentStatus;
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `).run(orderId, current.payment_status, paymentStatus, adminName, note || `Payment marked as ${paymentStatus}`, now);
@@ -46,7 +46,7 @@ export async function PATCH(
       // If payment is confirmed or rejected, update the latest payment submission review state
       if (paymentStatus === 'confirmed' || paymentStatus === 'rejected') {
         const reviewState = paymentStatus === 'confirmed' ? 'verified' : 'rejected';
-        db.prepare(`
+        await db.prepare(`
           UPDATE payment_submissions 
           SET review_state = ?, reviewed_at = ?, reviewer = ?
           WHERE order_id = ? AND review_state = 'pending'
@@ -54,14 +54,14 @@ export async function PATCH(
       }
     }
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE orders
       SET order_status = ?, payment_status = ?, updated_at = ?
       WHERE id = ?
     `).run(updatedOrderStatus, updatedPaymentStatus, now, orderId);
 
     // Audit log
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO audit_log (actor, action, entity, details, created_at)
       VALUES (?, ?, ?, ?, ?)
     `).run(adminName, 'UPDATE_ORDER', `order_${orderId}`, `Order: ${updatedOrderStatus}, Payment: ${updatedPaymentStatus}`, now);

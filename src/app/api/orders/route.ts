@@ -7,7 +7,8 @@ import {
   getCouponByCode, 
   getCustomerLoyalty,
   incrementCouponUsage,
-  countSoldToday 
+  countSoldToday,
+  runInTransaction
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
 import { verifyAdminSession } from '@/lib/auth';
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
     const requestedTime = body.requestedTime || body.requestedDeliveryTime || null;
 
     // Check store paused status
-    const settings = getShopSettings();
+    const settings = await getShopSettings();
     if (settings.is_store_paused) {
       return NextResponse.json({
         success: false,
@@ -128,11 +129,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Too many distinct items in a single order' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // Idempotency check: prevent duplicate submits
     if (idempotencyToken) {
-      const existing = db.prepare('SELECT public_code, subtotal, delivery_fee, total_amount, discount_amount, coupon_code FROM orders WHERE idempotency_token = ?').get(idempotencyToken) as any;
+      const existing = await db.prepare('SELECT public_code, subtotal, delivery_fee, total_amount, discount_amount, coupon_code FROM orders WHERE idempotency_token = ?').get(idempotencyToken) as any;
       if (existing) {
         return NextResponse.json({
           success: true,
@@ -160,13 +161,13 @@ export async function POST(request: Request) {
       lineTotal: number;
     }> = [];
 
-    const prodStmt = db.prepare('SELECT * FROM products WHERE id = ?');
-    const varStmt = db.prepare('SELECT * FROM product_variants WHERE id = ? AND product_id = ?');
+    const prodStmt = await db.prepare('SELECT * FROM products WHERE id = ?');
+    const varStmt = await db.prepare('SELECT * FROM product_variants WHERE id = ? AND product_id = ?');
 
     for (const item of items) {
       // Impose a safe maximum of 50 units per line item
       const qty = Math.min(50, Math.max(1, parseInt(item.quantity || 1, 10)));
-      const product = prodStmt.get(item.productId) as unknown as Product | null;
+      const product = await prodStmt.get(item.productId) as unknown as Product | null;
       if (!product) {
         return NextResponse.json({ success: false, error: `Product ID ${item.productId} not found` }, { status: 400 });
       }
@@ -180,7 +181,7 @@ export async function POST(request: Request) {
       // storefront shows how many are left; the server enforces it, so a
       // batch that sold out cannot be ordered by any route.
       const dailyLimit = Number(product.daily_batch_limit ?? 15);
-      const soldToday = countSoldToday(db, product.id);
+      const soldToday = await countSoldToday(db, product.id);
       if (soldToday + qty > dailyLimit) {
         const remaining = Math.max(0, dailyLimit - soldToday);
         return NextResponse.json({
@@ -194,7 +195,7 @@ export async function POST(request: Request) {
       let varLabelBn = '';
 
       if (item.variantId) {
-        const variant = varStmt.get(item.variantId, product.id) as unknown as ProductVariant | null;
+        const variant = await varStmt.get(item.variantId, product.id) as unknown as ProductVariant | null;
         if (!variant) {
           return NextResponse.json({ success: false, error: 'The selected option is no longer available. Please refresh the menu and try again.' }, { status: 400 });
         }
@@ -227,7 +228,7 @@ export async function POST(request: Request) {
     let discountAmount = 0;
     let appliedCouponCode: string | null = null;
     if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
-      const coupon = getCouponByCode(couponCode.trim());
+      const coupon = await getCouponByCode(couponCode.trim());
       if (!coupon) {
         return NextResponse.json({ success: false, error: 'This coupon code is not recognised.' }, { status: 400 });
       }
@@ -246,7 +247,7 @@ export async function POST(request: Request) {
       // The loyalty reward code is earned, not public: one reward per
       // 5 completed orders, and each earned reward can be used only once.
       if (coupon.code === 'SWEETREWARD') {
-        const loyalty = getCustomerLoyalty(cleanPhone);
+        const loyalty = await getCustomerLoyalty(cleanPhone);
         if (loyalty.rewardsAvailable <= 0) {
           return NextResponse.json({ success: false, error: 'The Sweet Reward unlocks after 5 completed orders, and each reward can be used only once.' }, { status: 400 });
         }
@@ -283,11 +284,15 @@ export async function POST(request: Request) {
     let lastTxError: unknown = null;
 
     for (let attempt = 0; attempt < 3; attempt++) {
-      publicCode = generateUniquePublicOrderCode(db);
-      db.exec('BEGIN TRANSACTION;');
+      publicCode = await generateUniquePublicOrderCode(db);
 
       try {
-        const insertOrder = db.prepare(`
+        // One transaction: the order, its items, the status event, the
+        // payment record and the coupon reservation all land together
+        // or not at all. runInTransaction (src/lib/db.ts) commits on
+        // success and rolls back on throw, on either database driver.
+        await runInTransaction(db, async () => {
+        const insertOrder = await db.prepare(`
           INSERT INTO orders (
             public_code, customer_name, customer_phone, delivery_address, area_landmark,
             delivery_instructions, requested_time, is_gift, recipient_name, recipient_phone, gift_message,
@@ -296,7 +301,7 @@ export async function POST(request: Request) {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        const result = insertOrder.run(
+        const result = await insertOrder.run(
           publicCode,
           customerName.trim(),
           cleanPhone,
@@ -327,16 +332,16 @@ export async function POST(request: Request) {
         // may have taken the last units after the pre-check above. Aborts
         // the whole order instead of overselling the batch.
         for (const vItem of validatedItems) {
-          const limitRow = db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
+          const limitRow = await db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
           const limit = Number(limitRow?.daily_batch_limit ?? 15);
-          if (countSoldToday(db, vItem.productId) + vItem.quantity > limit) {
+          if (await countSoldToday(db, vItem.productId) + vItem.quantity > limit) {
             batchLimitExceeded = true;
             throw new Error('BATCH_LIMIT_EXCEEDED');
           }
         }
 
         // Insert order items
-        const insertItem = db.prepare(`
+        const insertItem = await db.prepare(`
           INSERT INTO order_items (
             order_id, product_id, product_name_en, product_name_bn,
             variant_label_en, variant_label_bn, unit_price, quantity, line_total
@@ -344,7 +349,7 @@ export async function POST(request: Request) {
         `);
 
         for (const vItem of validatedItems) {
-          insertItem.run(
+          await insertItem.run(
             orderId,
             vItem.productId,
             vItem.nameEn,
@@ -358,14 +363,14 @@ export async function POST(request: Request) {
         }
 
         // Insert initial status event
-        db.prepare(`
+        await db.prepare(`
           INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(orderId, 'none', 'new', 'customer', 'Order placed through website', now);
 
         // Insert payment submission if TrxID provided
         if (trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
-          db.prepare(`
+          await db.prepare(`
             INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
             VALUES (?, ?, ?, ?, ?, ?)
           `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), totalAmount, now, 'pending');
@@ -375,17 +380,16 @@ export async function POST(request: Request) {
         // the last use, abort this order instead of charging full price
         // while the customer believed a discount applied.
         if (appliedCouponCode) {
-          if (!incrementCouponUsage(appliedCouponCode)) {
+          if (!await incrementCouponUsage(appliedCouponCode)) {
             couponExhausted = true;
             throw new Error('COUPON_EXHAUSTED');
           }
         }
 
-        db.exec('COMMIT;');
+        });
         lastTxError = null;
         break;
       } catch (txErr) {
-        try { db.exec('ROLLBACK;'); } catch {}
         const message = txErr instanceof Error ? txErr.message : String(txErr);
         if (message.includes('UNIQUE constraint failed') && message.includes('public_code')) {
           lastTxError = txErr;
@@ -458,7 +462,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const filterStatus = searchParams.get('status') || undefined;
 
-    const orders = getAllOrders(filterStatus);
+    const orders = await getAllOrders(filterStatus);
     return NextResponse.json({
       success: true,
       orders,

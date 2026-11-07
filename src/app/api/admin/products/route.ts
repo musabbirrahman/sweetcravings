@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProducts, getCategories, getDb } from '@/lib/db';
+import { getProducts, getCategories, getDb, runInTransaction } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -10,8 +10,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
     }
 
-    const products = getProducts({ includeArchived: true });
-    const categories = getCategories(true);
+    const products = await getProducts({ includeArchived: true });
+    const categories = await getCategories(true);
     return NextResponse.json({ success: true, products, categories });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -47,11 +47,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Name, price, and category are required' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const finalSlug = slug || nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const now = new Date().toISOString();
 
-    const insert = db.prepare(`
+    const insert = await db.prepare(`
       INSERT INTO products (
         category_id, slug, status, sort_order, base_price,
         name_en, name_bn, description_en, description_bn,
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       ) VALUES (?, ?, 'published', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = insert.run(
+    const result = await insert.run(
       categoryId,
       finalSlug,
       parseInt(basePrice, 10),
@@ -83,18 +83,19 @@ export async function POST(request: Request) {
 
     // Variants
     if (variants && Array.isArray(variants)) {
-      const varInsert = db.prepare(`
+      const varInsert = await db.prepare(`
         INSERT INTO product_variants (product_id, label_en, label_bn, sku, price_adjustment, active, sort_order)
         VALUES (?, ?, ?, ?, ?, 1, ?)
       `);
-      variants.forEach((v: any, idx: number) => {
+      for (let idx = 0; idx < variants.length; idx++) {
+        const v = variants[idx] as any;
         if (v.labelEn && v.labelBn) {
-          varInsert.run(productId, v.labelEn, v.labelBn, v.sku || '', parseInt(v.priceAdjustment || 0, 10), idx);
+          await varInsert.run(productId, v.labelEn, v.labelBn, v.sku || '', parseInt(v.priceAdjustment || 0, 10), idx);
         }
-      });
+      }
     }
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO audit_log (actor, action, entity, details, created_at)
       VALUES ('admin', 'CREATE_PRODUCT', 'product_${productId}', ?, ?)
     `).run(`Created ${nameEn}`, now);
@@ -136,7 +137,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'Product ID is required' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const now = new Date().toISOString();
     const hasFullUpdateFields =
       basePrice !== undefined || nameEn !== undefined || nameBn !== undefined ||
@@ -153,8 +154,8 @@ export async function PUT(request: Request) {
       if (!['published', 'sold_out', 'draft', 'archived'].includes(status)) {
         return NextResponse.json({ success: false, error: 'Invalid status' }, { status: 400 });
       }
-      db.prepare('UPDATE products SET status = ?, updated_at = ? WHERE id = ?').run(status, now, id);
-      db.prepare('INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)').run('admin', 'UPDATE_PRODUCT_STATUS', `product_${id}`, `Status changed to ${status}`, now);
+      await db.prepare('UPDATE products SET status = ?, updated_at = ? WHERE id = ?').run(status, now, id);
+      await db.prepare('INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)').run('admin', 'UPDATE_PRODUCT_STATUS', `product_${id}`, `Status changed to ${status}`, now);
       return NextResponse.json({ success: true, status });
     }
 
@@ -164,8 +165,8 @@ export async function PUT(request: Request) {
       if (isNaN(limit) || limit < 0) {
         return NextResponse.json({ success: false, error: 'Daily batch limit must be 0 or more' }, { status: 400 });
       }
-      db.prepare('UPDATE products SET daily_batch_limit = ?, updated_at = ? WHERE id = ?').run(limit, now, id);
-      db.prepare('INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)').run('admin', 'UPDATE_BATCH_LIMIT', `product_${id}`, `Daily limit set to ${limit}`, now);
+      await db.prepare('UPDATE products SET daily_batch_limit = ?, updated_at = ? WHERE id = ?').run(limit, now, id);
+      await db.prepare('INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)').run('admin', 'UPDATE_BATCH_LIMIT', `product_${id}`, `Daily limit set to ${limit}`, now);
       return NextResponse.json({ success: true, dailyBatchLimit: limit });
     }
 
@@ -180,7 +181,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'Price must be 0 or more' }, { status: 400 });
     }
     if (categoryId !== undefined) {
-      const cat = db.prepare('SELECT id FROM categories WHERE id = ?').get(Number(categoryId));
+      const cat = await db.prepare('SELECT id FROM categories WHERE id = ?').get(Number(categoryId));
       if (!cat) {
         return NextResponse.json({ success: false, error: 'That category does not exist' }, { status: 400 });
       }
@@ -202,9 +203,10 @@ export async function PUT(request: Request) {
       }
     }
 
-    db.exec('BEGIN TRANSACTION;');
-    try {
-      db.prepare(`
+    // One transaction: the product row, its sizes and the audit row all
+    // land together or not at all (runInTransaction, src/lib/db.ts).
+    await runInTransaction(db, async () => {
+      await db.prepare(`
         UPDATE products
         SET category_id = COALESCE(?, category_id),
             base_price = COALESCE(?, base_price),
@@ -243,22 +245,19 @@ export async function PUT(request: Request) {
 
       // Sizes are replaced as a set, so a removed size really disappears.
       if (variants !== undefined) {
-        db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
-        const varInsert = db.prepare(`
+        await db.prepare('DELETE FROM product_variants WHERE product_id = ?').run(id);
+        const varInsert = await db.prepare(`
           INSERT INTO product_variants (product_id, label_en, label_bn, sku, price_adjustment, active, sort_order)
           VALUES (?, ?, ?, ?, ?, 1, ?)
         `);
-        variants.forEach((v: any, idx: number) => {
-          varInsert.run(id, v.labelEn.trim(), v.labelBn.trim(), v.sku || '', parseInt(v.priceAdjustment || 0, 10), idx);
-        });
+        for (let idx = 0; idx < variants.length; idx++) {
+          const v = variants[idx] as any;
+          await varInsert.run(id, v.labelEn.trim(), v.labelBn.trim(), v.sku || '', parseInt(v.priceAdjustment || 0, 10), idx);
+        }
       }
 
-      db.prepare('INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)').run('admin', 'UPDATE_PRODUCT', `product_${id}`, 'Product updated', now);
-      db.exec('COMMIT;');
-    } catch (e) {
-      try { db.exec('ROLLBACK;'); } catch {}
-      throw e;
-    }
+      await db.prepare('INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)').run('admin', 'UPDATE_PRODUCT', `product_${id}`, 'Product updated', now);
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -279,12 +278,12 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Product ID required' }, { status: 400 });
     }
 
-    const db = getDb();
+    const db = await getDb();
     const now = new Date().toISOString();
 
     // Safe Soft Archive: Preserve historical order records!
-    db.prepare(`UPDATE products SET status = 'archived', updated_at = ? WHERE id = ?`).run(now, id);
-    db.prepare(`INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)`).run('admin', 'ARCHIVE_PRODUCT', `product_${id}`, 'Product soft archived', now);
+    await db.prepare(`UPDATE products SET status = 'archived', updated_at = ? WHERE id = ?`).run(now, id);
+    await db.prepare(`INSERT INTO audit_log (actor, action, entity, details, created_at) VALUES (?, ?, ?, ?, ?)`).run('admin', 'ARCHIVE_PRODUCT', `product_${id}`, 'Product soft archived', now);
 
     return NextResponse.json({ success: true, message: 'Product archived safely.' });
   } catch (error: any) {

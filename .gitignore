@@ -25,9 +25,15 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.dev.vars
 
 # vercel
 .vercel
+
+# cloudflare (OpenNext build output + wrangler local state)
+.open-next/
+.wrangler/
+cloudflare-env.d.ts
 
 # typescript
 *.tsbuildinfo

@@ -8,7 +8,7 @@ interface ProductPageProps {
 }
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const product = getProductBySlug(params.slug);
+  const product = await getProductBySlug(params.slug);
   if (!product) {
     return { title: 'Dessert Not Found — Sweet Cravings' };
   }
@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   };
 }
 
-export default function ProductPage({ params }: ProductPageProps) {
-  const product = getProductBySlug(params.slug);
+export default async function ProductPage({ params }: ProductPageProps) {
+  const product = await getProductBySlug(params.slug);
 
   // Unknown slug: proper 404 page.
   if (!product) {
@@ -36,7 +36,7 @@ export default function ProductPage({ params }: ProductPageProps) {
   // Ordering them is blocked server-side in POST /api/orders.
   // NOTE: rows from node:sqlite carry a null prototype, which Next.js
   // refuses to pass to a Client Component — serialize to a plain object.
-  const related = getRelatedProducts(product);
+  const related = await getRelatedProducts(product);
   return (
     <ProductDetailView
       product={JSON.parse(JSON.stringify(product))}

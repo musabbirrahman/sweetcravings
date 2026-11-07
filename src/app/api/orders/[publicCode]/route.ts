@@ -28,13 +28,13 @@ export async function GET(
       return NextResponse.json(NOT_FOUND, { status: 404 });
     }
 
-    const order = getOrderWithDetails(params.publicCode, phone);
+    const order = await getOrderWithDetails(params.publicCode, phone);
 
     if (!order) {
       return NextResponse.json(NOT_FOUND, { status: 404 });
     }
 
-    const settings = getShopSettings();
+    const settings = await getShopSettings();
 
     return NextResponse.json({
       success: true,
@@ -88,8 +88,8 @@ export async function PATCH(
       return NextResponse.json(NOT_FOUND, { status: 404 });
     }
 
-    const db = getDb();
-    const order = db.prepare('SELECT id, total_amount, payment_method, payment_status, customer_phone FROM orders WHERE public_code = ?').get(params.publicCode) as { id: number; total_amount: number; payment_method: string; payment_status: string; customer_phone: string } | null;
+    const db = await getDb();
+    const order = await db.prepare('SELECT id, total_amount, payment_method, payment_status, customer_phone FROM orders WHERE public_code = ?').get(params.publicCode) as { id: number; total_amount: number; payment_method: string; payment_status: string; customer_phone: string } | null;
 
     if (!order || normalizePhone(order.customer_phone) !== normalizePhone(phone)) {
       return NextResponse.json(NOT_FOUND, { status: 404 });
@@ -120,20 +120,20 @@ export async function PATCH(
     const now = new Date().toISOString();
 
     // Insert new payment submission record
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(order.id, prov, trxId.trim(), order.total_amount, now, 'pending');
 
     // Update order payment status to 'submitted'
-    db.prepare(`
+    await db.prepare(`
       UPDATE orders
       SET payment_status = 'submitted', updated_at = ?
       WHERE id = ?
     `).run(now, order.id);
 
     // Record audit event
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);

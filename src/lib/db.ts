@@ -1,43 +1,224 @@
-import { DatabaseSync } from 'node:sqlite';
-import path from 'node:path';
-import fs from 'node:fs';
-import { 
-  Category, 
-  Product, 
-  ProductVariant, 
-  Order, 
-  OrderItem, 
-  OrderStatusEvent, 
-  PaymentSubmission, 
+import type { Client as LibsqlClient } from '@libsql/client';
+import { getTursoClient } from './turso';
+import {
+  Category,
+  Product,
+  ProductVariant,
+  Order,
+  OrderItem,
+  OrderStatusEvent,
+  PaymentSubmission,
   ShopSettings,
   Coupon,
-  LoyaltyInfo 
+  LoyaltyInfo
 } from './types';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// ---------------------------------------------------------------------------
+// Driver-neutral database handle.
+//
+// The app talks to SQLite through this small surface only: exec() and
+// prepare() with get()/all()/run(). Two drivers implement it, and the
+// rest of the app never sees which one is active:
+//
+// - Local (default): Node's built-in `node:sqlite`, one file at
+//   data/sweetcravings.db. Works offline with zero config. It is loaded
+//   lazily (dynamic import, inside the local branch only) so the module
+//   can also load on Cloudflare Workers, where node:sqlite does not
+//   exist — on Workers TURSO_DATABASE_URL is always set instead.
+// - Turso (when TURSO_DATABASE_URL is set): the async `@libsql/client`,
+//   against a remote libsql:// database (or a `file:` URL, used by the
+//   tests). @libsql/client runs on Cloudflare Workers (its `workerd`
+//   export is a pure fetch client); the native `libsql` package used by
+//   the first Turso pass cannot run on Workers, so it is gone.
+//
+// The query surface is async throughout (prepare() returns a statement
+// whose get()/all()/run() return promises), so every route handler and
+// helper awaits its queries. That is the price of a driver that works
+// on Workers; the call sites are otherwise unchanged.
+// ---------------------------------------------------------------------------
+
+/** One prepared statement: the only query surface the app uses. */
+export interface DbStatement {
+  get(...params: unknown[]): Promise<unknown>;
+  all(...params: unknown[]): Promise<unknown[]>;
+  run(...params: unknown[]): Promise<{ changes: number; lastInsertRowid: number | bigint }>;
 }
 
-const DB_PATH = path.join(DATA_DIR, 'sweetcravings.db');
+/** The database handle every query in the app runs through. */
+export interface DbHandle {
+  exec(sql: string): Promise<void>;
+  prepare(sql: string): DbStatement;
+  /**
+   * Run fn() inside one transaction (commit on success, rollback on
+   * throw). Both drivers run this the same way; callers must use this
+   * instead of BEGIN/COMMIT by hand, because a bare `BEGIN` sent as a
+   * lone statement to a remote database does not hold a transaction
+   * across the separate requests that follow it.
+   */
+  transaction<T>(fn: (tx: DbHandle) => Promise<T> | T): Promise<T>;
+}
 
-let _db: DatabaseSync | null = null;
+/** Convert a query's arguments to the values @libsql/client accepts. */
+function toLibsqlArgs(params: unknown[]): Array<string | number | bigint | boolean | null | Uint8Array> {
+  return params.map((p) => {
+    if (p === undefined) return null;
+    if (typeof p === 'string' || typeof p === 'number' || typeof p === 'bigint' || typeof p === 'boolean' || p === null) return p;
+    if (p instanceof Uint8Array) return p;
+    return String(p);
+  });
+}
 
-export function getDb(): DatabaseSync {
-  if (!_db) {
-    _db = new DatabaseSync(DB_PATH);
-    _db.exec('PRAGMA foreign_keys = ON;');
-    _db.exec('PRAGMA journal_mode = WAL;');
-    _db.exec('PRAGMA busy_timeout = 5000;');
-    initSchema(_db);
-    seedInitialData(_db);
-    seedDefaultCoupons(_db);
+/**
+ * An object that can run one statement (or a script) — a @libsql/client
+ * Client and a Transaction both qualify.
+ */
+type LibsqlExecutor = Pick<LibsqlClient, 'execute' | 'executeMultiple'>;
+
+/** Wrap a @libsql/client Client (or a Transaction) as a DbHandle. */
+function wrapRemote(ex: LibsqlExecutor): DbHandle {
+  return {
+    exec: async (sql: string): Promise<void> => {
+      await ex.executeMultiple(sql);
+    },
+    prepare: (sql: string): DbStatement => ({
+      get: async (...params: unknown[]) => {
+        const rs = await ex.execute({ sql, args: toLibsqlArgs(params) });
+        return rs.rows[0] as unknown;
+      },
+      all: async (...params: unknown[]) => {
+        const rs = await ex.execute({ sql, args: toLibsqlArgs(params) });
+        return rs.rows as unknown as unknown[];
+      },
+      run: async (...params: unknown[]) => {
+        const rs = await ex.execute({ sql, args: toLibsqlArgs(params) });
+        return { changes: rs.rowsAffected, lastInsertRowid: rs.lastInsertRowid ?? 0 };
+      },
+    }),
+    transaction: async <T>(): Promise<T> => {
+      // A bare executor has no transaction of its own; the client-level
+      // wrapper below replaces this method with a real one.
+      throw new Error('transaction() is not available on this handle');
+    },
+  };
+}
+
+/** Wrap a @libsql/client Client as a DbHandle with real transactions. */
+function wrapRemoteClient(client: LibsqlClient): DbHandle {
+  const base = wrapRemote(client);
+  return {
+    ...base,
+    transaction: async <T>(fn: (tx: DbHandle) => Promise<T> | T): Promise<T> => {
+      const tx = await client.transaction('write');
+      const txHandle = wrapRemote(tx);
+      try {
+        const result = await fn(txHandle);
+        await tx.commit();
+        return result;
+      } catch (err) {
+        try { await tx.rollback(); } catch {}
+        throw err;
+      }
+    },
+  };
+}
+
+/**
+ * Build the local handle: Node's built-in `node:sqlite`, one file at
+ * data/sweetcravings.db. node:sqlite (and node:fs/path) are imported
+ * dynamically here — and only here — so this module still loads on
+ * Cloudflare Workers, where those modules do not exist.
+ */
+async function makeLocalHandle(): Promise<DbHandle> {
+  const { DatabaseSync } = await import('node:sqlite');
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+  const DATA_DIR = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-  return _db;
+  const db = new DatabaseSync(path.join(DATA_DIR, 'sweetcravings.db'));
+  db.exec('PRAGMA foreign_keys = ON;');
+  db.exec('PRAGMA journal_mode = WAL;');
+  db.exec('PRAGMA busy_timeout = 5000;');
+  const handle: DbHandle = {
+    exec: async (sql: string): Promise<void> => {
+      db.exec(sql);
+    },
+    prepare: (sql: string): DbStatement => {
+      const stmt = db.prepare(sql);
+      return {
+        get: async (...params: unknown[]) => stmt.get(...(params as never[])),
+        all: async (...params: unknown[]) => stmt.all(...(params as never[])),
+        run: async (...params: unknown[]) => stmt.run(...(params as never[])),
+      };
+    },
+    transaction: async <T>(fn: (tx: DbHandle) => Promise<T> | T): Promise<T> => {
+      db.exec('BEGIN TRANSACTION;');
+      try {
+        const result = await fn(handle);
+        db.exec('COMMIT;');
+        return result;
+      } catch (err) {
+        try { db.exec('ROLLBACK;'); } catch {}
+        throw err;
+      }
+    },
+  };
+  return handle;
 }
 
-function initSchema(db: DatabaseSync) {
-  db.exec(`
+// Turso is on when a database URL is set. The auth token is optional:
+// a remote database needs one, a local `file:` URL does not.
+export function isTursoEnabled(): boolean {
+  return (process.env.TURSO_DATABASE_URL || '').trim().length > 0;
+}
+
+let _db: DbHandle | null = null;
+let _dbInit: Promise<DbHandle> | null = null;
+
+/**
+ * Get the database handle, creating it (and the schema + seed data) on
+ * first use. The first call's promise is shared, so concurrent requests
+ * at cold start all wait on one initialisation instead of racing to
+ * create the schema twice.
+ */
+export async function getDb(): Promise<DbHandle> {
+  if (_db) return _db;
+  if (!_dbInit) {
+    _dbInit = (async () => {
+      const client = await getTursoClient();
+      let handle: DbHandle;
+      if (client) {
+        handle = wrapRemoteClient(client);
+        // Remote databases have no local journal file: WAL and
+        // busy-timeout make no sense over the wire. Foreign keys are
+        // attempted and ignored if the server refuses the pragma.
+        try { await handle.exec('PRAGMA foreign_keys = ON;'); } catch {}
+      } else {
+        handle = await makeLocalHandle();
+      }
+      await initSchema(handle);
+      await seedInitialData(handle);
+      await seedDefaultCoupons(handle);
+      _db = handle;
+      return handle;
+    })();
+  }
+  return _dbInit;
+}
+
+/**
+ * Run fn() inside one database transaction. This is the only supported
+ * way to group writes: use it for checkout, product edits and backup
+ * restore. It commits on success and rolls back on throw, on either
+ * driver.
+ */
+export async function runInTransaction<T>(db: DbHandle, fn: (tx: DbHandle) => Promise<T> | T): Promise<T> {
+  return db.transaction(fn);
+}
+
+async function initSchema(db: DbHandle) {
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT UNIQUE NOT NULL,
@@ -172,6 +353,19 @@ function initSchema(db: DatabaseSync) {
       created_at TEXT NOT NULL
     );
 
+    -- Product photos uploaded through the admin panel. On Cloudflare
+    -- Workers there is no disk, so resized photo bytes live here
+    -- (one row per upload) and are served by GET /api/images/[id].
+    -- Locally (no Turso vars) uploads still go to
+    -- public/uploads/products/ instead, so this table stays empty.
+    CREATE TABLE IF NOT EXISTS product_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      mime_type TEXT NOT NULL,
+      data BLOB NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_orders_public_code ON orders(public_code);
     CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone);
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);
@@ -182,48 +376,48 @@ function initSchema(db: DatabaseSync) {
 
   // Non-destructive migrations for existing SQLite databases
   try {
-    db.exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT;");
+    await db.exec("ALTER TABLE orders ADD COLUMN coupon_code TEXT;");
   } catch {}
   try {
-    db.exec("ALTER TABLE orders ADD COLUMN discount_amount INTEGER DEFAULT 0;");
+    await db.exec("ALTER TABLE orders ADD COLUMN discount_amount INTEGER DEFAULT 0;");
   } catch {}
   try {
-    db.exec("ALTER TABLE orders ADD COLUMN is_gift INTEGER DEFAULT 0;");
+    await db.exec("ALTER TABLE orders ADD COLUMN is_gift INTEGER DEFAULT 0;");
   } catch {}
   try {
-    db.exec("ALTER TABLE orders ADD COLUMN recipient_name TEXT;");
+    await db.exec("ALTER TABLE orders ADD COLUMN recipient_name TEXT;");
   } catch {}
   try {
-    db.exec("ALTER TABLE orders ADD COLUMN recipient_phone TEXT;");
+    await db.exec("ALTER TABLE orders ADD COLUMN recipient_phone TEXT;");
   } catch {}
   try {
-    db.exec("ALTER TABLE orders ADD COLUMN gift_message TEXT;");
+    await db.exec("ALTER TABLE orders ADD COLUMN gift_message TEXT;");
   } catch {}
   try {
-    db.exec("ALTER TABLE products ADD COLUMN daily_batch_limit INTEGER DEFAULT 15;");
+    await db.exec("ALTER TABLE products ADD COLUMN daily_batch_limit INTEGER DEFAULT 15;");
   } catch {}
 }
 
-function seedInitialData(db: DatabaseSync) {
-  const catCount = (db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number }).count;
+async function seedInitialData(db: DbHandle) {
+  const catCount = (await db.prepare('SELECT COUNT(*) as count FROM categories').get() as { count: number }).count;
   if (catCount > 0) return;
 
   const now = new Date().toISOString();
 
   // 1. Categories
-  const insertCat = db.prepare(`
+  const insertCat = await db.prepare(`
     INSERT INTO categories (slug, sort_order, active, name_en, name_bn, description_en, description_bn)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insertCat.run('flans-puddings', 1, 1, 'Flans & Puddings', 'ফ্ল্যান ও পুডিং', 'Silky, velvety melt-in-mouth creamy desserts with golden caramel.', 'সোনালী ক্যারামেলের সাথে মুখে মিলিয়ে যাওয়া সিল্কি ক্রিমি ডেজার্ট।');
-  insertCat.run('signature-cakes', 2, 1, 'Signature Cakes', 'স্পেশাল কেক', 'Rich, decadent homemade cakes baked fresh from scratch.', 'খাঁটি মাখনে ও চকলেট গানাশে তৈরি বিশেষ কেক।');
-  insertCat.run('jar-desserts', 3, 1, 'Dessert Jars', 'জার ডেজার্ট', 'Portion-perfect layered dessert jars, easy to share & indulge.', 'স্তরযুক্ত সুস্বাদু ডেজার্ট জার, যেকোনো অনুষ্ঠানের জন্য উপযোগী।');
-  insertCat.run('pastries-tarts', 4, 1, 'Pastries & Tarts', 'পেস্ট্রি ও কাপকেক', 'Artisanal individual pastries and gourmet frosted cupcakes.', 'নরম স্পঞ্জ কাপকেক ও ক্রিস্পি ফ্রুট টার্ট।');
-  insertCat.run('traditional-fusion', 5, 1, 'Traditional & Fusion', 'ঐতিহ্যবাহী ও ফিউশন মিষ্টি', 'Bangladeshi heritage favorites refined with artisanal technique.', 'খাঁটি দুধে জ্বাল দেওয়া ঐতিহ্যবাহী শাহী ফিরনি ও ক্ষীর।');
+  await insertCat.run('flans-puddings', 1, 1, 'Flans & Puddings', 'ফ্ল্যান ও পুডিং', 'Silky, velvety melt-in-mouth creamy desserts with golden caramel.', 'সোনালী ক্যারামেলের সাথে মুখে মিলিয়ে যাওয়া সিল্কি ক্রিমি ডেজার্ট।');
+  await insertCat.run('signature-cakes', 2, 1, 'Signature Cakes', 'স্পেশাল কেক', 'Rich, decadent homemade cakes baked fresh from scratch.', 'খাঁটি মাখনে ও চকলেট গানাশে তৈরি বিশেষ কেক।');
+  await insertCat.run('jar-desserts', 3, 1, 'Dessert Jars', 'জার ডেজার্ট', 'Portion-perfect layered dessert jars, easy to share & indulge.', 'স্তরযুক্ত সুস্বাদু ডেজার্ট জার, যেকোনো অনুষ্ঠানের জন্য উপযোগী।');
+  await insertCat.run('pastries-tarts', 4, 1, 'Pastries & Tarts', 'পেস্ট্রি ও কাপকেক', 'Artisanal individual pastries and gourmet frosted cupcakes.', 'নরম স্পঞ্জ কাপকেক ও ক্রিস্পি ফ্রুট টার্ট।');
+  await insertCat.run('traditional-fusion', 5, 1, 'Traditional & Fusion', 'ঐতিহ্যবাহী ও ফিউশন মিষ্টি', 'Bangladeshi heritage favorites refined with artisanal technique.', 'খাঁটি দুধে জ্বাল দেওয়া ঐতিহ্যবাহী শাহী ফিরনি ও ক্ষীর।');
 
   // 2. Products
-  const insertProd = db.prepare(`
+  const insertProd = await db.prepare(`
     INSERT INTO products (
       category_id, slug, status, sort_order, base_price,
       name_en, name_bn, description_en, description_bn,
@@ -232,13 +426,13 @@ function seedInitialData(db: DatabaseSync) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertVar = db.prepare(`
+  const insertVar = await db.prepare(`
     INSERT INTO product_variants (product_id, label_en, label_bn, sku, price_adjustment, active, sort_order)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   // Product 1: Signature Caramel Custard Flan (Brand Hero)
-  insertProd.run(
+  await insertProd.run(
     1,
     'caramel-custard-flan',
     'published',
@@ -258,11 +452,11 @@ function seedInitialData(db: DatabaseSync) {
     now,
     now
   );
-  insertVar.run(1, 'Standard (approx. 500g)', 'স্ট্যান্ডার্ড (প্রায় ৫০০ গ্রাম)', 'FLAN-500', 0, 1, 1);
-  insertVar.run(1, 'Family Size (approx. 1kg)', 'ফ্যামিলি সাইজ (প্রায় ১ কেজি)', 'FLAN-1000', 400, 1, 2);
+  await insertVar.run(1, 'Standard (approx. 500g)', 'স্ট্যান্ডার্ড (প্রায় ৫০০ গ্রাম)', 'FLAN-500', 0, 1, 1);
+  await insertVar.run(1, 'Family Size (approx. 1kg)', 'ফ্যামিলি সাইজ (প্রায় ১ কেজি)', 'FLAN-1000', 400, 1, 2);
 
   // Product 2: Royal Chocolate Fudge Cake
-  insertProd.run(
+  await insertProd.run(
     2,
     'royal-chocolate-fudge-cake',
     'published',
@@ -282,12 +476,12 @@ function seedInitialData(db: DatabaseSync) {
     now,
     now
   );
-  insertVar.run(2, 'Medium (500g Bento)', 'মিডিয়াম (৫০০ গ্রাম বেন্টো)', 'CAKE-FUDGE-500', 0, 1, 1);
-  insertVar.run(2, 'Full 1 Pound (450-500g)', 'ফুল ১ পাউন্ড', 'CAKE-FUDGE-1LB', 100, 1, 2);
-  insertVar.run(2, 'Large 2 Pound (approx. 1kg)', 'বড় ২ পাউন্ড (১ কেজি)', 'CAKE-FUDGE-2LB', 650, 1, 3);
+  await insertVar.run(2, 'Medium (500g Bento)', 'মিডিয়াম (৫০০ গ্রাম বেন্টো)', 'CAKE-FUDGE-500', 0, 1, 1);
+  await insertVar.run(2, 'Full 1 Pound (450-500g)', 'ফুল ১ পাউন্ড', 'CAKE-FUDGE-1LB', 100, 1, 2);
+  await insertVar.run(2, 'Large 2 Pound (approx. 1kg)', 'বড় ২ পাউন্ড (১ কেজি)', 'CAKE-FUDGE-2LB', 650, 1, 3);
 
   // Product 3: Lotus Biscoff Layered Jar Cake
-  insertProd.run(
+  await insertProd.run(
     3,
     'lotus-biscoff-jar-cake',
     'published',
@@ -307,12 +501,12 @@ function seedInitialData(db: DatabaseSync) {
     now,
     now
   );
-  insertVar.run(3, 'Single Jar (250ml)', '১টি জার (২৫০ মিলি)', 'JAR-BISC-1', 0, 1, 1);
-  insertVar.run(3, 'Twin Pack (2 Jars - Save ৳30)', 'টুইন প্যাক (২টি জার - ৳৩০ ছাড়)', 'JAR-BISC-2', 250, 1, 2);
-  insertVar.run(3, 'Party Box (4 Jars - Save ৳100)', 'পার্টি বক্স (৪টি জার - ৳১০০ ছাড়)', 'JAR-BISC-4', 740, 1, 3);
+  await insertVar.run(3, 'Single Jar (250ml)', '১টি জার (২৫০ মিলি)', 'JAR-BISC-1', 0, 1, 1);
+  await insertVar.run(3, 'Twin Pack (2 Jars - Save ৳30)', 'টুইন প্যাক (২টি জার - ৳৩০ ছাড়)', 'JAR-BISC-2', 250, 1, 2);
+  await insertVar.run(3, 'Party Box (4 Jars - Save ৳100)', 'পার্টি বক্স (৪টি জার - ৳১০০ ছাড়)', 'JAR-BISC-4', 740, 1, 3);
 
   // Product 4: Classic Italian Tiramisu Cup
-  insertProd.run(
+  await insertProd.run(
     3,
     'classic-tiramisu-cup',
     'published',
@@ -334,7 +528,7 @@ function seedInitialData(db: DatabaseSync) {
   );
 
   // Product 5: Rajshahi Special Mango Delight
-  insertProd.run(
+  await insertProd.run(
     5,
     'rajshahi-mango-delight',
     'published',
@@ -356,7 +550,7 @@ function seedInitialData(db: DatabaseSync) {
   );
 
   // Product 6: Shahi Pistachio & Saffron Firni
-  insertProd.run(
+  await insertProd.run(
     5,
     'shahi-pistachio-saffron-firni',
     'published',
@@ -376,11 +570,11 @@ function seedInitialData(db: DatabaseSync) {
     now,
     now
   );
-  insertVar.run(6, 'Clay Matir Cup (Single 200g)', 'মাটির পাত্রে ১ কাপ (২০০ গ্রাম)', 'FIRNI-1', 0, 1, 1);
-  insertVar.run(6, 'Clay Matir Bowl (Family 500g)', 'মাটির বড় পাত্রে (৫০০ গ্রাম)', 'FIRNI-FAM', 280, 1, 2);
+  await insertVar.run(6, 'Clay Matir Cup (Single 200g)', 'মাটির পাত্রে ১ কাপ (২০০ গ্রাম)', 'FIRNI-1', 0, 1, 1);
+  await insertVar.run(6, 'Clay Matir Bowl (Family 500g)', 'মাটির বড় পাত্রে (৫০০ গ্রাম)', 'FIRNI-FAM', 280, 1, 2);
 
   // Product 7: Velvet Strawberry Cupcakes (Box of 4)
-  insertProd.run(
+  await insertProd.run(
     4,
     'red-velvet-strawberry-cupcakes',
     'published',
@@ -402,54 +596,54 @@ function seedInitialData(db: DatabaseSync) {
   );
 
   // 3. Initial Settings
-  const insertSetting = db.prepare(`
+  const insertSetting = await db.prepare(`
     INSERT INTO shop_settings (key, value, updated_at, updated_by)
     VALUES (?, ?, ?, ?)
   `);
 
-  insertSetting.run('service_city', 'Rajshahi', now, 'system');
-  insertSetting.run('coverage_statement_en', 'Fresh homemade delivery available across Rajshahi City', now, 'system');
-  insertSetting.run('coverage_statement_bn', 'রাজশাহী শহরজুড়ে ঘরে তৈরি তাজা ডেজার্ট হোম ডেলিভারি', now, 'system');
-  insertSetting.run('delivery_fee', '50', now, 'system');
-  insertSetting.run('free_delivery_threshold', '1200', now, 'system');
-  insertSetting.run('is_store_paused', 'false', now, 'system');
-  insertSetting.run('pause_message_en', 'Our kitchen is currently fulfilling active orders. New orders will resume shortly!', now, 'system');
-  insertSetting.run('pause_message_bn', 'কিচেনে চাপ বেশি থাকায় সাময়িকভাবে নতুন অর্ডার গ্রহণ বন্ধ রয়েছে। শীঘ্রই অর্ডার নেওয়া শুরু হবে!', now, 'system');
-  insertSetting.run('whatsapp_number', '', now, 'system');
-  insertSetting.run('cod_enabled', 'true', now, 'system');
-  insertSetting.run('bkash_enabled', 'true', now, 'system');
+  await insertSetting.run('service_city', 'Rajshahi', now, 'system');
+  await insertSetting.run('coverage_statement_en', 'Fresh homemade delivery available across Rajshahi City', now, 'system');
+  await insertSetting.run('coverage_statement_bn', 'রাজশাহী শহরজুড়ে ঘরে তৈরি তাজা ডেজার্ট হোম ডেলিভারি', now, 'system');
+  await insertSetting.run('delivery_fee', '50', now, 'system');
+  await insertSetting.run('free_delivery_threshold', '1200', now, 'system');
+  await insertSetting.run('is_store_paused', 'false', now, 'system');
+  await insertSetting.run('pause_message_en', 'Our kitchen is currently fulfilling active orders. New orders will resume shortly!', now, 'system');
+  await insertSetting.run('pause_message_bn', 'কিচেনে চাপ বেশি থাকায় সাময়িকভাবে নতুন অর্ডার গ্রহণ বন্ধ রয়েছে। শীঘ্রই অর্ডার নেওয়া শুরু হবে!', now, 'system');
+  await insertSetting.run('whatsapp_number', '', now, 'system');
+  await insertSetting.run('cod_enabled', 'true', now, 'system');
+  await insertSetting.run('bkash_enabled', 'true', now, 'system');
   // Wallet numbers are intentionally left blank here: they must be set by
   // the shop owner in the admin settings. Never seed a real-looking number.
-  insertSetting.run('bkash_number', '', now, 'system');
-  insertSetting.run('bkash_type', 'personal', now, 'system');
-  insertSetting.run('bkash_instructions_en', '1. Open your bKash app and select Send Money.\n2. Send the exact order total to the bKash number shown on your order page.\n3. Complete the payment and copy the Transaction ID (TrxID).\n4. Paste the TrxID on your order page so we can verify it quickly.', now, 'system');
-  insertSetting.run('bkash_instructions_bn', '১. বিকাশ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. অর্ডার পেজে দেখানো বিকাশ নম্বরে সর্বমোট অর্ডারের টাকার পরিমাণ পাঠান।\n৩. পেমেন্ট সম্পন্ন করে TrxID কপি করুন।\n৪. দ্রুত ভেরিফিকেশনের জন্য TrxID অর্ডার পেজে পেস্ট করুন।', now, 'system');
-  insertSetting.run('nagad_enabled', 'true', now, 'system');
-  insertSetting.run('nagad_number', '', now, 'system');
-  insertSetting.run('nagad_type', 'personal', now, 'system');
-  insertSetting.run('nagad_instructions_en', '1. Open your Nagad app and select Send Money.\n2. Send the exact order amount to the Nagad number shown on your order page.\n3. Note down the Transaction ID (TrxID) and enter it on your order page.', now, 'system');
-  insertSetting.run('nagad_instructions_bn', '১. নগদ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. অর্ডার পেজে দেখানো নগদ নম্বরে সঠিক পরিমাণ টাকা পাঠান।\n৩. পেমেন্ট শেষে প্রাপ্ত TrxID অর্ডার পেজে লিখে সাবমিট করুন।', now, 'system');
+  await insertSetting.run('bkash_number', '', now, 'system');
+  await insertSetting.run('bkash_type', 'personal', now, 'system');
+  await insertSetting.run('bkash_instructions_en', '1. Open your bKash app and select Send Money.\n2. Send the exact order total to the bKash number shown on your order page.\n3. Complete the payment and copy the Transaction ID (TrxID).\n4. Paste the TrxID on your order page so we can verify it quickly.', now, 'system');
+  await insertSetting.run('bkash_instructions_bn', '১. বিকাশ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. অর্ডার পেজে দেখানো বিকাশ নম্বরে সর্বমোট অর্ডারের টাকার পরিমাণ পাঠান।\n৩. পেমেন্ট সম্পন্ন করে TrxID কপি করুন।\n৪. দ্রুত ভেরিফিকেশনের জন্য TrxID অর্ডার পেজে পেস্ট করুন।', now, 'system');
+  await insertSetting.run('nagad_enabled', 'true', now, 'system');
+  await insertSetting.run('nagad_number', '', now, 'system');
+  await insertSetting.run('nagad_type', 'personal', now, 'system');
+  await insertSetting.run('nagad_instructions_en', '1. Open your Nagad app and select Send Money.\n2. Send the exact order amount to the Nagad number shown on your order page.\n3. Note down the Transaction ID (TrxID) and enter it on your order page.', now, 'system');
+  await insertSetting.run('nagad_instructions_bn', '১. নগদ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. অর্ডার পেজে দেখানো নগদ নম্বরে সঠিক পরিমাণ টাকা পাঠান।\n৩. পেমেন্ট শেষে প্রাপ্ত TrxID অর্ডার পেজে লিখে সাবমিট করুন।', now, 'system');
 
 }
 
-function seedDefaultCoupons(db: DatabaseSync) {
+async function seedDefaultCoupons(db: DbHandle) {
   try {
-    const couponCount = (db.prepare('SELECT COUNT(*) as count FROM coupons').get() as { count: number }).count;
+    const couponCount = (await db.prepare('SELECT COUNT(*) as count FROM coupons').get() as { count: number }).count;
     if (couponCount === 0) {
       const now = new Date().toISOString();
-      const insertCoupon = db.prepare(`
+      const insertCoupon = await db.prepare(`
         INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, times_used, active, expires_at, created_at)
         VALUES (?, ?, ?, ?, ?, ?, 0, 1, NULL, ?)
       `);
-      insertCoupon.run('WELCOME50', 'fixed', 50, 400, null, 100, now);
-      insertCoupon.run('SWEETRAJ', 'percentage', 10, 600, 150, 50, now);
-      insertCoupon.run('EIDMUBARAK', 'percentage', 15, 1000, 250, 50, now);
-      insertCoupon.run('SWEETREWARD', 'fixed', 150, 200, null, 5000, now);
+      await insertCoupon.run('WELCOME50', 'fixed', 50, 400, null, 100, now);
+      await insertCoupon.run('SWEETRAJ', 'percentage', 10, 600, 150, 50, now);
+      await insertCoupon.run('EIDMUBARAK', 'percentage', 15, 1000, 250, 50, now);
+      await insertCoupon.run('SWEETREWARD', 'fixed', 150, 200, null, 5000, now);
     } else {
-      const hasReward = db.prepare('SELECT id FROM coupons WHERE code = ?').get('SWEETREWARD');
+      const hasReward = await db.prepare('SELECT id FROM coupons WHERE code = ?').get('SWEETREWARD');
       if (!hasReward) {
         const now = new Date().toISOString();
-        db.prepare(`
+        await db.prepare(`
           INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, times_used, active, expires_at, created_at)
           VALUES ('SWEETREWARD', 'fixed', 150, 200, NULL, 5000, 0, 1, NULL, ?)
         `).run(now);
@@ -458,9 +652,9 @@ function seedDefaultCoupons(db: DatabaseSync) {
   } catch {}
 }
 
-export function getShopSettings(): ShopSettings {
-  const db = getDb();
-  const rows = db.prepare('SELECT key, value FROM shop_settings').all() as { key: string; value: string }[];
+export async function getShopSettings(): Promise<ShopSettings> {
+  const db = await getDb();
+  const rows = await db.prepare('SELECT key, value FROM shop_settings').all() as { key: string; value: string }[];
   
   const map: Record<string, string> = {};
   for (const r of rows) {
@@ -497,27 +691,27 @@ export function getShopSettings(): ShopSettings {
   };
 }
 
-export function updateShopSetting(key: string, value: string, actor: string = 'admin') {
-  const db = getDb();
+export async function updateShopSetting(key: string, value: string, actor: string = 'admin') {
+  const db = await getDb();
   const now = new Date().toISOString();
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO shop_settings (key, value, updated_at, updated_by)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by
   `).run(key, value, now, actor);
 
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO audit_log (actor, action, entity, details, created_at)
     VALUES (?, ?, ?, ?, ?)
   `).run(actor, 'UPDATE_SETTING', key, `Value set to: ${value.slice(0, 80)}`, now);
 }
 
-export function getCategories(includeInactive: boolean = false): Category[] {
-  const db = getDb();
+export async function getCategories(includeInactive: boolean = false): Promise<Category[]> {
+  const db = await getDb();
   const query = includeInactive 
     ? 'SELECT * FROM categories ORDER BY sort_order ASC'
     : 'SELECT * FROM categories WHERE active = 1 ORDER BY sort_order ASC';
-  return db.prepare(query).all() as unknown as Category[];
+  return await db.prepare(query).all() as unknown as Category[];
 }
 
 /** URL-safe slug from an English name: lowercased, words joined with '-'. */
@@ -530,52 +724,52 @@ export function slugifyCategoryName(name: string): string {
 }
 
 /** How many products (any status except archived) use a category. */
-export function countProductsInCategory(categoryId: number): number {
-  const db = getDb();
-  const row = db.prepare(
+export async function countProductsInCategory(categoryId: number): Promise<number> {
+  const db = await getDb();
+  const row = await db.prepare(
     `SELECT COUNT(*) as count FROM products WHERE category_id = ? AND status != 'archived'`
   ).get(categoryId) as { count: number } | undefined;
   return Number(row?.count || 0);
 }
 
-export function createCategory(input: {
+export async function createCategory(input: {
   name_en: string;
   name_bn: string;
   description_en?: string;
   description_bn?: string;
   sort_order?: number;
   active?: number;
-}): Category {
-  const db = getDb();
+}): Promise<Category> {
+  const db = await getDb();
   const slug = slugifyCategoryName(input.name_en);
   if (!slug) throw new Error('Category name must contain letters or numbers for a web address.');
-  const existing = db.prepare('SELECT id FROM categories WHERE slug = ?').get(slug);
+  const existing = await db.prepare('SELECT id FROM categories WHERE slug = ?').get(slug);
   if (existing) throw new Error(`A category with the web address "${slug}" already exists. Please use a different English name.`);
-  const sortOrder = input.sort_order ?? ((db.prepare('SELECT COALESCE(MAX(sort_order), 0) as m FROM categories').get() as { m: number }).m + 1);
-  const result = db.prepare(`
+  const sortOrder = input.sort_order ?? ((await db.prepare('SELECT COALESCE(MAX(sort_order), 0) as m FROM categories').get() as { m: number }).m + 1);
+  const result = await db.prepare(`
     INSERT INTO categories (slug, sort_order, active, name_en, name_bn, description_en, description_bn)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(slug, sortOrder, input.active ?? 1, input.name_en.trim(), input.name_bn.trim(), input.description_en?.trim() || '', input.description_bn?.trim() || '');
   const id = Number(result.lastInsertRowid);
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO audit_log (actor, action, entity, details, created_at)
     VALUES ('admin', 'CREATE_CATEGORY', ?, ?, ?)
   `).run(`category_${id}`, `Created ${input.name_en}`, new Date().toISOString());
-  return db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as unknown as Category;
+  return await db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as unknown as Category;
 }
 
-export function updateCategory(id: number, input: {
+export async function updateCategory(id: number, input: {
   name_en?: string;
   name_bn?: string;
   description_en?: string;
   description_bn?: string;
   sort_order?: number;
   active?: number;
-}): Category | null {
-  const db = getDb();
+}): Promise<Category | null> {
+  const db = await getDb();
   const now = new Date().toISOString();
   // The slug stays as created (stable web address) even if the name changes.
-  db.prepare(`
+  await db.prepare(`
     UPDATE categories
     SET name_en = COALESCE(?, name_en),
         name_bn = COALESCE(?, name_bn),
@@ -593,31 +787,31 @@ export function updateCategory(id: number, input: {
     input.active ?? null,
     id
   );
-  db.prepare(`
+  await db.prepare(`
     INSERT INTO audit_log (actor, action, entity, details, created_at)
     VALUES ('admin', 'UPDATE_CATEGORY', ?, ?, ?)
   `).run(`category_${id}`, 'Category updated', now);
-  return db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as unknown as Category | null;
+  return await db.prepare('SELECT * FROM categories WHERE id = ?').get(id) as unknown as Category | null;
 }
 
 /**
  * Delete a category only when no live product uses it.
  * Returns { deleted: true } or { deleted: false, productCount }.
  */
-export function deleteCategory(id: number): { deleted: boolean; productCount: number } {
-  const db = getDb();
-  const productCount = countProductsInCategory(id);
+export async function deleteCategory(id: number): Promise<{ deleted: boolean; productCount: number }> {
+  const db = await getDb();
+  const productCount = await countProductsInCategory(id);
   if (productCount > 0) return { deleted: false, productCount };
-  db.prepare('DELETE FROM categories WHERE id = ?').run(id);
-  db.prepare(`
+  await db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+  await db.prepare(`
     INSERT INTO audit_log (actor, action, entity, details, created_at)
     VALUES ('admin', 'DELETE_CATEGORY', ?, ?, ?)
   `).run(`category_${id}`, 'Category deleted', new Date().toISOString());
   return { deleted: true, productCount: 0 };
 }
 
-export function getProducts(options: { categoryId?: number; status?: string; includeArchived?: boolean } = {}): Product[] {
-  const db = getDb();
+export async function getProducts(options: { categoryId?: number; status?: string; includeArchived?: boolean } = {}): Promise<Product[]> {
+  const db = await getDb();
   let sql = `
     SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
     FROM products p
@@ -642,18 +836,18 @@ export function getProducts(options: { categoryId?: number; status?: string; inc
 
   sql += ` ORDER BY p.sort_order ASC, p.id DESC`;
 
-  const products = db.prepare(sql).all(...params) as unknown as Product[];
+  const products = await db.prepare(sql).all(...params) as unknown as Product[];
 
   for (const p of products) {
-    attachProductExtras(db, p);
+    await attachProductExtras(db, p);
   }
 
   return products;
 }
 
 /** Units of a product already sold today (non-cancelled orders). */
-export function countSoldToday(db: DatabaseSync, productId: number): number {
-  const row = db.prepare(`
+export async function countSoldToday(db: DbHandle, productId: number): Promise<number> {
+  const row = await db.prepare(`
     SELECT COALESCE(SUM(oi.quantity), 0) as sold
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
@@ -665,12 +859,12 @@ export function countSoldToday(db: DatabaseSync, productId: number): number {
 }
 
 /** Attach active variants and today's batch counts to one product row. */
-function attachProductExtras(db: DatabaseSync, p: Product): void {
-  const varStmt = db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1 ORDER BY sort_order ASC');
+async function attachProductExtras(db: DbHandle, p: Product): Promise<void> {
+  const varStmt = await db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1 ORDER BY sort_order ASC');
 
-  p.variants = varStmt.all(p.id) as unknown as ProductVariant[];
+  p.variants = await varStmt.all(p.id) as unknown as ProductVariant[];
   try {
-    const sold = countSoldToday(db, p.id);
+    const sold = await countSoldToday(db, p.id);
     p.sold_today = sold;
     p.daily_batch_limit = Number(p.daily_batch_limit ?? 15);
     p.remaining_today = Math.max(0, p.daily_batch_limit - sold);
@@ -686,25 +880,25 @@ function attachProductExtras(db: DatabaseSync, p: Product): void {
  * draft). Callers decide what to show: non-published products render as
  * unavailable and can never be ordered. Returns null for an unknown slug.
  */
-export function getProductBySlug(slug: string): Product | null {
-  const db = getDb();
-  const product = db.prepare(`
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const db = await getDb();
+  const product = await db.prepare(`
     SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE p.slug = ?
   `).get(slug) as unknown as Product | null;
   if (!product) return null;
-  attachProductExtras(db, product);
+  await attachProductExtras(db, product);
   return product;
 }
 
 // Related products for the /menu/:slug page: same category first (up to 4),
 // topped up with other published products when the category has too few.
 // The current product is always excluded.
-export function getRelatedProducts(product: Product, limit = 4): Product[] {
-  const db = getDb();
-  const sameCategory = db.prepare(`
+export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
+  const db = await getDb();
+  const sameCategory = await db.prepare(`
     SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
@@ -716,7 +910,7 @@ export function getRelatedProducts(product: Product, limit = 4): Product[] {
   const related = sameCategory.slice();
   if (related.length < limit) {
     const excludeIds = [product.id, ...related.map((p) => p.id)];
-    const fillers = db.prepare(`
+    const fillers = await db.prepare(`
       SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
@@ -727,7 +921,7 @@ export function getRelatedProducts(product: Product, limit = 4): Product[] {
     related.push(...fillers);
   }
 
-  for (const p of related) attachProductExtras(db, p);
+  for (const p of related) await attachProductExtras(db, p);
   return related;
 }
 
@@ -743,10 +937,10 @@ export function generatePublicOrderCode(): string {
  * a 500 rather than create a duplicate order). The UNIQUE constraint on
  * orders.public_code remains as a backstop.
  */
-export function generateUniquePublicOrderCode(db: DatabaseSync, maxAttempts = 10): string {
+export async function generateUniquePublicOrderCode(db: DbHandle, maxAttempts = 10): Promise<string> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const code = generatePublicOrderCode();
-    const existing = db.prepare('SELECT 1 FROM orders WHERE public_code = ?').get(code);
+    const existing = await db.prepare('SELECT 1 FROM orders WHERE public_code = ?').get(code);
     if (!existing) return code;
   }
   throw new Error('Could not generate a unique order code');
@@ -761,26 +955,26 @@ export function normalizePhone(phone: string): string {
   return digits;
 }
 
-export function getOrderWithDetails(publicCode: string, phoneFilter?: string): Order | null {
+export async function getOrderWithDetails(publicCode: string, phoneFilter?: string): Promise<Order | null> {
   // Phone verification is mandatory: without a matching phone number the
   // order is not returned, and callers cannot tell whether the code exists.
   const normalizedFilter = phoneFilter ? normalizePhone(phoneFilter) : '';
   if (!normalizedFilter) return null;
 
-  const db = getDb();
-  const order = db.prepare('SELECT * FROM orders WHERE public_code = ?').get(publicCode) as unknown as Order | null;
+  const db = await getDb();
+  const order = await db.prepare('SELECT * FROM orders WHERE public_code = ?').get(publicCode) as unknown as Order | null;
   if (!order) return null;
   if (normalizePhone(order.customer_phone) !== normalizedFilter) return null;
 
-  order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id) as unknown as OrderItem[];
-  order.events = db.prepare('SELECT * FROM order_status_events WHERE order_id = ? ORDER BY created_at ASC').all(order.id) as unknown as OrderStatusEvent[];
-  order.payment_submissions = db.prepare('SELECT * FROM payment_submissions WHERE order_id = ? ORDER BY submitted_at DESC').all(order.id) as unknown as PaymentSubmission[];
+  order.items = await db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id) as unknown as OrderItem[];
+  order.events = await db.prepare('SELECT * FROM order_status_events WHERE order_id = ? ORDER BY created_at ASC').all(order.id) as unknown as OrderStatusEvent[];
+  order.payment_submissions = await db.prepare('SELECT * FROM payment_submissions WHERE order_id = ? ORDER BY submitted_at DESC').all(order.id) as unknown as PaymentSubmission[];
 
   return order;
 }
 
-export function getAllOrders(filterStatus?: string): Order[] {
-  const db = getDb();
+export async function getAllOrders(filterStatus?: string): Promise<Order[]> {
+  const db = await getDb();
   let sql = `
     SELECT o.*,
       (SELECT COUNT(*) FROM orders o2 WHERE replace(replace(o2.customer_phone, ' ', ''), '-', '') = replace(replace(o.customer_phone, ' ', ''), '-', '') AND o2.order_status = 'completed') as completed_orders_count
@@ -795,7 +989,7 @@ export function getAllOrders(filterStatus?: string): Order[] {
 
   sql += ' ORDER BY o.id DESC';
 
-  const orders = db.prepare(sql).all(...params) as unknown as Order[];
+  const orders = await db.prepare(sql).all(...params) as unknown as Order[];
   if (!orders || orders.length === 0) {
     return [];
   }
@@ -804,15 +998,15 @@ export function getAllOrders(filterStatus?: string): Order[] {
   const orderIds = orders.map((o) => o.id);
   const placeholders = orderIds.map(() => '?').join(',');
 
-  const allItems = db
+  const allItems = await db
     .prepare(`SELECT * FROM order_items WHERE order_id IN (${placeholders})`)
     .all(...orderIds) as unknown as OrderItem[];
 
-  const allEvents = db
+  const allEvents = await db
     .prepare(`SELECT * FROM order_status_events WHERE order_id IN (${placeholders}) ORDER BY created_at ASC`)
     .all(...orderIds) as unknown as OrderStatusEvent[];
 
-  const allPayments = db
+  const allPayments = await db
     .prepare(`SELECT * FROM payment_submissions WHERE order_id IN (${placeholders}) ORDER BY submitted_at DESC`)
     .all(...orderIds) as unknown as PaymentSubmission[];
 
@@ -846,31 +1040,31 @@ export function getAllOrders(filterStatus?: string): Order[] {
   return orders;
 }
 
-export function getCouponByCode(code: string): Coupon | null {
-  const db = getDb();
+export async function getCouponByCode(code: string): Promise<Coupon | null> {
+  const db = await getDb();
   const cleanCode = code.trim().toUpperCase();
-  const coupon = db.prepare('SELECT * FROM coupons WHERE UPPER(code) = ?').get(cleanCode) as unknown as Coupon | null;
+  const coupon = await db.prepare('SELECT * FROM coupons WHERE UPPER(code) = ?').get(cleanCode) as unknown as Coupon | null;
   return coupon;
 }
 
-export function incrementCouponUsage(code: string): boolean {
-  const db = getDb();
+export async function incrementCouponUsage(code: string): Promise<boolean> {
+  const db = await getDb();
   const cleanCode = code.trim().toUpperCase();
   // Atomic reservation: the counter only moves when the coupon still has
   // uses left, so two orders racing at the usage limit cannot both redeem.
   // Returns false when the coupon is already exhausted.
-  const result = db.prepare(
+  const result = await db.prepare(
     'UPDATE coupons SET times_used = times_used + 1 WHERE UPPER(code) = ? AND (usage_limit IS NULL OR times_used < usage_limit)'
   ).run(cleanCode);
   return result.changes > 0;
 }
 
-export function getAllCoupons(): Coupon[] {
-  const db = getDb();
-  return db.prepare('SELECT * FROM coupons ORDER BY id DESC').all() as unknown as Coupon[];
+export async function getAllCoupons(): Promise<Coupon[]> {
+  const db = await getDb();
+  return await db.prepare('SELECT * FROM coupons ORDER BY id DESC').all() as unknown as Coupon[];
 }
 
-export function createCoupon(data: {
+export async function createCoupon(data: {
   code: string;
   discountType: 'fixed' | 'percentage';
   discountValue: number;
@@ -878,10 +1072,10 @@ export function createCoupon(data: {
   maxDiscountAmount?: number | null;
   usageLimit?: number | null;
   expiresAt?: string | null;
-}): number {
-  const db = getDb();
+}): Promise<number> {
+  const db = await getDb();
   const now = new Date().toISOString();
-  const result = db.prepare(`
+  const result = await db.prepare(`
     INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, times_used, active, expires_at, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 0, 1, ?, ?)
   `).run(
@@ -897,18 +1091,18 @@ export function createCoupon(data: {
   return Number(result.lastInsertRowid);
 }
 
-export function toggleCouponStatus(id: number, active: number): void {
-  const db = getDb();
-  db.prepare('UPDATE coupons SET active = ? WHERE id = ?').run(active ? 1 : 0, id);
+export async function toggleCouponStatus(id: number, active: number): Promise<void> {
+  const db = await getDb();
+  await db.prepare('UPDATE coupons SET active = ? WHERE id = ?').run(active ? 1 : 0, id);
 }
 
-export function deleteCoupon(id: number): void {
-  const db = getDb();
-  db.prepare('DELETE FROM coupons WHERE id = ?').run(id);
+export async function deleteCoupon(id: number): Promise<void> {
+  const db = await getDb();
+  await db.prepare('DELETE FROM coupons WHERE id = ?').run(id);
 }
 
-export function getCustomerLoyalty(phone: string): LoyaltyInfo {
-  const db = getDb();
+export async function getCustomerLoyalty(phone: string): Promise<LoyaltyInfo> {
+  const db = await getDb();
   // Full 11-digit number only (e.g. 01712345678). Stored numbers are
   // digits-only and may carry the 88 country prefix, so match on the
   // last 11 digits. Short or partial numbers never match — a few digits
@@ -918,7 +1112,7 @@ export function getCustomerLoyalty(phone: string): LoyaltyInfo {
   const validPhone = /^01[3-9]\d{8}$/.test(fullPhone) ? fullPhone : '';
 
   const phoneMatch = `substr(replace(replace(customer_phone, ' ', ''), '-', ''), -11) = ?`;
-  const row = db.prepare(`
+  const row = await db.prepare(`
     SELECT 
       COUNT(*) as total_orders,
       SUM(CASE WHEN order_status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
@@ -940,7 +1134,7 @@ export function getCustomerLoyalty(phone: string): LoyaltyInfo {
 
   // Rewards already used up: non-cancelled orders that redeemed the
   // loyalty reward code. A reward is only available when earned > used.
-  const redeemedRow = db.prepare(`
+  const redeemedRow = await db.prepare(`
     SELECT COUNT(*) as redeemed FROM orders
     WHERE ${phoneMatch} AND coupon_code = 'SWEETREWARD' AND order_status != 'cancelled'
   `).get(validPhone) as { redeemed: number } | undefined;

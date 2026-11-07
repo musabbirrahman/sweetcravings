@@ -8,14 +8,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('category') ? parseInt(searchParams.get('category')!, 10) : undefined;
 
-    const products = getProducts({ 
+    const products = await getProducts({ 
       categoryId, 
       status: 'published', // only published products visible to public
       includeArchived: false 
     });
     
-    const categories = getCategories(false);
-    const settings = getShopSettings();
+    const categories = await getCategories(false);
+    const settings = await getShopSettings();
 
     // Redact internal secrets, expose public settings
     const publicSettings = {

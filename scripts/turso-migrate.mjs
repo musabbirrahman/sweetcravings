@@ -150,6 +150,16 @@ async function migrate() {
       details TEXT,
       created_at TEXT NOT NULL
     );`,
+    // Product photos uploaded through the admin panel (see
+    // src/lib/db.ts): on Cloudflare the resized bytes live here and
+    // are served by GET /api/images/[id].
+    `CREATE TABLE IF NOT EXISTS product_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      mime_type TEXT NOT NULL,
+      data BLOB NOT NULL,
+      size_bytes INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );`,
     `CREATE INDEX IF NOT EXISTS idx_orders_public_code ON orders(public_code);`,
     `CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(customer_phone);`,
     `CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);`,
@@ -180,9 +190,24 @@ async function migrate() {
             VALUES (?, ?, ?, ?, ?, ?, 0, 1, NULL, ?)`,
       args: ['SWEETREWARD', 'fixed', 150, 200, null, 5000, now]
     });
+    // Same default coupons the app seeds itself (src/lib/db.ts):
+    // keep this list in step with seedDefaultCoupons() there.
+    await client.execute({
+      sql: `INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, times_used, active, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 1, NULL, ?)`,
+      args: ['SWEETRAJ', 'percentage', 10, 600, 150, 50, now]
+    });
+    await client.execute({
+      sql: `INSERT INTO coupons (code, discount_type, discount_value, min_order_amount, max_discount_amount, usage_limit, times_used, active, expires_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 1, NULL, ?)`,
+      args: ['EIDMUBARAK', 'percentage', 15, 1000, 250, 50, now]
+    });
   }
 
-  console.log('🎉 Turso cloud database is ready for 100% Free Vercel Serverless Hosting!');
+  console.log('🎉 Turso cloud database is ready!');
+  console.log('   Menu, settings and the rest seed themselves the first time');
+  console.log('   the app starts (src/lib/db.ts). Next: set these same two');
+  console.log('   variables in the Cloudflare dashboard — see DEPLOY.md.');
 }
 
 migrate().catch((err) => {

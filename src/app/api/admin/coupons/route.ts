@@ -10,7 +10,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
     }
 
-    const coupons = getAllCoupons();
+    const coupons = await getAllCoupons();
     return NextResponse.json({ success: true, coupons });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
     let couponId: number;
     try {
-      couponId = createCoupon({
+      couponId = await createCoupon({
         code,
         discountType,
         discountValue: value,
@@ -128,7 +128,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: 'Coupon ID and active state are required.' }, { status: 400 });
     }
 
-    toggleCouponStatus(id, active ? 1 : 0);
+    await toggleCouponStatus(id, active ? 1 : 0);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -148,7 +148,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'Coupon ID required' }, { status: 400 });
     }
 
-    deleteCoupon(parseInt(id, 10));
+    await deleteCoupon(parseInt(id, 10));
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

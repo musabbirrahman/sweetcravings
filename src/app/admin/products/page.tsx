@@ -34,12 +34,44 @@ export default function AdminProductsPage() {
   const [allergensEn, setAllergensEn] = useState('Contains Milk, Eggs');
   const [allergensBn, setAllergensBn] = useState('দুধ ও ডিম রয়েছে');
   const [imageUrl, setImageUrl] = useState('/sweet-cravings-logo.jpg');
-  // Photo upload: a file chosen here is uploaded (resized + compressed)
-  // when the dessert is saved, and its URL replaces the text field below.
+  // Photo upload: a file chosen here is resized in the browser and
+  // uploaded when the dessert is saved, and its URL replaces the text
+  // field below. The server cannot resize (no sharp on Cloudflare),
+  // so the resize happens here — see resizePhotoForUpload.
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState('');
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Resize a photo in the browser before upload: at most 1200px wide,
+  // JPEG quality 80, on a white background (so PNG transparency becomes
+  // white, not black). The server stores the bytes as received — on
+  // Cloudflare it cannot resize (no sharp, no disk). Falls back to the
+  // original file if the browser cannot resize it.
+  const resizePhotoForUpload = async (file: File): Promise<Blob> => {
+    try {
+      if (typeof createImageBitmap === 'undefined') return file;
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const scale = Math.min(1, 1200 / bitmap.width);
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.8)
+      );
+      return blob ?? file;
+    } catch {
+      return file;
+    }
+  };
 
   const handlePhotoSelect = (file: File | null) => {
     setPhotoError('');
@@ -196,14 +228,15 @@ export default function AdminProductsPage() {
 
     setSubmitting(true);
     try {
-      // If a photo file was chosen, upload it first (server resizes and
-      // compresses it) and use the returned URL for the dessert.
+      // If a photo file was chosen, resize it in the browser and upload
+      // it first, and use the returned URL for the dessert.
       // The text URL field below is only the fallback when no file is chosen.
       let finalImageUrl = imageUrl;
       if (photoFile) {
         setUploadingPhoto(true);
+        const resized = await resizePhotoForUpload(photoFile);
         const formData = new FormData();
-        formData.append('photo', photoFile);
+        formData.append('photo', resized, photoFile.name);
         const uploadRes = await fetch('/api/admin/upload', {
           method: 'POST',
           body: formData,

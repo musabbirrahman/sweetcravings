@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, runInTransaction } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -203,16 +203,17 @@ export async function POST(request: Request) {
     }
     const data = validation.data;
 
-    const db = getDb();
+    const db = await getDb();
     const now = new Date().toISOString();
     const counts: Record<string, number> = {};
 
     // One transaction: either everything is restored, or nothing changes.
-    db.exec('BEGIN TRANSACTION;');
-    try {
+    // runInTransaction (src/lib/db.ts) commits on success and rolls back
+    // on throw, on either database driver.
+    await runInTransaction(db, async () => {
       // Delete children first, parents last (foreign keys are on).
       for (const table of ['order_items', 'payment_submissions', 'order_status_events', 'orders', 'product_variants', 'products', 'categories', 'shop_settings', 'audit_log']) {
-        db.prepare(`DELETE FROM ${table}`).run();
+        await db.prepare(`DELETE FROM ${table}`).run();
       }
 
       const tableMap: Array<[string, string]> = [
@@ -231,9 +232,9 @@ export async function POST(request: Request) {
         const rows = data[fileKey] as Row[];
         const cols = COLUMNS[fileKey];
         const placeholders = cols.map(() => '?').join(', ');
-        const stmt = db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`);
+        const stmt = await db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`);
         for (const row of rows) {
-          stmt.run(...cols.map((c) => {
+          await stmt.run(...cols.map((c) => {
             const v = row[c];
             return v === undefined ? null : v;
           }));
@@ -242,16 +243,11 @@ export async function POST(request: Request) {
       }
 
       // Record the restore itself in the audit log.
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO audit_log (actor, action, entity, details, created_at)
         VALUES (?, ?, ?, ?, ?)
       `).run('admin', 'RESTORE_BACKUP', 'database', `Restored backup "${file.name}" (${now})`, now);
-
-      db.exec('COMMIT;');
-    } catch (txErr) {
-      try { db.exec('ROLLBACK;'); } catch {}
-      throw txErr;
-    }
+    });
 
     return NextResponse.json({
       success: true,

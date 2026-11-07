@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    const loyalty = getCustomerLoyalty(fullPhone);
+    const loyalty = await getCustomerLoyalty(fullPhone);
 
     return NextResponse.json({
       success: true,

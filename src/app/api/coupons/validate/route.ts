@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     }
 
     const cleanCode = code.trim().toUpperCase();
-    const coupon = getCouponByCode(cleanCode);
+    const coupon = await getCouponByCode(cleanCode);
 
     if (!coupon) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     // is known, check an unused reward actually exists for them. The
     // order endpoint re-checks this authoritatively at checkout.
     if (coupon.code === 'SWEETREWARD' && phone && typeof phone === 'string') {
-      const loyalty = getCustomerLoyalty(phone);
+      const loyalty = await getCustomerLoyalty(phone);
       if (loyalty.rewardsAvailable <= 0) {
         return NextResponse.json(
           { success: false, valid: false, error: 'The Sweet Reward unlocks after 5 completed orders, and each reward can be used only once.' },

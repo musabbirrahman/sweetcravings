@@ -10,6 +10,10 @@ The sister runs it from an admin area on her phone.
 - Admin login lives at `/admin`. Its password comes from a file called
   `.env.local` (line: `ADMIN_PASSWORD='...'`). No password file, no login.
   That file stays on your own computer and is never uploaded to GitHub.
+- The live site runs on Cloudflare Workers (free, never sleeps — see
+  DEPLOY.md). The commands for that are `npm run build:cf` (build the
+  Worker version), `npm run preview` (try it locally in the Workers
+  runtime) and `npm run deploy` (put it live).
 
 ## The shop pages (what a customer sees)
 - `/` home, `/menu` all desserts, `/menu/[name]` one dessert on its own
@@ -53,7 +57,7 @@ The sister runs it from an admin area on her phone.
   can be changed on an existing dessert — name, category, price,
   sizes, photo, lead time, ingredients, allergen note, availability.
   Photos can be uploaded from the phone (JPG/PNG/WebP, under 5 MB —
-  shrunk to at most 1200px wide on the server) or pasted in as a web
+  shrunk to at most 1200px wide in the browser before upload) or pasted in as a web
   link. Closing a pop-up window (the X, tapping outside it, or the
   Escape key) throws away unsaved changes.
 - Categories: a separate tab where new food categories are created
@@ -70,20 +74,41 @@ The sister runs it from an admin area on her phone.
   accounts and no second login step yet.
 
 ## The database and uploaded photos
-- One file: `data/sweetcravings.db` (SQLite — a simple file database).
-  The app creates it fresh, with the menu, the first time it starts.
-- Uploaded dessert photos live in `public/uploads/products/` on the
-  same computer as the database. Neither the database nor the photos
-  are ever uploaded to GitHub.
+- The app can use two databases, picked by one setting
+  (`TURSO_DATABASE_URL` in `.env.local`):
+  - Empty: one file, `data/sweetcravings.db` (SQLite — a simple file
+    database). The app creates it fresh, with the menu, the first
+    time it starts. This is local development.
+  - Set: a Turso cloud database, through the same code
+    (`src/lib/db.ts` + `src/lib/turso.ts`). This is the live site on
+    Cloudflare Workers, which has no disk that keeps files. The first
+    start creates the tables and the menu there too.
+- Uploaded dessert photos: on the live site the photo bytes are kept
+  in the database itself (a `product_images` table) and shown by
+  `GET /api/images/[id]` — a Worker has nowhere else to keep them.
+  Locally (no Turso setting) they are still saved as files in
+  `public/uploads/products/` on the same computer as the database.
+  One local quirk: a photo uploaded to that folder only shows on the
+  site after the local server is restarted. Neither the database nor
+  the photos are ever uploaded to GitHub.
 
 ## Where things live in the code
 - `src/app/` the pages; `src/app/api/` the server endpoints
-- `src/lib/db.ts` database, starting menu, coupons, loyalty
+- `src/lib/db.ts` database, starting menu, coupons, loyalty — it
+  speaks to the local file or to Turso through one small surface,
+  so the rest of the app never sees which one is active
+- `src/lib/turso.ts` the Turso connection (address + token from the
+  environment); empty address means the local file
 - `src/lib/auth.ts` admin password check and login sessions
 - `src/lib/translations.ts` all English and Bangla words on the site
 - `src/components/` visible pieces (menu cards, basket, stamp card)
 - `src/context/` the basket and the language switch (English/Bangla)
 - `src/middleware.ts` the guard that keeps `/admin` behind login
-- `scripts/turso-migrate.mjs` a leftover Turso script — NOT used.
-  Deployment is undecided; the app always uses the local database
-  file, so it must not go on a host that throws files away.
+- `scripts/turso-migrate.mjs` creates the tables on a fresh Turso
+  database (`npm run db:turso-sync`). Run it once, before the first
+  deploy — see DEPLOY.md.
+- `wrangler.jsonc` + `open-next.config.ts` the Cloudflare Worker
+  setup (the adapter that turns this Next.js app into a Worker).
+  Photos are served without the image service: `next/image` runs
+  unoptimized (see `next.config.js`), because that service is billed
+  separately and there is no payment method on file.

@@ -13,19 +13,19 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const backup = searchParams.get('backup');
 
-    const db = getDb();
+    const db = await getDb();
 
     // If backup export requested: dump all tables as JSON backup
     if (backup === 'true') {
-      const categories = db.prepare('SELECT * FROM categories').all();
-      const products = db.prepare('SELECT * FROM products').all();
-      const variants = db.prepare('SELECT * FROM product_variants').all();
-      const orders = db.prepare('SELECT * FROM orders').all();
-      const orderItems = db.prepare('SELECT * FROM order_items').all();
-      const paymentSubmissions = db.prepare('SELECT * FROM payment_submissions').all();
-      const events = db.prepare('SELECT * FROM order_status_events').all();
-      const settings = db.prepare('SELECT * FROM shop_settings').all();
-      const auditLog = db.prepare('SELECT * FROM audit_log').all();
+      const categories = await db.prepare('SELECT * FROM categories').all();
+      const products = await db.prepare('SELECT * FROM products').all();
+      const variants = await db.prepare('SELECT * FROM product_variants').all();
+      const orders = await db.prepare('SELECT * FROM orders').all();
+      const orderItems = await db.prepare('SELECT * FROM order_items').all();
+      const paymentSubmissions = await db.prepare('SELECT * FROM payment_submissions').all();
+      const events = await db.prepare('SELECT * FROM order_status_events').all();
+      const settings = await db.prepare('SELECT * FROM shop_settings').all();
+      const auditLog = await db.prepare('SELECT * FROM audit_log').all();
 
       const dump = {
         exportedAt: new Date().toISOString(),
@@ -52,8 +52,8 @@ export async function GET(request: Request) {
       });
     }
 
-    const settings = getShopSettings();
-    const auditLogs = db.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT 20').all();
+    const settings = await getShopSettings();
+    const auditLogs = await db.prepare('SELECT * FROM audit_log ORDER BY id DESC LIMIT 20').all();
 
     return NextResponse.json({
       success: true,
@@ -79,10 +79,10 @@ export async function POST(request: Request) {
     }
 
     for (const [key, value] of Object.entries(settings)) {
-      updateShopSetting(key, String(value), actor);
+      await updateShopSetting(key, String(value), actor);
     }
 
-    const updated = getShopSettings();
+    const updated = await getShopSettings();
     return NextResponse.json({
       success: true,
       settings: updated,

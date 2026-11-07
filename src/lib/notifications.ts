@@ -34,7 +34,7 @@ export interface NotificationPayload {
  * Non-blocking: failures are logged without disrupting the customer's checkout.
  */
 export async function notifyKitchenNewOrder(payload: NotificationPayload): Promise<{ success: boolean; methods: string[] }> {
-  const settings = getShopSettings();
+  const settings = await getShopSettings();
   const methodsUsed: string[] = [];
 
   const { order, items } = payload;

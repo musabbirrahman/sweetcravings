@@ -16,10 +16,11 @@ export async function GET(request: Request) {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
     }
-    const categories = getCategories(true).map((c) => ({
+    const cats = await getCategories(true);
+    const categories = await Promise.all(cats.map(async (c) => ({
       ...c,
-      productCount: countProductsInCategory(c.id),
-    }));
+      productCount: await countProductsInCategory(c.id),
+    })));
     return NextResponse.json({ success: true, categories });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
     if (!nameEn?.trim() || !nameBn?.trim()) {
       return NextResponse.json({ success: false, error: 'English and Bangla names are required' }, { status: 400 });
     }
-    const category = createCategory({
+    const category = await createCategory({
       name_en: nameEn,
       name_bn: nameBn,
       description_en: descriptionEn || '',
@@ -67,7 +68,7 @@ export async function PUT(request: Request) {
     if ((nameEn !== undefined && !nameEn.trim()) || (nameBn !== undefined && !nameBn.trim())) {
       return NextResponse.json({ success: false, error: 'Names cannot be empty' }, { status: 400 });
     }
-    const category = updateCategory(Number(id), {
+    const category = await updateCategory(Number(id), {
       name_en: nameEn,
       name_bn: nameBn,
       description_en: descriptionEn,
@@ -99,7 +100,7 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ success: false, error: 'Category ID is required' }, { status: 400 });
     }
-    const result = deleteCategory(Number(id));
+    const result = await deleteCategory(Number(id));
     if (!result.deleted) {
       return NextResponse.json(
         {

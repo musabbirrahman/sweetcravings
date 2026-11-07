@@ -1,0 +1,17 @@
+# Local preview variables for `npm run preview` (wrangler dev).
+# Copy this file to `.dev.vars` and fill in real values — `.dev.vars`
+# is gitignored and never committed. The same four values are set in
+# the Cloudflare dashboard for the deployed Worker (see DEPLOY.md).
+#
+# NEXTJS_ENV: which Next.js .env file to load (default "production").
+NEXTJS_ENV="production"
+# ADMIN_PASSWORD: the admin panel password (same value as .env.local).
+ADMIN_PASSWORD="change-me"
+# NEXT_PUBLIC_BASE_URL: the public URL of the deployed site, e.g.
+# https://sweet-cravings.<your-subdomain>.workers.dev
+NEXT_PUBLIC_BASE_URL="http://localhost:8787"
+# TURSO_DATABASE_URL: libsql://<database>-<org>.turso.io
+# (for a local preview test, a file: URL works too — see DEPLOY.md).
+TURSO_DATABASE_URL=""
+# TURSO_AUTH_TOKEN: the database token from the Turso dashboard.
+TURSO_AUTH_TOKEN=""
