@@ -22,6 +22,7 @@ export const translations = {
       ctaMenu: "Explore Menu",
       ctaWhatsApp: "Order via WhatsApp",
       coverageNote: "Delivery available across Rajshahi City",
+      viewSignature: "View details",
     },
     home: {
       signatureTitle: "Our Signature Creations",
@@ -237,6 +238,7 @@ export const translations = {
       ctaMenu: "মেনু দেখুন",
       ctaWhatsApp: "হোয়াটসঅ্যাপে অর্ডার",
       coverageNote: "রাজশাহী শহরজুড়ে হোম ডেলিভারি সুবিধা",
+      viewSignature: "বিস্তারিত দেখুন",
     },
     home: {
       signatureTitle: "আমাদের জনপ্রিয় স্পেশাল ডেজার্ট",

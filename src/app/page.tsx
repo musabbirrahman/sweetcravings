@@ -42,6 +42,21 @@ export default function HomePage() {
     ? featuredProducts
     : featuredProducts.filter((p) => p.category_id === selectedCat);
 
+  // The hero showcase is the signature dish (seeded product
+  // 'caramel-custard-flan'). Its name, photo, description and price come
+  // from the live catalogue when it is published; the fallbacks match the
+  // seeded dish so the card stays linked even on a sold-out day, when the
+  // public catalogue hides it.
+  const signature = featuredProducts.find((p) => p.slug === 'caramel-custard-flan');
+  const heroDish = {
+    nameEn: signature?.name_en ?? 'Caramel Custard Flan',
+    nameBn: signature?.name_bn ?? 'ক্যারামেল কাস্টার্ড ফ্ল্যান',
+    descEn: signature?.description_en ?? 'Silky baked custard with golden amber drizzle',
+    descBn: signature?.description_bn ?? 'সোনালী ক্যারামেলের সাথে সিল্কি বেকড কাস্টার্ড',
+    image: signature?.image_url || 'https://images.unsplash.com/photo-1541783245831-57d6fb0926d3?w=800&auto=format&fit=crop&q=80',
+    price: signature?.base_price ?? 450,
+  };
+
   const faqs = [
     {
       qEn: 'How does ordering work? Do I need an account?',
@@ -170,32 +185,50 @@ export default function HomePage() {
           <div className="lg:col-span-5 flex justify-center relative">
             <div className="relative w-full max-w-md">
               
-              {/* Main Dessert Photography Card */}
+              {/* Main Dessert Photography Card — a real link to the
+                  signature dish's product page, not a static picture.
+                  The whole card is clickable, keyboard-focusable, and
+                  carries a visible "View details" cue. */}
+              <Link
+                href="/menu/caramel-custard-flan"
+                aria-label={`${lang === 'bn' ? heroDish.nameBn : heroDish.nameEn} — ${t('hero.viewSignature')}`}
+                className="block rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-caramel"
+              >
               <div className="relative rounded-3xl overflow-hidden bg-white/95 p-3 shadow-card hover:shadow-card-hover border border-brand-chocolate/10 transition-all duration-500 hover:scale-[1.01]">
                 <div className="relative aspect-[4/3] sm:aspect-square w-full rounded-2xl overflow-hidden bg-brand-cream">
                   <Image
-                    src="https://images.unsplash.com/photo-1541783245831-57d6fb0926d3?w=800&auto=format&fit=crop&q=80"
-                    alt="Signature Caramel Custard Flan"
+                    src={heroDish.image}
+                    alt={lang === 'bn' ? heroDish.nameBn : heroDish.nameEn}
                     fill
                     className="object-cover"
                     priority
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
-                  
+
                   {/* Photo Title Overlay */}
                   <div className="absolute bottom-4 left-4 right-4 text-white">
                     <span className="text-[10px] font-bold uppercase tracking-widest bg-brand-caramel/90 px-2.5 py-0.5 rounded-md inline-block mb-1 shadow-xs">
                       Signature Hero
                     </span>
                     <p className="font-heading font-semibold text-lg leading-tight">
-                      Caramel Custard Flan
+                      {lang === 'bn' ? heroDish.nameBn : heroDish.nameEn}
                     </p>
-                    <p className="text-xs text-brand-cream/90">
-                      Silky baked custard with golden amber drizzle
+                    <p className="text-xs text-brand-cream/90 line-clamp-2">
+                      {lang === 'bn' ? heroDish.descBn : heroDish.descEn}
                     </p>
+                    <span className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold">
+                        {lang === 'bn' ? 'শুরু মাত্র' : 'Starting from'} ৳{heroDish.price}
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-white text-brand-chocolate text-[11px] font-bold px-3 py-1.5 rounded-full shadow-xs">
+                        {t('hero.viewSignature')}
+                        <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
+              </Link>
 
               {/* Brand crest seal — the only floating element on the hero */}
               <div className="absolute -top-6 -left-6 sm:-top-8 sm:-left-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 border-white shadow-card bg-white ring-4 ring-brand-caramel/15">
