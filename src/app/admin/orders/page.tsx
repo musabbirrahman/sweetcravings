@@ -99,7 +99,7 @@ Order: #${ord.public_code}
 💰 *COLLECT CASH:* ৳${isCOD ? ord.total_amount : 0} ${isCOD ? '(COD - collect from customer)' : '(ALREADY PAID ONLINE - DO NOT COLLECT)'}
 🧁 *Items to Deliver:* ${itemsCount} desserts (Handle with care / Chilled)
 ${ord.delivery_instructions ? `📝 *Note:* ${ord.delivery_instructions}\n` : ''}──────────────────
-Sweet Cravings Kitchen: +8801712345678`;
+Sweet Cravings Kitchen`;
 
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   };

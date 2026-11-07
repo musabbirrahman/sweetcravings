@@ -94,7 +94,7 @@ ${itemsSummary}
   }
 
   // 2. BANGLADESH SMS GATEWAY NOTIFICATION
-  if (settings.sms_gateway_url && settings.sms_api_key) {
+  if (settings.sms_gateway_url && settings.sms_api_key && settings.whatsapp_number) {
     try {
       const smsMessage = `Sweet Cravings: New Order #${order.public_code} for BDT ${order.total_amount} from ${order.customer_name} (${order.area_landmark}). Payment: ${order.payment_method}. Check admin.`;
       

@@ -35,6 +35,14 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
+  // WhatsApp number from settings; empty until the shop configures it, in
+  // which case WhatsApp buttons are hidden instead of showing a fake number.
+  const whatsappNumber = (settings?.whatsapp_number || '').trim();
+  const whatsappDigits = whatsappNumber.replace(/\D/g, '');
+  const whatsappUrl = whatsappDigits
+    ? `https://wa.me/${whatsappDigits.startsWith('88') ? whatsappDigits : '88' + whatsappDigits}`
+    : '';
+
   useEffect(() => {
     fetch('/api/products')
       .then((res) => res.json())
@@ -150,8 +158,9 @@ export default function HomePage() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
 
+              {whatsappUrl && (
               <a
-                href={`https://wa.me/${(settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '').startsWith('88') ? (settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '') : '88' + (settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '')}?text=${encodeURIComponent('Salam! I would like to order homemade desserts from Sweet Cravings.')}`}
+                href={`${whatsappUrl}?text=${encodeURIComponent('Salam! I would like to order homemade desserts from Sweet Cravings.')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-brand-forest hover:bg-[#234937] text-white font-semibold py-3.5 px-7 rounded-full shadow-soft hover:shadow-card transition-all duration-200 btn-press text-sm"
@@ -159,6 +168,7 @@ export default function HomePage() {
                 <Phone className="w-4 h-4" />
                 <span>{t('hero.ctaWhatsApp')}</span>
               </a>
+              )}
             </div>
 
             {/* Micro Proof Chips */}
@@ -614,15 +624,17 @@ export default function HomePage() {
             </p>
           </div>
 
+          {whatsappUrl && (
           <a
-            href={`https://wa.me/${(settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '').startsWith('88') ? (settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '') : '88' + (settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '')}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
+            href={`${whatsappUrl}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 flex items-center gap-2 bg-brand-forest hover:bg-[#234937] border border-white/20 text-white font-semibold py-3.5 px-8 rounded-full shadow-soft hover:shadow-card transition-all btn-press text-sm"
           >
             <Phone className="w-4 h-4" />
-            <span>{settings?.whatsapp_number || '+880 1712-345678'}</span>
+            <span>{whatsappNumber}</span>
           </a>
+          )}
         </div>
       </section>
 

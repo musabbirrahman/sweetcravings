@@ -6,7 +6,7 @@ import { Phone, MapPin, Clock, MessageSquare } from 'lucide-react';
 
 export default function ContactPage() {
   const { lang, t } = useLanguage();
-  const [phoneNum, setPhoneNum] = React.useState('+880 1712-345678');
+  const [phoneNum, setPhoneNum] = React.useState('');
 
   React.useEffect(() => {
     fetch('/api/products')
@@ -46,6 +46,7 @@ export default function ContactPage() {
           </h2>
 
           <div className="space-y-4">
+            {phoneNum ? (
             <a
               href={`https://wa.me/${waPhone}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings.')}`}
               target="_blank"
@@ -64,6 +65,13 @@ export default function ContactPage() {
                 </span>
               </div>
             </a>
+            ) : (
+            <p className="text-xs text-brand-taupe p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
+              {lang === 'bn'
+                ? 'হোয়াটসঅ্যাপ নম্বর এখনো দেওয়া হয়নি — অর্ডার করতে মেনু থেকে সরাসরি অর্ডার করুন।'
+                : 'Our WhatsApp number is not listed yet — please order directly from the menu.'}
+            </p>
+            )}
 
             <div className="flex items-start gap-3 p-4 rounded-2xl bg-brand-cream-subtle/50 border border-brand-cream-dark">
               <Clock className="w-5 h-5 text-brand-caramel shrink-0 mt-0.5" />

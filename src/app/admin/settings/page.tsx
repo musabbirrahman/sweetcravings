@@ -28,17 +28,17 @@ export default function AdminSettingsPage() {
   // Form fields
   const [deliveryFee, setDeliveryFee] = useState('50');
   const [freeThreshold, setFreeThreshold] = useState('1200');
-  const [whatsappNumber, setWhatsappNumber] = useState('+8801712345678');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
   const [codEnabled, setCodEnabled] = useState(true);
 
   // bKash
   const [bkashEnabled, setBkashEnabled] = useState(true);
-  const [bkashNumber, setBkashNumber] = useState('01712-345678');
+  const [bkashNumber, setBkashNumber] = useState('');
   const [bkashType, setBkashType] = useState<'personal' | 'merchant'>('personal');
 
   // Nagad
   const [nagadEnabled, setNagadEnabled] = useState(true);
-  const [nagadNumber, setNagadNumber] = useState('01812-345678');
+  const [nagadNumber, setNagadNumber] = useState('');
   const [nagadType, setNagadType] = useState<'personal' | 'merchant'>('personal');
 
   // Statements

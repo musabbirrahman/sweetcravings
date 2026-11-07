@@ -41,9 +41,22 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
   const [shopSettings, setShopSettings] = useState<any>(null);
+  // The order is only shown after phone verification. Checkout stores the
+  // phone in this browser session; anyone arriving by a shared link is
+  // asked to enter the phone number used for the order.
+  const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+  const [phoneInput, setPhoneInput] = useState('');
 
-  const fetchOrder = () => {
-    fetch(`/api/orders/${params.publicCode}`)
+  const fetchOrder = (phone?: string) => {
+    const phoneToUse = phone ?? verifiedPhone;
+    if (!phoneToUse) {
+      setLoading(false);
+      return;
+    }
+    setVerifiedPhone(phoneToUse);
+    setLoading(true);
+    setError(null);
+    fetch(`/api/orders/${params.publicCode}?phone=${encodeURIComponent(phoneToUse)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.success && data.order) {
@@ -68,8 +81,22 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   };
 
   useEffect(() => {
-    fetchOrder();
+    let storedPhone: string | null = null;
+    try {
+      storedPhone = sessionStorage.getItem('sc_order_phone');
+    } catch {}
+    if (storedPhone) {
+      fetchOrder(storedPhone);
+    } else {
+      setLoading(false);
+    }
   }, [params.publicCode]);
+
+  const handlePhoneVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneInput.trim()) return;
+    fetchOrder(phoneInput.trim());
+  };
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(params.publicCode);
@@ -98,7 +125,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
       const res = await fetch(`/api/orders/${params.publicCode}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trxId: trxIdInput.trim() }),
+        body: JSON.stringify({ trxId: trxIdInput.trim(), phone: verifiedPhone }),
       });
       const data = await res.json();
       if (data.success) {
@@ -128,24 +155,48 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   }
 
   if (error || !order) {
+    // No phone on file for this visit (e.g. a shared link): ask for the
+    // phone number used for the order instead of showing the order.
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center space-y-5">
-        <div className="w-16 h-16 mx-auto rounded-full bg-brand-strawberry-light flex items-center justify-center text-brand-strawberry">
-          <AlertCircle className="w-8 h-8" />
+        <div className="w-16 h-16 mx-auto rounded-full bg-brand-caramel-subtle flex items-center justify-center text-brand-caramel">
+          <ShieldCheck className="w-8 h-8" />
         </div>
         <h2 className="font-heading text-2xl font-bold text-brand-chocolate">
-          {error || (lang === 'bn' ? 'অর্ডারটি পাওয়া যায়নি' : 'Order Not Found')}
+          {lang === 'bn' ? 'অর্ডার দেখতে ফোন নম্বর দিন' : 'Verify your order'}
         </h2>
         <p className="text-sm text-brand-taupe">
-          {lang === 'bn' 
-            ? 'দয়া করে আপনার অর্ডার কোডটি সঠিকভাবে যাচাই করুন।' 
-            : 'Please verify the order reference code and try again.'}
+          {lang === 'bn'
+            ? 'এই অর্ডারটি দেখতে অর্ডারের সময় দেওয়া মোবাইল নম্বরটি লিখুন।'
+            : 'Enter the phone number used for this order to view it.'}
         </p>
+        {error && (
+          <p className="text-sm text-brand-strawberry font-semibold">{error}</p>
+        )}
+        <form onSubmit={handlePhoneVerify} className="space-y-3">
+          <input
+            type="tel"
+            required
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            placeholder={lang === 'bn' ? 'যেমন: 01712345678' : 'e.g. 01712345678'}
+            className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-white text-sm text-brand-chocolate focus:outline-none focus:border-brand-caramel"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-brand-caramel hover:bg-brand-caramel-dark text-white font-bold py-3 px-6 rounded-xl text-sm shadow-soft transition-all"
+          >
+            {loading
+              ? (lang === 'bn' ? 'যাচাই করা হচ্ছে…' : 'Verifying…')
+              : (lang === 'bn' ? 'অর্ডার দেখুন' : 'View Order')}
+          </button>
+        </form>
         <Link
-          href="/"
-          className="inline-block bg-brand-chocolate text-brand-gold-light px-6 py-2.5 rounded-full text-sm font-bold shadow-soft hover:bg-brand-chocolate-light transition-all"
+          href="/track"
+          className="inline-block text-sm font-bold text-brand-caramel hover:underline"
         >
-          {t('nav.home')}
+          {lang === 'bn' ? 'অর্ডার ট্র্যাক করুন' : 'Track an order instead'}
         </Link>
       </div>
     );
@@ -203,9 +254,9 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const waText = encodeURIComponent(
     `Salam Sweet Cravings! I placed Order #${order.public_code} for ${order.customer_name}. Total: BDT ${order.total_amount}.`
   );
-  const rawWa = (shopSettings?.whatsapp_number || '+8801712345678').replace(/\D/g, '');
+  const rawWa = (shopSettings?.whatsapp_number || '').replace(/\D/g, '');
   const waPhone = rawWa.startsWith('88') ? rawWa : `88${rawWa}`;
-  const waUrl = `https://wa.me/${waPhone}?text=${waText}`;
+  const waUrl = rawWa ? `https://wa.me/${waPhone}?text=${waText}` : '';
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-16 space-y-8 font-sans">
@@ -260,6 +311,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
 
         {/* Quick Actions: WhatsApp Concierge + Print Receipt */}
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {waUrl && (
           <a
             href={waUrl}
             target="_blank"
@@ -269,6 +321,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             <MessageCircle className="w-4 h-4" />
             <span>{t('orderConfirm.whatsAppCTA')}</span>
           </a>
+          )}
 
           <button
             onClick={handlePrint}
@@ -380,9 +433,9 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
 
             {(() => {
               const isNagad = order.payment_method === 'nagad';
-              const walletNum = isNagad 
-                ? (shopSettings?.nagad_number || '01812-345678')
-                : (shopSettings?.bkash_number || '01712-345678');
+              const walletNum = isNagad
+                ? (shopSettings?.nagad_number || '')
+                : (shopSettings?.bkash_number || '');
               const walletType = isNagad
                 ? (shopSettings?.nagad_type || 'Personal')
                 : (shopSettings?.bkash_type || 'Personal');
@@ -391,12 +444,15 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 <div className="bg-brand-cream-subtle/80 p-4 rounded-2xl border border-brand-cream-dark flex items-center justify-between">
                   <div>
                     <p className="font-mono text-xl font-extrabold text-brand-chocolate">
-                      {walletNum}
+                      {walletNum || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                     </p>
                     <p className="text-[11px] text-brand-taupe capitalize">
-                      {walletType} Account (Send Money) • Sweet Cravings
+                      {walletNum
+                        ? `${walletType} Account (Send Money) • Sweet Cravings`
+                        : (lang === 'bn' ? 'পেমেন্ট নম্বর সেট করা হয়নি — দয়া করে দোকানে যোগাযোগ করুন।' : 'Payment number not set yet — please contact the shop.')}
                     </p>
                   </div>
+                  {walletNum && (
                   <button
                     type="button"
                     onClick={() => handleCopyPhone(walletNum)}
@@ -405,6 +461,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                     {copiedPhone ? <Check className="w-3.5 h-3.5 text-brand-forest" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedPhone ? (lang === 'bn' ? 'কপি হয়েছে' : 'Copied') : (lang === 'bn' ? 'নম্বর কপি' : 'Copy')}</span>
                   </button>
+                  )}
                 </div>
               );
             })()}

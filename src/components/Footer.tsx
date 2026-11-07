@@ -10,7 +10,7 @@ import { Heart, Phone, MapPin, ShieldCheck, Clock } from 'lucide-react';
 export default function Footer() {
   const { lang, t } = useLanguage();
   const pathname = usePathname();
-  const [phoneNum, setPhoneNum] = React.useState('+880 1712-345678');
+  const [phoneNum, setPhoneNum] = React.useState('');
 
   React.useEffect(() => {
     fetch('/api/products')
@@ -104,6 +104,7 @@ export default function Footer() {
               {lang === 'bn' ? 'অর্ডার ও যোগাযোগ' : 'Order & Inquiries'}
             </h4>
             <div className="space-y-3 text-sm text-brand-cream-subtle/75">
+              {phoneNum && (
               <p className="flex items-start gap-2">
                 <Phone className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                 <span>
@@ -118,6 +119,7 @@ export default function Footer() {
                   </a>
                 </span>
               </p>
+              )}
               <p className="flex items-start gap-2">
                 <Clock className="w-4 h-4 text-brand-caramel mt-0.5 shrink-0" />
                 <span>

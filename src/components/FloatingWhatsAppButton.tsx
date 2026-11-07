@@ -8,7 +8,7 @@ import { useLanguage } from '@/context/LanguageContext';
 export default function FloatingWhatsAppButton() {
   const pathname = usePathname();
   const { lang } = useLanguage();
-  const [whatsappNumber, setWhatsappNumber] = useState('01712-345678');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
 
   useEffect(() => {
     fetch('/api/products')
@@ -22,6 +22,11 @@ export default function FloatingWhatsAppButton() {
   }, []);
 
   if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
+  // No WhatsApp button until the shop's real number is configured.
+  if (!whatsappNumber) {
     return null;
   }
 

@@ -41,15 +41,13 @@ export default function ErrorBoundary({
             <span>Try Again</span>
           </button>
 
-          <a
-            href="https://wa.me/8801712345678?text=Salam!%20I%20experienced%20an%20error%20on%20the%20Sweet%20Cravings%20website."
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/contact"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand-forest hover:bg-[#1A3F2C] text-white font-bold px-6 py-3 rounded-full text-xs sm:text-sm shadow-soft transition-all"
           >
             <MessageCircle className="w-4 h-4" />
-            <span>WhatsApp Support</span>
-          </a>
+            <span>Contact Support</span>
+          </Link>
         </div>
 
       </div>

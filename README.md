@@ -46,7 +46,7 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, and a 
 ---
 
 ### 2. Operator Dashboard for the Sister (`/admin`)
-- Accessible via `/admin` protected by PIN login (Default PIN: `1234` or `sweet2026`).
+- Accessible via `/admin`, protected by a password set through the `ADMIN_PASSWORD` environment variable (see `.env.example`). There is no default password — admin login is disabled until one is set.
 - **"What Needs My Attention?" Today Dashboard**:
   - Unreviewed new orders count with quick accept.
   - Pending bKash/Nagad payment submissions waiting for bank app verification.
@@ -87,4 +87,4 @@ http://localhost:3000
 - Public Storefront: `http://localhost:3000`
 - Menu: `http://localhost:3000/menu`
 - Track Order: `http://localhost:3000/track`
-- Admin Operations Portal: `http://localhost:3000/admin` (PIN: `1234`)
+- Admin Operations Portal: `http://localhost:3000/admin` (requires `ADMIN_PASSWORD` to be set — see `.env.example`)

@@ -12,7 +12,7 @@ export default function Navbar() {
   const { lang, setLang, toggleLang, t } = useLanguage();
   const { totalItemsCount, subtotal, setIsCartOpen } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [phoneNum, setPhoneNum] = useState('01712-345678');
+  const [phoneNum, setPhoneNum] = useState('');
   const pathname = usePathname();
 
   React.useEffect(() => {
@@ -55,6 +55,7 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-3.5">
+            {phoneNum && (
             <a 
               href={`https://wa.me/${phoneNum.replace(/\D/g, '').startsWith('88') ? phoneNum.replace(/\D/g, '') : '88' + phoneNum.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
               target="_blank"
@@ -64,6 +65,7 @@ export default function Navbar() {
               <Phone className="w-3 h-3 text-emerald-400" />
               <span className="tracking-wide">{phoneNum}</span>
             </a>
+            )}
 
             {/* Language Switcher Pill */}
             <button

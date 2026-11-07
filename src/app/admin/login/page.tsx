@@ -10,13 +10,13 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { lang, t } = useLanguage();
 
-  const [pin, setPin] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pin.trim()) return;
+    if (!password.trim()) return;
 
     setLoading(true);
     setError(null);
@@ -25,14 +25,14 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/admin/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: pin.trim() }),
+        body: JSON.stringify({ password }),
       });
       const data = await res.json();
 
       if (res.ok && data.success) {
         router.push('/admin');
       } else {
-        setError(lang === 'bn' ? 'সঠিক পিন দিন (ডিফল্ট: 1234)' : 'Incorrect PIN (Default: 1234)');
+        setError(data.error || (lang === 'bn' ? 'ভুল পাসওয়ার্ড' : 'Incorrect password'));
       }
     } catch {
       setError('Connection error. Please try again.');
@@ -78,9 +78,9 @@ export default function AdminLoginPage() {
               type="password"
               required
               autoFocus
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              placeholder={t('admin.pinPlaceholder')}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('admin.passwordPlaceholder')}
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream-subtle/50 focus:bg-white focus:outline-none focus:border-brand-caramel text-center tracking-widest text-lg font-mono font-bold text-brand-chocolate"
             />
           </div>
@@ -94,10 +94,6 @@ export default function AdminLoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="pt-2 border-t border-brand-cream-dark text-[11px] text-brand-taupe">
-          <p>Operator Default PIN: <code className="font-mono font-bold text-brand-caramel">1234</code></p>
-        </div>
 
       </div>
     </div>

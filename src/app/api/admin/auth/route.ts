@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE } from '@/lib/auth';
+import {
+  ADMIN_COOKIE_NAME,
+  createAdminSessionToken,
+  isAdminConfigured,
+  verifyAdminPassword,
+} from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +13,14 @@ const attemptsMap = new Map<string, { count: number; lockedUntil: number }>();
 
 export async function POST(request: Request) {
   try {
+    // Fail closed: without a configured admin password there is no login.
+    if (!isAdminConfigured()) {
+      return NextResponse.json(
+        { success: false, error: 'Admin login is not configured. Set ADMIN_PASSWORD on the server.' },
+        { status: 503 }
+      );
+    }
+
     // Basic IP identification for rate limiting
     const ip = request.headers.get('x-forwarded-for') || 'local_client';
     const now = Date.now();
@@ -21,21 +34,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const { pin } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const password = typeof body?.password === 'string' ? body.password : '';
 
-    // Accepted PINs: default operator PINs
-    const validPins = ['1234', 'sweet2026', 'admin'];
-
-    if (validPins.includes(pin)) {
+    if (verifyAdminPassword(password)) {
       attemptsMap.delete(ip); // reset on success
 
+      const token = createAdminSessionToken();
+      if (!token) {
+        return NextResponse.json(
+          { success: false, error: 'Admin login is not configured. Set ADMIN_PASSWORD on the server.' },
+          { status: 503 }
+        );
+      }
+
       const response = NextResponse.json({ success: true, message: 'Authentication successful' });
-      response.cookies.set(ADMIN_COOKIE_NAME, ADMIN_SESSION_VALUE, {
+      response.cookies.set(ADMIN_COOKIE_NAME, token, {
         httpOnly: true,
         path: '/',
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
+        maxAge: 60 * 60 * 24, // 24 hours
       });
       return response;
     }
@@ -53,7 +72,7 @@ export async function POST(request: Request) {
 
     attemptsMap.set(ip, clientRecord);
     return NextResponse.json(
-      { success: false, error: 'Incorrect PIN' },
+      { success: false, error: 'Incorrect password' },
       { status: 401 }
     );
   } catch (error: any) {

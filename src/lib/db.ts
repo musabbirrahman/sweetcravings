@@ -415,18 +415,20 @@ function seedInitialData(db: DatabaseSync) {
   insertSetting.run('is_store_paused', 'false', now, 'system');
   insertSetting.run('pause_message_en', 'Our kitchen is currently fulfilling active orders. New orders will resume shortly!', now, 'system');
   insertSetting.run('pause_message_bn', 'কিচেনে চাপ বেশি থাকায় সাময়িকভাবে নতুন অর্ডার গ্রহণ বন্ধ রয়েছে। শীঘ্রই অর্ডার নেওয়া শুরু হবে!', now, 'system');
-  insertSetting.run('whatsapp_number', '+8801712345678', now, 'system');
+  insertSetting.run('whatsapp_number', '', now, 'system');
   insertSetting.run('cod_enabled', 'true', now, 'system');
   insertSetting.run('bkash_enabled', 'true', now, 'system');
-  insertSetting.run('bkash_number', '01712-345678', now, 'system');
+  // Wallet numbers are intentionally left blank here: they must be set by
+  // the shop owner in the admin settings. Never seed a real-looking number.
+  insertSetting.run('bkash_number', '', now, 'system');
   insertSetting.run('bkash_type', 'personal', now, 'system');
-  insertSetting.run('bkash_instructions_en', '1. Go to your bKash app and select Send Money.\n2. Enter our bKash Personal Number: 01712-345678.\n3. Enter the exact order total amount.\n4. Complete payment and copy the Transaction ID (TrxID).\n5. Paste the TrxID below to help us verify quickly.', now, 'system');
-  insertSetting.run('bkash_instructions_bn', '১. বিকাশ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. আমাদের বিকাশ পার্সোনাল নম্বর: 01712-345678 দিন।\n৩. সর্বমোট অর্ডারের টাকার পরিমাণ দিন।\n৪. পিন দিয়ে পেমেন্ট সম্পন্ন করে TrxID কপি করুন।\n৫. দ্রুত ভেরিফিকেশনের জন্য TrxID নিচে পেস্ট করুন।', now, 'system');
+  insertSetting.run('bkash_instructions_en', '1. Open your bKash app and select Send Money.\n2. Send the exact order total to the bKash number shown on your order page.\n3. Complete the payment and copy the Transaction ID (TrxID).\n4. Paste the TrxID on your order page so we can verify it quickly.', now, 'system');
+  insertSetting.run('bkash_instructions_bn', '১. বিকাশ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. অর্ডার পেজে দেখানো বিকাশ নম্বরে সর্বমোট অর্ডারের টাকার পরিমাণ পাঠান।\n৩. পেমেন্ট সম্পন্ন করে TrxID কপি করুন।\n৪. দ্রুত ভেরিফিকেশনের জন্য TrxID অর্ডার পেজে পেস্ট করুন।', now, 'system');
   insertSetting.run('nagad_enabled', 'true', now, 'system');
-  insertSetting.run('nagad_number', '01812-345678', now, 'system');
+  insertSetting.run('nagad_number', '', now, 'system');
   insertSetting.run('nagad_type', 'personal', now, 'system');
-  insertSetting.run('nagad_instructions_en', '1. Open Nagad App and select Send Money.\n2. Send the exact order amount to: 01812-345678.\n3. Note down the Transaction ID (TrxID) and enter it below.', now, 'system');
-  insertSetting.run('nagad_instructions_bn', '১. নগদ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. আমাদের নগদ নম্বরে (01812-345678) সঠিক পরিমাণ টাকা পাঠান।\n৩. পেমেন্ট শেষে প্রাপ্ত TrxID নিচে লিখে সাবমিট করুন।', now, 'system');
+  insertSetting.run('nagad_instructions_en', '1. Open your Nagad app and select Send Money.\n2. Send the exact order amount to the Nagad number shown on your order page.\n3. Note down the Transaction ID (TrxID) and enter it on your order page.', now, 'system');
+  insertSetting.run('nagad_instructions_bn', '১. নগদ অ্যাপে গিয়ে Send Money নির্বাচন করুন।\n২. অর্ডার পেজে দেখানো নগদ নম্বরে সঠিক পরিমাণ টাকা পাঠান।\n৩. পেমেন্ট শেষে প্রাপ্ত TrxID অর্ডার পেজে লিখে সাবমিট করুন।', now, 'system');
 
 }
 
@@ -474,15 +476,15 @@ export function getShopSettings(): ShopSettings {
     is_store_paused: map.is_store_paused === 'true',
     pause_message_en: map.pause_message_en || '',
     pause_message_bn: map.pause_message_bn || '',
-    whatsapp_number: map.whatsapp_number || '+8801712345678',
+    whatsapp_number: map.whatsapp_number || '',
     cod_enabled: map.cod_enabled !== 'false',
     bkash_enabled: map.bkash_enabled !== 'false',
-    bkash_number: map.bkash_number || '01712-345678',
+    bkash_number: map.bkash_number || '',
     bkash_type: (map.bkash_type as 'personal' | 'merchant') || 'personal',
     bkash_instructions_en: map.bkash_instructions_en || '',
     bkash_instructions_bn: map.bkash_instructions_bn || '',
     nagad_enabled: map.nagad_enabled !== 'false',
-    nagad_number: map.nagad_number || '01812-345678',
+    nagad_number: map.nagad_number || '',
     nagad_type: (map.nagad_type as 'personal' | 'merchant') || 'personal',
     nagad_instructions_en: map.nagad_instructions_en || '',
     nagad_instructions_bn: map.nagad_instructions_bn || '',
@@ -614,20 +616,40 @@ export function generatePublicOrderCode(): string {
   return `SC-${randomNum}`;
 }
 
-export function getOrderWithDetails(publicCode: string, phoneFilter?: string): Order | null {
-  const db = getDb();
-  let sql = 'SELECT * FROM orders WHERE public_code = ?';
-  const params: unknown[] = [publicCode];
-
-  if (phoneFilter) {
-    // Clean phone numbers: accept last 8-10 digits match
-    const cleanFilter = phoneFilter.replace(/\D/g, '').slice(-10);
-    sql += ` AND REPLACE(REPLACE(customer_phone, ' ', ''), '-', '') LIKE ?`;
-    params.push(`%${cleanFilter}%`);
+/**
+ * Generate a public order code that does not already exist in the database.
+ * Bounded retries; throws if no free code is found (callers should surface
+ * a 500 rather than create a duplicate order). The UNIQUE constraint on
+ * orders.public_code remains as a backstop.
+ */
+export function generateUniquePublicOrderCode(db: DatabaseSync, maxAttempts = 10): string {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = generatePublicOrderCode();
+    const existing = db.prepare('SELECT 1 FROM orders WHERE public_code = ?').get(code);
+    if (!existing) return code;
   }
+  throw new Error('Could not generate a unique order code');
+}
 
-  const order = db.prepare(sql).get(...params) as unknown as Order | null;
+/** Normalize a Bangladesh phone number for comparison: digits only, strip +88. */
+export function normalizePhone(phone: string): string {
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('88') && digits.length === 13) {
+    digits = digits.slice(2);
+  }
+  return digits;
+}
+
+export function getOrderWithDetails(publicCode: string, phoneFilter?: string): Order | null {
+  // Phone verification is mandatory: without a matching phone number the
+  // order is not returned, and callers cannot tell whether the code exists.
+  const normalizedFilter = phoneFilter ? normalizePhone(phoneFilter) : '';
+  if (!normalizedFilter) return null;
+
+  const db = getDb();
+  const order = db.prepare('SELECT * FROM orders WHERE public_code = ?').get(publicCode) as unknown as Order | null;
   if (!order) return null;
+  if (normalizePhone(order.customer_phone) !== normalizedFilter) return null;
 
   order.items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id) as unknown as OrderItem[];
   order.events = db.prepare('SELECT * FROM order_status_events WHERE order_id = ? ORDER BY created_at ASC').all(order.id) as unknown as OrderStatusEvent[];

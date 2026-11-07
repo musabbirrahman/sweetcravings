@@ -127,6 +127,16 @@ export default function CheckoutPage() {
   const discountAmount = appliedCoupon?.discountAmount || 0;
   const payableTotal = Math.max(0, subtotal - discountAmount) + deliveryFee;
 
+  // Wallet payment options are only offered once settings have loaded and
+  // the method is enabled with a real number configured. Until settings
+  // load, all options stay visible so the page does not flash.
+  const walletSettingsLoaded = shopSettings !== null;
+  const bkashNumber = (shopSettings?.bkash_number || '').trim();
+  const nagadNumber = (shopSettings?.nagad_number || '').trim();
+  const codAvailable = !walletSettingsLoaded || shopSettings.cod_enabled !== false;
+  const bkashAvailable = !walletSettingsLoaded || (shopSettings.bkash_enabled !== false && bkashNumber !== '');
+  const nagadAvailable = !walletSettingsLoaded || (shopSettings.nagad_enabled !== false && nagadNumber !== '');
+
   useEffect(() => {
     fetch('/api/products')
       .then((r) => r.json())
@@ -219,6 +229,20 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Never submit a wallet method that has no number configured.
+    if (paymentMethod === 'bkash' && !bkashAvailable) {
+      setErrorMessage(lang === 'bn' ? 'বিকাশ পেমেন্ট এখনো চালু হয়নি। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।' : 'bKash payment is not set up yet. Please choose Cash on Delivery.');
+      return;
+    }
+    if (paymentMethod === 'nagad' && !nagadAvailable) {
+      setErrorMessage(lang === 'bn' ? 'নগদ পেমেন্ট এখনো চালু হয়নি। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।' : 'Nagad payment is not set up yet. Please choose Cash on Delivery.');
+      return;
+    }
+    if (paymentMethod === 'cod' && !codAvailable) {
+      setErrorMessage(lang === 'bn' ? 'ক্যাশ অন ডেলিভারি এখন বন্ধ আছে। অনুগ্রহ করে অন্য পেমেন্ট পদ্ধতি বেছে নিন।' : 'Cash on Delivery is currently unavailable. Please choose another payment method.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -258,6 +282,11 @@ export default function CheckoutPage() {
 
       clearCart();
       const finalCode = data.publicCode || data.order?.publicCode;
+      // Keep the phone in this browser session only, so the confirmation
+      // page can verify the order without asking the customer again.
+      try {
+        sessionStorage.setItem('sc_order_phone', cleanPhone);
+      } catch {}
       router.push(`/order/${finalCode}`);
     } catch (err: any) {
       setErrorMessage(err.message || 'Network error occurred. Please check your connection.');
@@ -640,6 +669,7 @@ export default function CheckoutPage() {
             <div className="space-y-3">
               
               {/* Option 1: COD */}
+              {codAvailable && (
               <label
                 onClick={() => setPaymentMethod('cod')}
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
@@ -672,8 +702,10 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </label>
+              )}
 
               {/* Option 2: bKash */}
+              {bkashAvailable && (
               <label
                 onClick={() => setPaymentMethod('bkash')}
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
@@ -706,6 +738,7 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </label>
+              )}
 
               {/* bKash Details Expandable Box */}
               {paymentMethod === 'bkash' && (
@@ -717,7 +750,8 @@ export default function CheckoutPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCopy(shopSettings?.bkash_number || '01712-345678', 'bkash')}
+                      onClick={() => { if (bkashNumber) handleCopy(bkashNumber, 'bkash'); }}
+                      disabled={!bkashNumber}
                       className="flex items-center gap-1.5 text-xs bg-white border border-[#E2136E]/30 text-[#8C1347] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFEBF1] transition-colors"
                     >
                       {copiedKey === 'bkash' ? <Check className="w-3 h-3 text-brand-forest" /> : <Copy className="w-3 h-3" />}
@@ -728,7 +762,7 @@ export default function CheckoutPage() {
                   <div className="bg-white p-3.5 rounded-xl border border-[#E2136E]/15 flex items-center justify-between">
                     <div>
                       <p className="font-mono text-lg font-extrabold text-brand-chocolate tracking-wide">
-                        {shopSettings?.bkash_number || '01712-345678'}
+                        {bkashNumber || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                       </p>
                       <p className="text-[11px] text-brand-taupe">
                         Type: <span className="font-semibold text-brand-chocolate capitalize">{shopSettings?.bkash_type || 'Personal'}</span> (Send Money)
@@ -766,6 +800,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Option 3: Nagad */}
+              {nagadAvailable && (
               <label
                 onClick={() => setPaymentMethod('nagad')}
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
@@ -798,6 +833,7 @@ export default function CheckoutPage() {
                   </p>
                 </div>
               </label>
+              )}
 
               {/* Nagad Details Expandable Box */}
               {paymentMethod === 'nagad' && (
@@ -809,7 +845,8 @@ export default function CheckoutPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleCopy(shopSettings?.nagad_number || '01812-345678', 'nagad')}
+                      onClick={() => { if (nagadNumber) handleCopy(nagadNumber, 'nagad'); }}
+                      disabled={!nagadNumber}
                       className="flex items-center gap-1.5 text-xs bg-white border border-[#F7941D]/30 text-[#A35200] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFF3E3] transition-colors"
                     >
                       {copiedKey === 'nagad' ? <Check className="w-3 h-3 text-brand-forest" /> : <Copy className="w-3 h-3" />}
@@ -820,7 +857,7 @@ export default function CheckoutPage() {
                   <div className="bg-white p-3.5 rounded-xl border border-[#F7941D]/15 flex items-center justify-between">
                     <div>
                       <p className="font-mono text-lg font-extrabold text-brand-chocolate tracking-wide">
-                        {shopSettings?.nagad_number || '01812-345678'}
+                        {nagadNumber || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                       </p>
                       <p className="text-[11px] text-brand-taupe">
                         Type: <span className="font-semibold text-brand-chocolate capitalize">{shopSettings?.nagad_type || 'Personal'}</span> (Send Money)

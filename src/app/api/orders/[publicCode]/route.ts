@@ -1,23 +1,37 @@
 import { NextResponse } from 'next/server';
-import { getOrderWithDetails, getDb, getShopSettings } from '@/lib/db';
+import { getOrderWithDetails, getDb, getShopSettings, normalizePhone } from '@/lib/db';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
+
+// A missing or wrong phone returns the same generic "not found" as a
+// missing code, so callers cannot probe whether an order code exists.
+const NOT_FOUND = { success: false, error: 'Order not found.' };
 
 export async function GET(
   request: Request,
   { params }: { params: { publicCode: string } }
 ) {
   try {
+    const ip = getClientIp(request);
+    const limit = checkRateLimit(`order-lookup:${ip}`, 30, 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds.` },
+        { status: 429 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
-    const phone = searchParams.get('phone') || undefined;
+    const phone = searchParams.get('phone') || '';
+    if (!phone.trim()) {
+      return NextResponse.json(NOT_FOUND, { status: 404 });
+    }
 
     const order = getOrderWithDetails(params.publicCode, phone);
 
     if (!order) {
-      return NextResponse.json(
-        { success: false, error: 'Order not found or phone number does not match.' },
-        { status: 404 }
-      );
+      return NextResponse.json(NOT_FOUND, { status: 404 });
     }
 
     const settings = getShopSettings();
@@ -44,25 +58,66 @@ export async function PATCH(
   { params }: { params: { publicCode: string } }
 ) {
   try {
-    const body = await request.json();
-    const { trxId, provider } = body;
+    const ip = getClientIp(request);
+    const limit = checkRateLimit(`order-trxid:${ip}`, 10, 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds.` },
+        { status: 429 }
+      );
+    }
 
-    if (!trxId || !trxId.trim()) {
+    const body = await request.json().catch(() => ({}));
+    const { trxId, provider, phone } = body;
+
+    if (!trxId || typeof trxId !== 'string' || !trxId.trim()) {
       return NextResponse.json(
         { success: false, error: 'Transaction ID (TrxID) is required.' },
         { status: 400 }
       );
     }
+    if (trxId.trim().length > 50) {
+      return NextResponse.json(
+        { success: false, error: 'Transaction ID is too long.' },
+        { status: 400 }
+      );
+    }
+
+    // Phone verification is mandatory before a TrxID can be attached.
+    if (!phone || typeof phone !== 'string' || !phone.trim()) {
+      return NextResponse.json(NOT_FOUND, { status: 404 });
+    }
 
     const db = getDb();
-    const order = db.prepare('SELECT id, total_amount, payment_method FROM orders WHERE public_code = ?').get(params.publicCode) as { id: number; total_amount: number; payment_method: string } | null;
+    const order = db.prepare('SELECT id, total_amount, payment_method, payment_status, customer_phone FROM orders WHERE public_code = ?').get(params.publicCode) as { id: number; total_amount: number; payment_method: string; payment_status: string; customer_phone: string } | null;
 
-    if (!order) {
-      return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
+    if (!order || normalizePhone(order.customer_phone) !== normalizePhone(phone)) {
+      return NextResponse.json(NOT_FOUND, { status: 404 });
+    }
+
+    if (order.payment_method === 'cod') {
+      return NextResponse.json(
+        { success: false, error: 'This order uses Cash on Delivery; no transaction ID is needed.' },
+        { status: 400 }
+      );
+    }
+
+    if (order.payment_status === 'confirmed') {
+      return NextResponse.json(
+        { success: false, error: 'Payment for this order is already confirmed.' },
+        { status: 400 }
+      );
+    }
+
+    const prov = provider || order.payment_method;
+    if (prov !== 'bkash' && prov !== 'nagad') {
+      return NextResponse.json(
+        { success: false, error: 'Payment provider must be bKash or Nagad.' },
+        { status: 400 }
+      );
     }
 
     const now = new Date().toISOString();
-    const prov = provider || order.payment_method || 'bkash';
 
     // Insert new payment submission record
     db.prepare(`

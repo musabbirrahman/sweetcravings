@@ -41,7 +41,6 @@ export default function RootLayout({
     '@type': 'Bakery',
     name: 'Sweet Cravings Homemade Desserts',
     description: 'A Little Sweetness, A Lot of Happiness. Artisanal homemade desserts and gourmet flans in Rajshahi.',
-    telephone: '+8801712345678',
     priceRange: '৳220 - ৳1500',
     address: {
       '@type': 'PostalAddress',

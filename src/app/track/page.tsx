@@ -48,6 +48,11 @@ export default function TrackOrderPage() {
       if (res.ok && data.success && data.order) {
         setOrder(data.order);
         if (data.settings) setSettings(data.settings);
+        // Keep the phone in this browser session only, so the full receipt
+        // page can verify the same order without asking again.
+        try {
+          sessionStorage.setItem('sc_order_phone', phoneNumber.trim().replace(/\D/g, ''));
+        } catch {}
       } else {
         setErrorMsg(t('track.notFound'));
       }
@@ -69,10 +74,10 @@ export default function TrackOrderPage() {
 
   const currentStageIndex = order ? orderStages.findIndex((s) => s.key === order.order_status) : -1;
 
-  // WhatsApp concierge link
-  const rawWa = (settings?.whatsapp_number || '+8801712345678').replace(/\D/g, '');
+  // WhatsApp concierge link — only shown when a real number is configured.
+  const rawWa = (settings?.whatsapp_number || '').replace(/\D/g, '');
   const waPhone = rawWa.startsWith('88') ? rawWa : `88${rawWa}`;
-  const waUrl = order ? `https://wa.me/${waPhone}?text=${encodeURIComponent(`Salam Sweet Cravings! I am checking on my Order #${order.public_code}.`)}` : '#';
+  const waUrl = order && rawWa ? `https://wa.me/${waPhone}?text=${encodeURIComponent(`Salam Sweet Cravings! I am checking on my Order #${order.public_code}.`)}` : '';
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-16 space-y-8 font-sans">
@@ -264,6 +269,7 @@ export default function TrackOrderPage() {
 
             {/* Direct WhatsApp Concierge CTA */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              {waUrl && (
               <a
                 href={waUrl}
                 target="_blank"
@@ -273,6 +279,7 @@ export default function TrackOrderPage() {
                 <MessageCircle className="w-4 h-4" />
                 <span>{lang === 'bn' ? 'হোয়াটসঅ্যাপে আপডেট জানুন' : 'Live WhatsApp Updates'}</span>
               </a>
+              )}
 
               <Link
                 href={`/order/${order.public_code}`}

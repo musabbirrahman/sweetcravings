@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { 
   getDb, 
-  generatePublicOrderCode, 
+  generateUniquePublicOrderCode, 
   getShopSettings, 
   getAllOrders, 
   getCouponByCode, 
@@ -9,12 +9,24 @@ import {
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
 import { verifyAdminSession } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyKitchenNewOrder } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
+const ALLOWED_PAYMENT_METHODS = ['cod', 'bkash', 'nagad'] as const;
+
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    const limit = checkRateLimit(`order-create:${ip}`, 10, 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Too many order attempts. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const {
       customerName,
@@ -41,6 +53,32 @@ export async function POST(request: Request) {
         success: false,
         error: 'The kitchen is temporarily paused for orders. Please try again shortly.',
       }, { status: 400 });
+    }
+
+    // Payment method must be one of the supported methods, and that method
+    // must be enabled (and, for wallets, configured with a number). The
+    // storefront hides unavailable methods; the server enforces it.
+    if (!paymentMethod || typeof paymentMethod !== 'string' || !(ALLOWED_PAYMENT_METHODS as readonly string[]).includes(paymentMethod)) {
+      return NextResponse.json({ success: false, error: 'Please choose a valid payment method (Cash on Delivery, bKash or Nagad).' }, { status: 400 });
+    }
+    if (paymentMethod === 'cod' && !settings.cod_enabled) {
+      return NextResponse.json({ success: false, error: 'Cash on Delivery is currently unavailable. Please choose another payment method.' }, { status: 400 });
+    }
+    if (paymentMethod === 'bkash') {
+      if (!settings.bkash_enabled) {
+        return NextResponse.json({ success: false, error: 'bKash payment is currently unavailable. Please choose another payment method.' }, { status: 400 });
+      }
+      if (!settings.bkash_number || !settings.bkash_number.trim()) {
+        return NextResponse.json({ success: false, error: 'bKash payment is not set up yet. Please choose Cash on Delivery or contact the shop.' }, { status: 400 });
+      }
+    }
+    if (paymentMethod === 'nagad') {
+      if (!settings.nagad_enabled) {
+        return NextResponse.json({ success: false, error: 'Nagad payment is currently unavailable. Please choose another payment method.' }, { status: 400 });
+      }
+      if (!settings.nagad_number || !settings.nagad_number.trim()) {
+        return NextResponse.json({ success: false, error: 'Nagad payment is not set up yet. Please choose Cash on Delivery or contact the shop.' }, { status: 400 });
+      }
     }
 
     // Required field validation
@@ -125,6 +163,11 @@ export async function POST(request: Request) {
       if (!product) {
         return NextResponse.json({ success: false, error: `Product ID ${item.productId} not found` }, { status: 400 });
       }
+      // Only published products can be ordered. Sold-out, archived and
+      // draft products must be rejected server-side, not just hidden in UI.
+      if (product.status !== 'published') {
+        return NextResponse.json({ success: false, error: `${product.name_en} is not available for ordering right now.` }, { status: 400 });
+      }
 
       let unitPrice = product.base_price;
       let varLabelEn = '';
@@ -132,11 +175,15 @@ export async function POST(request: Request) {
 
       if (item.variantId) {
         const variant = varStmt.get(item.variantId, product.id) as unknown as ProductVariant | null;
-        if (variant) {
-          unitPrice += variant.price_adjustment;
-          varLabelEn = variant.label_en;
-          varLabelBn = variant.label_bn;
+        if (!variant) {
+          return NextResponse.json({ success: false, error: 'The selected option is no longer available. Please refresh the menu and try again.' }, { status: 400 });
         }
+        if (variant.active !== 1) {
+          return NextResponse.json({ success: false, error: 'The selected option is no longer available. Please refresh the menu and try again.' }, { status: 400 });
+        }
+        unitPrice += variant.price_adjustment;
+        varLabelEn = variant.label_en;
+        varLabelBn = variant.label_bn;
       }
 
       const lineTotal = unitPrice * qty;
@@ -183,7 +230,6 @@ export async function POST(request: Request) {
     const deliveryFee = subtotal >= settings.free_delivery_threshold ? 0 : settings.delivery_fee;
     const totalAmount = Math.max(0, subtotal - discountAmount) + deliveryFee;
 
-    const publicCode = generatePublicOrderCode();
     const now = new Date().toISOString();
     const token = idempotencyToken || `auto_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -191,93 +237,111 @@ export async function POST(request: Request) {
       ? 'submitted'
       : 'pending';
 
-    // ATOMIC TRANSACTION: Insert order, items, status event, and payment submission together
-    db.exec('BEGIN TRANSACTION;');
+    // ATOMIC TRANSACTION: Insert order, items, status event, and payment submission together.
+    // Retries with a fresh public code if the (very unlikely) random code
+    // collides with an existing order; any other failure aborts at once.
+    let orderId: number = 0;
+    let publicCode = '';
+    let lastTxError: unknown = null;
 
-    let orderId: number;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      publicCode = generateUniquePublicOrderCode(db);
+      db.exec('BEGIN TRANSACTION;');
 
-    try {
-      const insertOrder = db.prepare(`
-        INSERT INTO orders (
-          public_code, customer_name, customer_phone, delivery_address, area_landmark,
-          delivery_instructions, requested_time, is_gift, recipient_name, recipient_phone, gift_message,
-          payment_method, payment_status, order_status,
-          subtotal, delivery_fee, discount_amount, coupon_code, total_amount, idempotency_token, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      try {
+        const insertOrder = db.prepare(`
+          INSERT INTO orders (
+            public_code, customer_name, customer_phone, delivery_address, area_landmark,
+            delivery_instructions, requested_time, is_gift, recipient_name, recipient_phone, gift_message,
+            payment_method, payment_status, order_status,
+            subtotal, delivery_fee, discount_amount, coupon_code, total_amount, idempotency_token, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
 
-      const result = insertOrder.run(
-        publicCode,
-        customerName.trim(),
-        cleanPhone,
-        deliveryAddress.trim(),
-        areaLandmark.trim(),
-        deliveryInstructions ? String(deliveryInstructions).trim().slice(0, 500) : '',
-        requestedTime ? String(requestedTime).trim().slice(0, 100) : '',
-        isGift ? 1 : 0,
-        recipientName ? String(recipientName).trim().slice(0, 100) : null,
-        recipientPhone ? String(recipientPhone).trim().slice(0, 20) : null,
-        giftMessage ? String(giftMessage).trim().slice(0, 500) : null,
-        paymentMethod || 'cod',
-        initialPaymentStatus,
-        'new',
-        subtotal,
-        deliveryFee,
-        discountAmount,
-        appliedCouponCode,
-        totalAmount,
-        token,
-        now,
-        now
-      );
-
-      orderId = Number(result.lastInsertRowid);
-
-      // Insert order items
-      const insertItem = db.prepare(`
-        INSERT INTO order_items (
-          order_id, product_id, product_name_en, product_name_bn,
-          variant_label_en, variant_label_bn, unit_price, quantity, line_total
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const vItem of validatedItems) {
-        insertItem.run(
-          orderId,
-          vItem.productId,
-          vItem.nameEn,
-          vItem.nameBn,
-          vItem.variantLabelEn,
-          vItem.variantLabelBn,
-          vItem.unitPrice,
-          vItem.quantity,
-          vItem.lineTotal
+        const result = insertOrder.run(
+          publicCode,
+          customerName.trim(),
+          cleanPhone,
+          deliveryAddress.trim(),
+          areaLandmark.trim(),
+          deliveryInstructions ? String(deliveryInstructions).trim().slice(0, 500) : '',
+          requestedTime ? String(requestedTime).trim().slice(0, 100) : '',
+          isGift ? 1 : 0,
+          recipientName ? String(recipientName).trim().slice(0, 100) : null,
+          recipientPhone ? String(recipientPhone).trim().slice(0, 20) : null,
+          giftMessage ? String(giftMessage).trim().slice(0, 500) : null,
+          paymentMethod || 'cod',
+          initialPaymentStatus,
+          'new',
+          subtotal,
+          deliveryFee,
+          discountAmount,
+          appliedCouponCode,
+          totalAmount,
+          token,
+          now,
+          now
         );
-      }
 
-      // Insert initial status event
-      db.prepare(`
-        INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(orderId, 'none', 'new', 'customer', 'Order placed through website', now);
+        orderId = Number(result.lastInsertRowid);
 
-      // Insert payment submission if TrxID provided
-      if (trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
+        // Insert order items
+        const insertItem = db.prepare(`
+          INSERT INTO order_items (
+            order_id, product_id, product_name_en, product_name_bn,
+            variant_label_en, variant_label_bn, unit_price, quantity, line_total
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        for (const vItem of validatedItems) {
+          insertItem.run(
+            orderId,
+            vItem.productId,
+            vItem.nameEn,
+            vItem.nameBn,
+            vItem.variantLabelEn,
+            vItem.variantLabelBn,
+            vItem.unitPrice,
+            vItem.quantity,
+            vItem.lineTotal
+          );
+        }
+
+        // Insert initial status event
         db.prepare(`
-          INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
+          INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
           VALUES (?, ?, ?, ?, ?, ?)
-        `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), totalAmount, now, 'pending');
-      }
+        `).run(orderId, 'none', 'new', 'customer', 'Order placed through website', now);
 
-      // Increment coupon usage
-      if (appliedCouponCode) {
-        incrementCouponUsage(appliedCouponCode);
-      }
+        // Insert payment submission if TrxID provided
+        if (trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
+          db.prepare(`
+            INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), totalAmount, now, 'pending');
+        }
 
-      db.exec('COMMIT;');
-    } catch (txErr) {
-      db.exec('ROLLBACK;');
-      throw txErr;
+        // Increment coupon usage
+        if (appliedCouponCode) {
+          incrementCouponUsage(appliedCouponCode);
+        }
+
+        db.exec('COMMIT;');
+        lastTxError = null;
+        break;
+      } catch (txErr) {
+        try { db.exec('ROLLBACK;'); } catch {}
+        const message = txErr instanceof Error ? txErr.message : String(txErr);
+        if (message.includes('UNIQUE constraint failed') && message.includes('public_code')) {
+          lastTxError = txErr;
+          continue;
+        }
+        throw txErr;
+      }
+    }
+
+    if (lastTxError) {
+      throw lastTxError;
     }
 
     // Non-blocking Kitchen Instant Notification Dispatch

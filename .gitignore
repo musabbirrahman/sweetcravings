@@ -24,6 +24,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env
 
 # vercel
 .vercel
@@ -35,6 +36,8 @@ next-env.d.ts
 # scratch
 scratch/
 
-# sqlite temporary wal files
+# sqlite database and temporary wal files
+# The local database file is never committed: it holds customer orders.
+data/*.db
 data/*.db-wal
 data/*.db-shm
