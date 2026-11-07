@@ -268,6 +268,10 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    if (!verifyAdminSession(request)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
