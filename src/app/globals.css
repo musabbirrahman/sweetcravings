@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,400;1,500;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-bengali: 'Hind Siliguri', 'Noto Sans Bengali', sans-serif;
+  --font-editorial: 'Playfair Display', 'Outfit', Georgia, serif;
+}
+
+body {
+  background-color: #FAF7F2;
+  color: #2C1E19;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Natural, high-legibility Bengali font rendering */
+[lang="bn"], .font-bn {
+  font-family: var(--font-bengali), var(--font-sans);
+  line-height: 1.78;
+  letter-spacing: 0.015em;
+}
+
+/* Headings use Outfit for a soft, natural, readable luxury feel */
+h1, h2, h3, h4, .font-heading {
+  font-family: var(--font-heading);
+  letter-spacing: -0.022em;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Editorial quote flourishes */
+.font-editorial, .font-serif-brand {
+  font-family: var(--font-editorial);
+  font-style: italic;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Ultra-soft, elegant scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5EFE6;
+}
+::-webkit-scrollbar-thumb {
+  background: #E0D2C3;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C29B63;
+}
+
+/* Custom UI Polish Classes with softer tones */
+.bg-caramel-gradient {
+  background: linear-gradient(135deg, #2C1E19 0%, #3D291F 50%, #523526 100%);
+}
+
+.bg-cream-mesh {
+  background-color: #FAF7F2;
+  background-image: radial-gradient(at 0% 0%, rgba(235, 220, 204, 0.35) 0px, transparent 55%),
+                    radial-gradient(at 100% 100%, rgba(194, 155, 99, 0.12) 0px, transparent 50%);
+}
+
+.gold-glow {
+  box-shadow: 0 0 50px -10px rgba(194, 155, 99, 0.25);
+}
+
+.bg-mesh-glow {
+  background: radial-gradient(circle at 50% 0%, rgba(235, 220, 204, 0.3) 0%, rgba(250, 247, 242, 0) 65%);
+}
+
+.glass-nav {
+  background: rgba(250, 247, 242, 0.90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.badge-subtle {
+  background-color: #F7EFE8;
+  color: #9C6237;
+  border: 1px solid rgba(156, 98, 55, 0.15);
+}
+
+/* Button & Interactive micro-interactions */
+.btn-press {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-press:active {
+  transform: scale(0.975);
+}
+
+/* Subtle border lines */
+.border-divider {
+  border-color: #EAE3D6;
+}

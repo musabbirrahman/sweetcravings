@@ -1,0 +1,26 @@
+{
+  "name": "Sweet Cravings Homemade Desserts",
+  "short_name": "Sweet Cravings",
+  "description": "Artisanal homemade desserts, signature flans, and gourmet treats in Rajshahi City.",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#2C1E19",
+  "orientation": "portrait-primary",
+  "lang": "bn",
+  "categories": ["food", "shopping", "lifestyle"],
+  "icons": [
+    {
+      "src": "/sweet-cravings-logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/sweet-cravings-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
