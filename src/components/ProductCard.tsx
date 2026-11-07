@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCart } from '@/context/CartContext';
-import ProductDetailModal from './ProductDetailModal';
 import { Clock, Plus, Eye, Check, Sparkles, Flame } from 'lucide-react';
 
 interface ProductCardProps {
@@ -15,7 +15,7 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { lang, t } = useLanguage();
   const { items, addItem } = useCart();
-  const [modalOpen, setModalOpen] = useState(false);
+  const router = useRouter();
   const [justAdded, setJustAdded] = useState(false);
 
   const isAvailable = product.status === 'published';
@@ -24,10 +24,15 @@ export default function ProductCard({ product }: ProductCardProps) {
   // Check if item is already in cart
   const cartItem = items.find((i) => i.productId === product.id);
 
+  // Tapping a card opens its own shareable page (/menu/:slug).
+  const openProductPage = () => {
+    router.push(`/menu/${product.slug}`);
+  };
+
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (hasVariants) {
-      setModalOpen(true);
+      openProductPage();
       return;
     }
 
@@ -48,7 +53,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <div 
-        onClick={() => setModalOpen(true)}
+        onClick={openProductPage}
         className="group bg-white rounded-3xl overflow-hidden border border-brand-cream-dark/90 hover:border-brand-caramel/35 shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col cursor-pointer transform hover:-translate-y-1"
       >
         {/* Dessert Photo Frame */}
@@ -104,7 +109,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setModalOpen(true);
+              openProductPage();
             }}
             className="absolute bottom-3 right-3 bg-white/95 hover:bg-white text-brand-chocolate p-2.5 rounded-full shadow-soft opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100 duration-200"
             aria-label="View dessert details"
@@ -179,14 +184,6 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         </div>
       </div>
-
-      {/* Modal */}
-      {modalOpen && (
-        <ProductDetailModal
-          product={product}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
     </>
   );
 }

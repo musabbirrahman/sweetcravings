@@ -24,6 +24,13 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [successNotice, setSuccessNotice] = useState(false);
 
+  // Backup restore: a file chosen here replaces ALL current shop data
+  // (menu, orders, settings) with the backup's contents. Coupons are
+  // not part of a backup and are left untouched.
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // Form fields
   const [deliveryFee, setDeliveryFee] = useState('50');
   const [freeThreshold, setFreeThreshold] = useState('1200');
@@ -228,6 +235,39 @@ export default function AdminSettingsPage() {
     window.open('/api/admin/settings?backup=true', '_blank');
   };
 
+  const handleRestore = async () => {
+    if (!restoreFile) return;
+    // Explicit confirmation: a restore replaces everything currently
+    // in the shop (menu, orders, settings) with the backup's contents.
+    const confirmed = window.confirm(
+      `Restore this backup (${restoreFile.name})?\n\nThis REPLACES all current shop data — menu, orders and settings — with the backup's contents. Today's orders and changes made after the backup will be lost. Coupons are not part of a backup and stay as they are.\n\nAre you sure?`
+    );
+    if (!confirmed) return;
+
+    setRestoring(true);
+    setRestoreMsg(null);
+    try {
+      const formData = new FormData();
+      formData.append('backup', restoreFile);
+      const res = await fetch('/api/admin/settings/restore', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setRestoreMsg({ type: 'success', text: data.message || 'Backup restored.' });
+        setRestoreFile(null);
+        fetchSettings();
+      } else {
+        setRestoreMsg({ type: 'error', text: data.error || 'Restore failed. Nothing was changed.' });
+      }
+    } catch (err: any) {
+      setRestoreMsg({ type: 'error', text: err.message || 'Restore failed. Nothing was changed.' });
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-4xl font-sans">
       
@@ -257,6 +297,47 @@ export default function AdminSettingsPage() {
           <span>Settings saved successfully!</span>
         </div>
       )}
+
+      {/* Restore Backup */}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-cream-dark shadow-soft space-y-3">
+        <h2 className="font-heading font-bold text-base text-brand-chocolate border-b border-brand-cream-dark pb-3">
+          Restore from Backup
+        </h2>
+        <p className="text-xs text-brand-taupe leading-relaxed">
+          Choose a backup JSON file downloaded from this shop. Restoring replaces all current
+          menu, orders and settings with the backup&apos;s contents. The file is checked first —
+          if it is not a valid backup, nothing changes. Coupons are not part of a backup and stay as they are.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={(e) => { setRestoreFile(e.target.files ? e.target.files[0] : null); setRestoreMsg(null); }}
+            className="flex-1 px-3 py-2 rounded-lg border border-brand-cream-dark bg-white text-xs text-brand-chocolate file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-caramel-subtle file:text-brand-chocolate file:font-bold file:text-xs"
+          />
+          <button
+            type="button"
+            onClick={handleRestore}
+            disabled={!restoreFile || restoring}
+            className="bg-brand-chocolate hover:bg-brand-caramel text-white px-5 py-2 rounded-lg text-xs font-bold shadow-soft disabled:opacity-40 transition-colors"
+          >
+            {restoring ? 'Restoring...' : 'Restore Backup'}
+          </button>
+        </div>
+        {restoreFile && (
+          <p className="text-[11px] text-brand-taupe">Selected: <strong className="text-brand-chocolate">{restoreFile.name}</strong></p>
+        )}
+        {restoreMsg && (
+          <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+            restoreMsg.type === 'success'
+              ? 'bg-brand-forest-light border border-brand-forest/20 text-brand-forest'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+            {restoreMsg.type === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+            <span>{restoreMsg.text}</span>
+          </div>
+        )}
+      </div>
 
       {/* Main Settings Form */}
       <form onSubmit={handleSave} className="space-y-6">

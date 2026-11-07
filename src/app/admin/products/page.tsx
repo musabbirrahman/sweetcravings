@@ -29,6 +29,42 @@ export default function AdminProductsPage() {
   const [allergensEn] = useState('Contains Milk, Eggs');
   const [allergensBn] = useState('দুধ ও ডিম রয়েছে');
   const [imageUrl, setImageUrl] = useState('/sweet-cravings-logo.jpg');
+  // Photo upload: a file chosen here is uploaded (resized + compressed)
+  // when the dessert is saved, and its URL replaces the text field below.
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoSelect = (file: File | null) => {
+    setPhotoError('');
+    if (!file) {
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setPhotoError('Only JPG, PNG or WebP photos are accepted.');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('That photo is too large. Please choose one under 5 MB.');
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      return;
+    }
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const resetPhotoState = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoError('');
+    setUploadingPhoto(false);
+  };
 
   const fetchCatalog = () => {
     fetch('/api/admin/products')
@@ -86,6 +122,28 @@ export default function AdminProductsPage() {
 
     setSubmitting(true);
     try {
+      // If a photo file was chosen, upload it first (server resizes and
+      // compresses it) and use the returned URL for the new dessert.
+      // The text URL field below is only the fallback when no file is chosen.
+      let finalImageUrl = imageUrl;
+      if (photoFile) {
+        setUploadingPhoto(true);
+        const formData = new FormData();
+        formData.append('photo', photoFile);
+        const uploadRes = await fetch('/api/admin/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        setUploadingPhoto(false);
+        if (!uploadRes.ok || !uploadData.success || !uploadData.url) {
+          alert(uploadData.error || 'Photo upload failed. Please try a different photo.');
+          setSubmitting(false);
+          return;
+        }
+        finalImageUrl = uploadData.url;
+      }
+
       const res = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,7 +160,7 @@ export default function AdminProductsPage() {
           leadTimeEn,
           leadTimeBn,
           basePrice,
-          imageUrl,
+          imageUrl: finalImageUrl,
         }),
       });
       const data = await res.json();
@@ -112,6 +170,7 @@ export default function AdminProductsPage() {
         setNameBn('');
         setDescriptionEn('');
         setDescriptionBn('');
+        resetPhotoState();
         fetchCatalog();
       } else {
         alert(data.error || 'Failed to create product');
@@ -120,6 +179,7 @@ export default function AdminProductsPage() {
       alert('Error creating dessert');
     } finally {
       setSubmitting(false);
+      setUploadingPhoto(false);
     }
   };
 
@@ -343,7 +403,26 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block font-bold text-brand-chocolate mb-1">Image URL / Preset</label>
+                <label className="block font-bold text-brand-chocolate mb-1">Photo — upload a file</label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => handlePhotoSelect(e.target.files ? e.target.files[0] : null)}
+                  className="w-full px-3 py-2 rounded-lg border border-brand-cream-dark bg-white text-brand-chocolate file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-caramel-subtle file:text-brand-chocolate file:font-bold file:text-xs"
+                />
+                <p className="text-[11px] text-brand-taupe mt-1">JPG, PNG or WebP, under 5 MB. It is resized to at most 1200px wide when saved.</p>
+                {photoError && (
+                  <p className="text-[11px] text-brand-strawberry font-semibold mt-1">{photoError}</p>
+                )}
+                {photoPreview && (
+                  <div className="mt-2 relative w-full h-40 rounded-xl overflow-hidden border border-brand-cream-dark bg-brand-cream-subtle">
+                    <Image src={photoPreview} alt="Photo preview" fill className="object-cover" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-brand-chocolate mb-1">Image URL / Preset (fallback if no file uploaded)</label>
                 <input
                   type="text"
                   value={imageUrl}
@@ -351,6 +430,11 @@ export default function AdminProductsPage() {
                   placeholder="/sweet-cravings-logo.jpg or https://..."
                   className="w-full px-3 py-2 rounded-lg border border-brand-cream-dark bg-brand-cream-subtle/50"
                 />
+                {imageUrl && !photoPreview && (
+                  <div className="mt-2 relative w-full h-40 rounded-xl overflow-hidden border border-brand-cream-dark bg-brand-cream-subtle">
+                    <Image src={imageUrl} alt="Image preview" fill className="object-cover" />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -376,7 +460,7 @@ export default function AdminProductsPage() {
               <div className="flex justify-end gap-2 pt-3 border-t border-brand-cream-dark">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); resetPhotoState(); }}
                   className="px-4 py-2 rounded-lg border border-brand-cream-dark text-brand-taupe font-semibold hover:bg-brand-cream"
                 >
                   Cancel
@@ -386,7 +470,7 @@ export default function AdminProductsPage() {
                   disabled={submitting}
                   className="bg-brand-caramel hover:bg-brand-caramel-dark text-white px-5 py-2 rounded-lg font-bold shadow-soft"
                 >
-                  {submitting ? 'Saving...' : 'Add Dessert'}
+                  {uploadingPhoto ? 'Uploading photo...' : submitting ? 'Saving...' : 'Add Dessert'}
                 </button>
               </div>
             </form>

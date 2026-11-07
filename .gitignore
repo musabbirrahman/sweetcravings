@@ -41,3 +41,7 @@ scratch/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+
+# uploaded product photos are shop content, not code: they live on the
+# host next to the database file and are never committed.
+public/uploads/

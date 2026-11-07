@@ -12,9 +12,11 @@ The sister runs it from an admin area on her phone.
   That file stays on your own computer and is never uploaded to GitHub.
 
 ## The shop pages (what a customer sees)
-- `/` home, `/menu` all desserts, `/cart` the basket, `/checkout`
-  name, phone, address, area, payment choice, `/order/[code]` the
-  confirmation page, `/track` look up an order (code + phone)
+- `/` home, `/menu` all desserts, `/menu/[name]` one dessert on its own
+  shareable page (photo, sizes, ingredients, batch left, add to bag),
+  `/cart` the basket, `/checkout` name, phone, address, area, payment
+  choice, `/order/[code]` the confirmation page, `/track` look up an
+  order (code + phone)
 
 ## How an order works
 1. The basket lives in the browser only (remembered on the phone).
@@ -24,7 +26,11 @@ The sister runs it from an admin area on her phone.
 3. Payment is never taken on the site. For bKash/Nagad the customer
    pays in their own wallet app, then pastes the transaction ID. The
    sister checks her wallet app and marks it confirmed or rejected.
-4. Status moves: new → accepted → preparing → ready → out for
+4. Each dessert has a daily batch limit (usually 15). The server
+   counts what sold today and refuses an order past the limit — the
+   number shown on the site is only the display; the check is on
+   the server.
+5. Status moves: new → accepted → preparing → ready → out for
    delivery → completed (or cancelled). Every change is logged.
 
 ## Coupons and loyalty (both checked on the server)
@@ -38,15 +44,23 @@ The sister runs it from an admin area on her phone.
 ## The admin area (`/admin`, sister only)
 - Today: new orders, unpaid wallet payments, pause-the-kitchen switch
 - Orders: open one, call/WhatsApp the customer, change status/payment
-- Products: add/edit desserts, prices, photos (web links), sold out
+- Products: add/edit desserts, prices, photos, sold out. Photos can
+  be uploaded from the phone (JPG/PNG/WebP, under 5 MB — shrunk to
+  at most 1200px wide on the server) or pasted in as a web link.
 - Settings: delivery fee, wallet numbers, WhatsApp, homepage text,
-  coupons, and a one-click backup download of all orders
+  coupons, and a one-click backup download of all orders. A backup
+  file can also be restored from here — it is checked first, and
+  restoring replaces all menu, orders and settings (coupons stay).
+  Old uploaded photos are never deleted automatically.
 - One shared admin password (set in `.env.local`). No separate
   accounts and no second login step yet.
 
-## The database
+## The database and uploaded photos
 - One file: `data/sweetcravings.db` (SQLite — a simple file database).
   The app creates it fresh, with the menu, the first time it starts.
+- Uploaded dessert photos live in `public/uploads/products/` on the
+  same computer as the database. Neither the database nor the photos
+  are ever uploaded to GitHub.
 
 ## Where things live in the code
 - `src/app/` the pages; `src/app/api/` the server endpoints

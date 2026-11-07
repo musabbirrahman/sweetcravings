@@ -6,7 +6,8 @@ import {
   getAllOrders, 
   getCouponByCode, 
   getCustomerLoyalty,
-  incrementCouponUsage 
+  incrementCouponUsage,
+  countSoldToday 
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
 import { verifyAdminSession } from '@/lib/auth';
@@ -21,6 +22,8 @@ export async function POST(request: Request) {
   // Set inside the order transaction when a coupon's last use is taken by
   // another order first; the catch below turns it into a clear 400.
   let couponExhausted = false;
+  // Same pattern for the daily batch limit (see the in-transaction check).
+  let batchLimitExceeded = false;
   try {
     const ip = getClientIp(request);
     const limit = checkRateLimit(`order-create:${ip}`, 10, 60 * 1000);
@@ -173,6 +176,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: `${product.name_en} is not available for ordering right now.` }, { status: 400 });
       }
 
+      // Daily batch limit: a product can only sell its daily batch. The
+      // storefront shows how many are left; the server enforces it, so a
+      // batch that sold out cannot be ordered by any route.
+      const dailyLimit = Number(product.daily_batch_limit ?? 15);
+      const soldToday = countSoldToday(db, product.id);
+      if (soldToday + qty > dailyLimit) {
+        const remaining = Math.max(0, dailyLimit - soldToday);
+        return NextResponse.json({
+          success: false,
+          error: `${product.name_en} has reached today's batch limit (only ${remaining} left today). Please try again tomorrow or choose another dessert.`,
+        }, { status: 400 });
+      }
+
       let unitPrice = product.base_price;
       let varLabelEn = '';
       let varLabelBn = '';
@@ -307,6 +323,18 @@ export async function POST(request: Request) {
 
         orderId = Number(result.lastInsertRowid);
 
+        // Re-check the batch limit inside the transaction: another order
+        // may have taken the last units after the pre-check above. Aborts
+        // the whole order instead of overselling the batch.
+        for (const vItem of validatedItems) {
+          const limitRow = db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
+          const limit = Number(limitRow?.daily_batch_limit ?? 15);
+          if (countSoldToday(db, vItem.productId) + vItem.quantity > limit) {
+            batchLimitExceeded = true;
+            throw new Error('BATCH_LIMIT_EXCEEDED');
+          }
+        }
+
         // Insert order items
         const insertItem = db.prepare(`
           INSERT INTO order_items (
@@ -408,6 +436,9 @@ export async function POST(request: Request) {
     console.error('Error placing order:', error);
     if (couponExhausted) {
       return NextResponse.json({ success: false, error: 'This coupon has just reached its usage limit. Please try again without it.' }, { status: 400 });
+    }
+    if (batchLimitExceeded) {
+      return NextResponse.json({ success: false, error: 'One of the desserts in your order has just reached today\'s batch limit. Please reduce the quantity or choose another dessert.' }, { status: 400 });
     }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

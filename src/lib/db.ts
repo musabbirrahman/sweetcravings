@@ -547,34 +547,60 @@ export function getProducts(options: { categoryId?: number; status?: string; inc
   sql += ` ORDER BY p.sort_order ASC, p.id DESC`;
 
   const products = db.prepare(sql).all(...params) as unknown as Product[];
-  
-  // Attach variants and daily batch counts
-  const varStmt = db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1 ORDER BY sort_order ASC');
-  const soldStmt = db.prepare(`
-    SELECT COALESCE(SUM(oi.quantity), 0) as sold_today
+
+  for (const p of products) {
+    attachProductExtras(db, p);
+  }
+
+  return products;
+}
+
+/** Units of a product already sold today (non-cancelled orders). */
+export function countSoldToday(db: DatabaseSync, productId: number): number {
+  const row = db.prepare(`
+    SELECT COALESCE(SUM(oi.quantity), 0) as sold
     FROM order_items oi
     JOIN orders o ON oi.order_id = o.id
     WHERE oi.product_id = ?
       AND date(o.created_at) = date('now')
       AND o.order_status != 'cancelled'
-  `);
+  `).get(productId) as { sold: number } | undefined;
+  return Number(row?.sold || 0);
+}
 
-  for (const p of products) {
-    p.variants = varStmt.all(p.id) as unknown as ProductVariant[];
-    try {
-      const soldRow = soldStmt.get(p.id) as { sold_today: number } | undefined;
-      const sold = Number(soldRow?.sold_today || 0);
-      p.sold_today = sold;
-      p.daily_batch_limit = Number(p.daily_batch_limit ?? 15);
-      p.remaining_today = Math.max(0, p.daily_batch_limit - sold);
-    } catch {
-      p.sold_today = 0;
-      p.daily_batch_limit = 15;
-      p.remaining_today = 15;
-    }
+/** Attach active variants and today's batch counts to one product row. */
+function attachProductExtras(db: DatabaseSync, p: Product): void {
+  const varStmt = db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1 ORDER BY sort_order ASC');
+
+  p.variants = varStmt.all(p.id) as unknown as ProductVariant[];
+  try {
+    const sold = countSoldToday(db, p.id);
+    p.sold_today = sold;
+    p.daily_batch_limit = Number(p.daily_batch_limit ?? 15);
+    p.remaining_today = Math.max(0, p.daily_batch_limit - sold);
+  } catch {
+    p.sold_today = 0;
+    p.daily_batch_limit = 15;
+    p.remaining_today = 15;
   }
+}
 
-  return products;
+/**
+ * One product by its URL slug, any status (published, sold_out, archived,
+ * draft). Callers decide what to show: non-published products render as
+ * unavailable and can never be ordered. Returns null for an unknown slug.
+ */
+export function getProductBySlug(slug: string): Product | null {
+  const db = getDb();
+  const product = db.prepare(`
+    SELECT p.*, c.name_en as category_name_en, c.name_bn as category_name_bn
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.slug = ?
+  `).get(slug) as unknown as Product | null;
+  if (!product) return null;
+  attachProductExtras(db, product);
+  return product;
 }
 
 export function generatePublicOrderCode(): string {
