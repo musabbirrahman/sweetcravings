@@ -33,6 +33,10 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const [error, setError] = useState<string | null>(null);
 
   const [trxIdInput, setTrxIdInput] = useState('');
+  // The bKash/Nagad number the customer paid FROM (captured next to
+  // the TrxID). Prefilled from the latest submission on load, so a
+  // correction only needs the TrxID re-typed.
+  const [senderNumberInput, setSenderNumberInput] = useState('');
   const [submittingTrx, setSubmittingTrx] = useState(false);
   const [trxSuccessMessage, setTrxSuccessMessage] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
@@ -64,6 +68,11 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
       .then((data) => {
         if (data.success && data.order) {
           setOrder(data.order);
+          // Prefill the sender number from the latest submission
+          // (submissions arrive newest-first), so a re-submit only
+          // needs the TrxID corrected. The field stays editable.
+          const latestSubmission = (data.order.payment_submissions || [])[0];
+          setSenderNumberInput(latestSubmission?.sender_number || '');
           if (data.settings) setShopSettings(data.settings);
           if (data.order.customer_phone) {
             fetch(`/api/loyalty?phone=${encodeURIComponent(data.order.customer_phone)}`)
@@ -178,12 +187,22 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
     e.preventDefault();
     if (!trxIdInput.trim()) return;
 
+    // The sender number is required together with the TrxID (same rule
+    // as the server: 11 digits starting with 01). The inputs are kept
+    // on failure, so the customer can correct and retry.
+    const senderDigits = senderNumberInput.replace(/\D/g, '');
+    const senderNorm = senderDigits.startsWith('88') && senderDigits.length === 13 ? senderDigits.slice(2) : senderDigits;
+    if (!/^01\d{9}$/.test(senderNorm)) {
+      toast(t('orderConfirm.senderNumberInvalid'), 'error');
+      return;
+    }
+
     setSubmittingTrx(true);
     try {
       const res = await fetch(`/api/orders/${params.publicCode}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trxId: trxIdInput.trim(), phone: verifiedPhone }),
+        body: JSON.stringify({ trxId: trxIdInput.trim(), senderNumber: senderNumberInput.trim(), phone: verifiedPhone }),
       });
       const data = await res.json();
       if (data.success) {
@@ -192,7 +211,17 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         fetchOrder();
         setTimeout(() => setTrxSuccessMessage(false), 5000);
       } else {
-        toast(data.error || 'Failed to update TrxID', 'error');
+        // A TrxID already used on another order is refused outright:
+        // show it in the customer's language. The input is kept, so
+        // they can correct the TrxID and retry.
+        const msg = data.code === 'INVALID_SENDER_NUMBER'
+          ? t('orderConfirm.senderNumberInvalid')
+          : data.code === 'DUPLICATE_TRXID'
+          ? (lang === 'bn'
+            ? 'এই TrxID-টি ইতিমধ্যে ব্যবহার করা হয়েছে। TrxID-টি যাচাই করে আবার চেষ্টা করুন।'
+            : (data.error || 'This TrxID has already been used. Please check the TrxID and try again.'))
+          : (data.error || 'Failed to update TrxID');
+        toast(msg, 'error');
       }
     } catch (err: any) {
       toast(err.message || 'Error submitting TrxID', 'error');
@@ -494,6 +523,17 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
           </div>
 
           <div className="text-[13px] sm:text-sm text-brand-taupe space-y-3">
+            {/* Pending Verification: the TrxID is in and the team is
+                checking the payment — the customer sees the wait, and
+                the 15–30 minute confirmation window, not silence. */}
+            {order.payment_status === 'submitted' && (
+              <div className="bg-brand-forest/10 border border-brand-forest/20 rounded-2xl p-4 flex items-start gap-2.5">
+                <Check className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
+                <p className="font-semibold text-brand-chocolate leading-relaxed">
+                  {t('orderConfirm.trxReceivedNotice')}
+                </p>
+              </div>
+            )}
             <p>
               {lang === 'bn' 
                 ? `অনুগ্রহ করে আমাদের ভেরিফায়েড ${order.payment_method.toUpperCase()} নম্বরে নির্ধারিত `
@@ -543,6 +583,22 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 <label className="block text-[13px] font-bold text-brand-chocolate">
                   {lang === 'bn' ? 'পেমেন্ট শেষে TrxID সাবমিট করুন:' : 'Submit your Payment TrxID (Transaction ID):'}
                 </label>
+                {/* The number the payment came FROM (required with the
+                    TrxID, prefilled from the last submission). */}
+                <div>
+                  <label className="block text-[13px] font-bold text-brand-chocolate mb-1.5">
+                    {t('orderConfirm.senderNumberLabel')}
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    required
+                    value={senderNumberInput}
+                    onChange={(e) => setSenderNumberInput(e.target.value)}
+                    placeholder={t('orderConfirm.senderNumberPlaceholder')}
+                    className="w-full min-w-0 px-4 py-2.5 rounded-xl border border-[#E7DFD6] bg-brand-cream/50 text-sm font-mono tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
+                  />
+                </div>
                 {/* Stacked on phones: the input + button row overflowed
                     at ≤430px (the button is wide in Bangla). */}
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -571,7 +627,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 {trxSuccessMessage && (
                   <p className="text-[13px] text-brand-forest font-bold flex items-center gap-1 animate-fadeIn">
                     <Check className="w-4 h-4" />
-                    <span>{t('orderConfirm.trxSuccessNotice')}</span>
+                    <span>{t('orderConfirm.trxReceivedNotice')}</span>
                   </p>
                 )}
               </form>

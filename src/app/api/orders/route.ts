@@ -8,6 +8,8 @@ import {
   getCustomerLoyalty,
   incrementCouponUsage,
   countSoldToday,
+  findTrxIdConflict,
+  normalizeSenderNumber,
   runInTransaction
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
@@ -20,12 +22,26 @@ export const dynamic = 'force-dynamic';
 
 const ALLOWED_PAYMENT_METHODS = ['cod', 'bkash', 'nagad'] as const;
 
+// A TrxID already used on another order: the submission is refused
+// outright, so the customer can correct it on the spot. The other
+// order's code is never revealed to the customer — the message stays
+// generic. Clients match on `code` to show a Bangla version.
+const DUPLICATE_TRXID_MESSAGE = 'This TrxID has already been used. Please check the TrxID and try again.';
+
+// A TrxID must come with the number the customer paid FROM, so the
+// admin can verify the payment in the wallet app. Clients match on
+// `code` to show a Bangla version.
+const SENDER_NUMBER_MESSAGE = 'Please enter the 11-digit bKash/Nagad number you paid from (starts with 01).';
+
 export async function POST(request: Request) {
   // Set inside the order transaction when a coupon's last use is taken by
   // another order first; the catch below turns it into a clear 400.
   let couponExhausted = false;
   // Same pattern for the daily batch limit (see the in-transaction check).
   let batchLimitExceeded = false;
+  // Same pattern for a TrxID already used on another order: the
+  // in-transaction duplicate check sets this, then throws.
+  let duplicateTrxId = false;
   try {
     const ip = getClientIp(request);
     const limit = checkRateLimit(`order-create:${ip}`, 10, 60 * 1000);
@@ -46,6 +62,7 @@ export async function POST(request: Request) {
       paymentMethod,
       items,
       trxId,
+      senderNumber,
       idempotencyToken,
       couponCode,
       isGift,
@@ -119,6 +136,13 @@ export async function POST(request: Request) {
       }
       if (trxId.trim().length > 50) {
         return NextResponse.json({ success: false, error: 'Transaction ID is too long (maximum 50 characters).' }, { status: 400 });
+      }
+      // The sender number is required together with the TrxID: the
+      // admin checks the wallet app for a transaction FROM this number,
+      // for this amount, with this TrxID. Missing or invalid → 400,
+      // nothing created. Drafts skip this: they carry no TrxID yet.
+      if (!normalizeSenderNumber(senderNumber)) {
+        return NextResponse.json({ success: false, error: SENDER_NUMBER_MESSAGE, code: 'INVALID_SENDER_NUMBER' }, { status: 400 });
       }
     }
 
@@ -327,8 +351,25 @@ export async function POST(request: Request) {
         // payment record and the coupon reservation all land together
         // or not at all. runInTransaction (src/lib/db.ts) commits on
         // success and rolls back on throw, on either database driver.
-        await runInTransaction(db, async () => {
-        const insertOrder = await db.prepare(`
+        // NOTE: use the `tx` handle inside, not the outer `db` — on the
+        // Turso driver the statements only run inside the transaction
+        // on `tx`; the outer handle would run them outside it.
+        await runInTransaction(db, async (tx) => {
+        // A TrxID is proof of one payment: refuse it here, before the
+        // order is inserted, when another order already carries it
+        // (trimmed, case-insensitive, any review state). Throwing
+        // rolls the whole transaction back, so a rejected request
+        // creates no order, no items, no coupon use and no submission.
+        // Drafts never reach this: they carry no TrxID.
+        if (!isDraft && trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
+          const conflict = await findTrxIdConflict(tx, String(trxId).trim());
+          if (conflict) {
+            duplicateTrxId = true;
+            throw new Error('DUPLICATE_TRXID');
+          }
+        }
+
+        const insertOrder = await tx.prepare(`
           INSERT INTO orders (
             public_code, customer_name, customer_phone, delivery_address, area_landmark,
             delivery_instructions, requested_time, is_gift, recipient_name, recipient_phone, gift_message,
@@ -369,16 +410,16 @@ export async function POST(request: Request) {
         // the whole order instead of overselling the batch. Drafts skip
         // this: they reserve no stock (checked at conversion instead).
         for (const vItem of validatedItems) {
-          const limitRow = await db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
+          const limitRow = await tx.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
           const limit = Number(limitRow?.daily_batch_limit ?? 15);
-          if (!isDraft && await countSoldToday(db, vItem.productId) + vItem.quantity > limit) {
+          if (!isDraft && await countSoldToday(tx, vItem.productId) + vItem.quantity > limit) {
             batchLimitExceeded = true;
             throw new Error('BATCH_LIMIT_EXCEEDED');
           }
         }
 
         // Insert order items
-        const insertItem = await db.prepare(`
+        const insertItem = await tx.prepare(`
           INSERT INTO order_items (
             order_id, product_id, product_name_en, product_name_bn,
             variant_label_en, variant_label_bn, unit_price, quantity, line_total
@@ -400,7 +441,7 @@ export async function POST(request: Request) {
         }
 
         // Insert initial status event
-        await db.prepare(`
+        await tx.prepare(`
           INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(orderId, 'none', 'new', 'customer', 'Order placed through website', now);
@@ -408,10 +449,10 @@ export async function POST(request: Request) {
         // Insert payment submission if TrxID provided. Drafts never
         // carry a submission: the TrxID arrives at conversion.
         if (!isDraft && trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
-          await db.prepare(`
-            INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), totalAmount, now, 'pending');
+          await tx.prepare(`
+            INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), normalizeSenderNumber(senderNumber), totalAmount, now, 'pending');
         }
 
         // Reserve one coupon use atomically. If another order just took
@@ -468,6 +509,11 @@ export async function POST(request: Request) {
         recipient_phone: recipientPhone ? String(recipientPhone).trim() : null,
         gift_message: giftMessage ? String(giftMessage).trim() : null,
         payment_method: paymentMethod || 'cod',
+        // Wallet orders carry the TrxID + the number paid from, so the
+        // kitchen message shows them for verification. Drafts never
+        // reach this call (see the `if (!isDraft)` guard above).
+        trx_id: !isDraft && trxId ? String(trxId).trim().slice(0, 50) : null,
+        sender_number: !isDraft ? normalizeSenderNumber(senderNumber) : null,
         total_amount: totalAmount,
         subtotal,
         delivery_fee: deliveryFee,
@@ -513,6 +559,9 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Error placing order:', error);
+    if (duplicateTrxId) {
+      return NextResponse.json({ success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' }, { status: 400 });
+    }
     if (couponExhausted) {
       return NextResponse.json({ success: false, error: 'This coupon has just reached its usage limit. Please try again without it.' }, { status: 400 });
     }

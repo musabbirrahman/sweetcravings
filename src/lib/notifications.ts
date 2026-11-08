@@ -9,6 +9,11 @@ export interface NotificationPayload {
     delivery_address: string;
     delivery_instructions?: string;
     payment_method: string;
+    // Wallet orders only: the TrxID the customer submitted and the
+    // number they paid FROM. Shown in the kitchen message so the admin
+    // can verify the payment in the wallet app. COD has neither.
+    trx_id?: string | null;
+    sender_number?: string | null;
     total_amount: number;
     subtotal: number;
     delivery_fee: number;
@@ -30,30 +35,35 @@ export interface NotificationPayload {
 }
 
 /**
- * Dispatches instant notifications to the kitchen operator (Telegram / SMS)
- * Non-blocking: failures are logged without disrupting the customer's checkout.
+ * The Telegram kitchen message, as pure text (no network): exported so
+ * tests can assert on the exact lines without sending anything. A
+ * wallet order with a submitted TrxID shows the sender number, the
+ * TrxID, and the waiting-verification note — the admin confirms the
+ * payment first, then bakes. COD shows none of those lines.
  */
-export async function notifyKitchenNewOrder(payload: NotificationPayload): Promise<{ success: boolean; methods: string[] }> {
-  const settings = await getShopSettings();
-  const methodsUsed: string[] = [];
-
+export function buildKitchenOrderMessage(payload: NotificationPayload): string {
   const { order, items } = payload;
   const itemsSummary = items
     .map((i) => `• ${i.quantity}x ${i.nameEn}${i.variantLabelEn ? ` (${i.variantLabelEn})` : ''} - ৳${i.lineTotal}`)
     .join('\n');
 
-  // 1. TELEGRAM BOT NOTIFICATION (Instant push notification with sound to phone)
-  if (settings.telegram_bot_token && settings.telegram_chat_id) {
-    try {
-      const discountText = order.discount_amount && order.discount_amount > 0
-        ? `\n🎟 *Discount:* -৳${order.discount_amount} (${order.coupon_code || 'PROMO'})`
-        : '';
+  const discountText = order.discount_amount && order.discount_amount > 0
+    ? `\n🎟 *Discount:* -৳${order.discount_amount} (${order.coupon_code || 'PROMO'})`
+    : '';
 
-      const giftText = order.is_gift
-        ? `\n🎁 *GIFT ORDER FOR:* ${order.recipient_name || 'Loved One'} (${order.recipient_phone || 'No phone'})\n💌 *Handwritten Card Note:* _"${order.gift_message || 'Sweet Wishes'}"_\n`
-        : '';
+  const giftText = order.is_gift
+    ? `\n🎁 *GIFT ORDER FOR:* ${order.recipient_name || 'Loved One'} (${order.recipient_phone || 'No phone'})\n💌 *Handwritten Card Note:* _"${order.gift_message || 'Sweet Wishes'}"_\n`
+    : '';
 
-      const text = `🍮 *NEW SWEET CRAVINGS ORDER!*
+  // Wallet payment, TrxID in hand: the admin checks the wallet app for
+  // a transaction FROM this number, for this amount, with this TrxID —
+  // and the order is NOT confirmed until that check passes.
+  const isWallet = order.payment_method === 'bkash' || order.payment_method === 'nagad';
+  const paymentText = isWallet && order.trx_id
+    ? `\n*Paid from:* \`${order.sender_number || '—'}\`\n*TrxID:* \`${order.trx_id}\`\n⏳ *Payment waiting verification — please confirm the payment first.*`
+    : '';
+
+  return `🍮 *NEW SWEET CRAVINGS ORDER!*
 ━━━━━━━━━━━━━━━━━━
 *Order:* #${order.public_code}
 *Customer:* ${order.customer_name}
@@ -61,7 +71,7 @@ export async function notifyKitchenNewOrder(payload: NotificationPayload): Promi
 *Area:* ${order.area_landmark}
 *Address:* ${order.delivery_address}
 ${order.delivery_instructions ? `*Note:* _${order.delivery_instructions}_\n` : ''}
-*Payment:* ${order.payment_method.toUpperCase()}
+*Payment:* ${order.payment_method.toUpperCase()}${paymentText}
 *Subtotal:* ৳${order.subtotal}
 *Delivery:* ৳${order.delivery_fee}${discountText}
 *Total:* ৳${order.total_amount}
@@ -70,6 +80,23 @@ ${order.delivery_instructions ? `*Note:* _${order.delivery_instructions}_\n` : '
 ${itemsSummary}
 ━━━━━━━━━━━━━━━━━━
 👉 Open Admin: /admin/orders`;
+}
+
+/**
+ * Dispatches instant notifications to the kitchen operator (Telegram / SMS)
+ * Non-blocking: failures are logged without disrupting the customer's checkout.
+ */
+export async function notifyKitchenNewOrder(payload: NotificationPayload): Promise<{ success: boolean; methods: string[] }> {
+  const settings = await getShopSettings();
+  const methodsUsed: string[] = [];
+  // The SMS text below still reads the order directly; the Telegram
+  // text comes from buildKitchenOrderMessage.
+  const { order } = payload;
+
+  // 1. TELEGRAM BOT NOTIFICATION (Instant push notification with sound to phone)
+  if (settings.telegram_bot_token && settings.telegram_chat_id) {
+    try {
+      const text = buildKitchenOrderMessage(payload);
 
       const telegramUrl = `https://api.telegram.org/bot${settings.telegram_bot_token}/sendMessage`;
       const res = await fetch(telegramUrl, {

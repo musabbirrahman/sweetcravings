@@ -1,10 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, incrementCouponUsage, countSoldToday, getCustomerLoyalty, runInTransaction } from '@/lib/db';
+import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, incrementCouponUsage, countSoldToday, getCustomerLoyalty, findTrxIdConflict, normalizeSenderNumber, runInTransaction, type DbHandle } from '@/lib/db';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyKitchenNewOrder } from '@/lib/notifications';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export const dynamic = 'force-dynamic';
+
+// A TrxID already used on another order: the submission is refused
+// outright, so the customer can correct it on the spot. The other
+// order's code is never revealed to the customer — the message stays
+// generic. Clients match on `code` to show a Bangla version.
+const DUPLICATE_TRXID_MESSAGE = 'This TrxID has already been used. Please check the TrxID and try again.';
+
+// A TrxID must come with the number the customer paid FROM, so the
+// admin can verify the payment in the wallet app. Clients match on
+// `code` to show a Bangla version.
+const SENDER_NUMBER_MESSAGE = 'Please enter the 11-digit bKash/Nagad number you paid from (starts with 01).';
 
 // A missing or wrong phone returns the same generic "not found" as a
 // missing code, so callers cannot probe whether an order code exists.
@@ -70,7 +81,7 @@ export async function PATCH(
     }
 
     const body = await request.json().catch(() => ({}));
-    const { trxId, provider, phone } = body;
+    const { trxId, senderNumber, provider, phone } = body;
 
     if (!trxId || typeof trxId !== 'string' || !trxId.trim()) {
       return NextResponse.json(
@@ -81,6 +92,17 @@ export async function PATCH(
     if (trxId.trim().length > 50) {
       return NextResponse.json(
         { success: false, error: 'Transaction ID is too long.' },
+        { status: 400 }
+      );
+    }
+
+    // The sender number is required together with the TrxID, on
+    // re-submit and on draft conversion alike. Missing or invalid →
+    // 400, nothing changed (the draft stays a draft).
+    const sender = normalizeSenderNumber(senderNumber);
+    if (!sender) {
+      return NextResponse.json(
+        { success: false, error: SENDER_NUMBER_MESSAGE, code: 'INVALID_SENDER_NUMBER' },
         { status: 400 }
       );
     }
@@ -131,18 +153,20 @@ export async function PATCH(
 
       // Batch limit, checked now (and re-checked inside the transaction):
       // the dessert may have sold out while the draft was waiting.
-      const checkBatch = async (): Promise<string | null> => {
+      // Takes the handle to use: the outer `db` for the pre-check, the
+      // transaction handle `tx` for the re-check inside the transaction.
+      const checkBatch = async (h: DbHandle): Promise<string | null> => {
         for (const item of items) {
-          const limitRow = await db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(item.product_id) as { daily_batch_limit: number | null } | undefined;
+          const limitRow = await h.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(item.product_id) as { daily_batch_limit: number | null } | undefined;
           const limit = Number(limitRow?.daily_batch_limit ?? 15);
-          const sold = await countSoldToday(db, item.product_id);
+          const sold = await countSoldToday(h, item.product_id);
           if (sold + Number(item.quantity) > limit) {
             return item.product_name_en || 'One of the desserts in this order';
           }
         }
         return null;
       };
-      const soldOutName = await checkBatch();
+      const soldOutName = await checkBatch(db);
       if (soldOutName) {
         return NextResponse.json(
           { success: false, error: `${soldOutName} has reached today's batch limit. Your saved order is still saved — please try again tomorrow or contact the shop.` },
@@ -161,20 +185,27 @@ export async function PATCH(
       }
 
       try {
-        await runInTransaction(db, async () => {
+        await runInTransaction(db, async (tx) => {
           // Batch re-check inside the transaction, so two drafts
           // converting at once cannot both take the last units.
-          const soldOutAgain = await checkBatch();
+          const soldOutAgain = await checkBatch(tx);
           if (soldOutAgain) throw new Error('BATCH_LIMIT_EXCEEDED');
 
+          // A TrxID is proof of one payment: refuse it when another
+          // order already carries it (trimmed, case-insensitive, any
+          // review state). Throwing rolls the conversion back, so the
+          // draft stays a draft and nothing is submitted.
+          const conflict = await findTrxIdConflict(tx, trxId.trim(), order.id);
+          if (conflict) throw new Error('DUPLICATE_TRXID');
+
           // Insert new payment submission record
-          await db.prepare(`
-            INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(order.id, prov, trxId.trim(), order.total_amount, now, 'pending');
+          await tx.prepare(`
+            INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(order.id, prov, trxId.trim(), sender, order.total_amount, now, 'pending');
 
           // Move the draft to a real submitted order
-          await db.prepare(`
+          await tx.prepare(`
             UPDATE orders
             SET payment_status = 'submitted', order_status = 'new', updated_at = ?
             WHERE id = ?
@@ -182,11 +213,11 @@ export async function PATCH(
 
           // Record audit events: the TrxID submission and the draft
           // becoming a placed order.
-          await db.prepare(`
+          await tx.prepare(`
             INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
           `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);
-          await db.prepare(`
+          await tx.prepare(`
             INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
           `).run(order.id, 'draft', 'new', 'customer', 'Saved order submitted with TrxID', now);
@@ -213,6 +244,12 @@ export async function PATCH(
             { status: 400 }
           );
         }
+        if (message.includes('DUPLICATE_TRXID')) {
+          return NextResponse.json(
+            { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
+            { status: 400 }
+          );
+        }
         throw txErr;
       }
 
@@ -232,6 +269,12 @@ export async function PATCH(
           recipient_phone: order.recipient_phone || null,
           gift_message: order.gift_message || null,
           payment_method: order.payment_method,
+          // The conversion submits the TrxID: the kitchen message shows
+          // it with the number paid from, for verification. A later
+          // TrxID re-submit sends no second message (no notify call on
+          // the re-submit path).
+          trx_id: trxId.trim(),
+          sender_number: sender,
           total_amount: order.total_amount,
           subtotal: order.subtotal,
           delivery_fee: order.delivery_fee,
@@ -284,30 +327,53 @@ export async function PATCH(
     // still-pending submission for this order as rejected, so only the
     // latest TrxID waits for review. (A converted draft has no earlier
     // submission, so this is a no-op there.)
-    await db.prepare(`
-      UPDATE payment_submissions
-      SET review_state = 'rejected'
-      WHERE order_id = ? AND review_state = 'pending'
-    `).run(order.id);
+    // The whole re-submit runs in one transaction: the duplicate check
+    // and the supersede + insert cannot interleave with another submit
+    // of the same TrxID, so two orders can never both accept it.
+    try {
+      await runInTransaction(db, async (tx) => {
+        // A TrxID is proof of one payment: refuse it when another order
+        // already carries it (trimmed, case-insensitive, any review
+        // state). This order is excluded, so re-submitting the same
+        // TrxID for this order (double-tap / correction) stays allowed.
+        const conflict = await findTrxIdConflict(tx, trxId.trim(), order.id);
+        if (conflict) throw new Error('DUPLICATE_TRXID');
 
-    // Insert new payment submission record
-    await db.prepare(`
-      INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(order.id, prov, trxId.trim(), order.total_amount, now, 'pending');
+        await tx.prepare(`
+          UPDATE payment_submissions
+          SET review_state = 'rejected'
+          WHERE order_id = ? AND review_state = 'pending'
+        `).run(order.id);
 
-    // Update order payment status to 'submitted'
-    await db.prepare(`
-      UPDATE orders
-      SET payment_status = 'submitted', updated_at = ?
-      WHERE id = ?
-    `).run(now, order.id);
+        // Insert new payment submission record
+        await tx.prepare(`
+          INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(order.id, prov, trxId.trim(), sender, order.total_amount, now, 'pending');
 
-    // Record audit event
-    await db.prepare(`
-      INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);
+        // Update order payment status to 'submitted'
+        await tx.prepare(`
+          UPDATE orders
+          SET payment_status = 'submitted', updated_at = ?
+          WHERE id = ?
+        `).run(now, order.id);
+
+        // Record audit event
+        await tx.prepare(`
+          INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);
+      });
+    } catch (txErr: any) {
+      const message = txErr instanceof Error ? txErr.message : String(txErr);
+      if (message.includes('DUPLICATE_TRXID')) {
+        return NextResponse.json(
+          { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
+          { status: 400 }
+        );
+      }
+      throw txErr;
+    }
 
     return NextResponse.json({
       success: true,

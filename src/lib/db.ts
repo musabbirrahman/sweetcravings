@@ -140,6 +140,15 @@ async function makeLocalHandle(): Promise<DbHandle> {
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA busy_timeout = 5000;');
+  // The local driver is ONE shared connection: two route handlers calling
+  // transaction() at once would collide on it ("cannot start a
+  // transaction within a transaction"). Serialize whole transactions
+  // through this queue, so a check-then-write inside one transaction
+  // (batch limit, duplicate TrxID) really cannot race with another.
+  // No runInTransaction call nests inside another, so this cannot
+  // deadlock. The remote (Turso) driver does not need it: each
+  // client.transaction('write') is a separate server-side transaction.
+  let txQueue: Promise<void> = Promise.resolve();
   const handle: DbHandle = {
     exec: async (sql: string): Promise<void> => {
       db.exec(sql);
@@ -153,14 +162,27 @@ async function makeLocalHandle(): Promise<DbHandle> {
       };
     },
     transaction: async <T>(fn: (tx: DbHandle) => Promise<T> | T): Promise<T> => {
-      db.exec('BEGIN TRANSACTION;');
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      const prev = txQueue;
+      // Adopt the gate even if the previous transaction failed, so a
+      // failure never wedges the queue.
+      txQueue = prev.then(() => gate, () => gate);
+      await prev.catch(() => {});
       try {
-        const result = await fn(handle);
-        db.exec('COMMIT;');
-        return result;
-      } catch (err) {
-        try { db.exec('ROLLBACK;'); } catch {}
-        throw err;
+        // IMMEDIATE: take the write lock up front, so the check inside
+        // the transaction reads a stable snapshot.
+        db.exec('BEGIN IMMEDIATE TRANSACTION;');
+        try {
+          const result = await fn(handle);
+          db.exec('COMMIT;');
+          return result;
+        } catch (err) {
+          try { db.exec('ROLLBACK;'); } catch {}
+          throw err;
+        }
+      } finally {
+        release();
       }
     },
   };
@@ -395,6 +417,12 @@ async function initSchema(db: DbHandle) {
   } catch {}
   try {
     await db.exec("ALTER TABLE products ADD COLUMN daily_batch_limit INTEGER DEFAULT 15;");
+  } catch {}
+  try {
+    // Sender number: the bKash/Nagad number the customer paid FROM,
+    // captured next to the TrxID so the admin can verify the payment in
+    // the wallet app. Old rows get NULL (no sender recorded then).
+    await db.exec("ALTER TABLE payment_submissions ADD COLUMN sender_number TEXT;");
   } catch {}
 }
 
@@ -967,6 +995,52 @@ export function normalizePhone(phone: string): string {
     digits = digits.slice(2);
   }
   return digits;
+}
+
+/**
+ * Sender-number validation: the bKash/Nagad number the customer paid
+ * FROM, captured next to the TrxID. Normalised like any phone (spaces /
+ * dashes stripped, a leading 88 country code dropped), then it must be
+ * an 11-digit Bangladeshi mobile starting with 01. Returns the
+ * normalised number, or null when the value is missing or invalid.
+ * The duplicate-TrxID check is unchanged: a duplicate is decided by
+ * TrxID alone, never by sender number.
+ */
+export function normalizeSenderNumber(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const digits = normalizePhone(raw);
+  return /^01\d{9}$/.test(digits) ? digits : null;
+}
+
+/**
+ * A TrxID is proof of ONE payment: the same TrxID must never be accepted
+ * for two different orders. Find another order that already carries this
+ * TrxID (trimmed, case-insensitive — bKash/Nagad TrxIDs are ASCII, so
+ * SQLite's UPPER() folds them correctly). Covers every review state:
+ * a TrxID that is pending, verified, or already judged not-received
+ * (rejected) on another order is not reusable anywhere else.
+ * The same order is excluded: re-submitting a TrxID for the order that
+ * already has it (double-tap / correction) stays allowed — the existing
+ * supersede logic handles that. Callers MUST call this inside the
+ * transaction that inserts the submission, with the transaction handle,
+ * so two simultaneous submits cannot both pass the check.
+ * Returns the other order's id + public code, or null when unused.
+ */
+export async function findTrxIdConflict(
+  db: DbHandle,
+  trxId: string,
+  excludeOrderId?: number
+): Promise<{ orderId: number; publicCode: string } | null> {
+  const ref = trxId.trim();
+  if (!ref) return null;
+  const row = await db.prepare(`
+    SELECT o.id as order_id, o.public_code as public_code
+    FROM payment_submissions ps
+    JOIN orders o ON o.id = ps.order_id
+    WHERE UPPER(ps.transaction_ref) = UPPER(?) AND ps.order_id != ?
+    LIMIT 1
+  `).get(ref, excludeOrderId ?? -1) as { order_id: number; public_code: string } | undefined;
+  return row ? { orderId: Number(row.order_id), publicCode: row.public_code } : null;
 }
 
 export async function getOrderWithDetails(publicCode: string, phoneFilter?: string): Promise<Order | null> {

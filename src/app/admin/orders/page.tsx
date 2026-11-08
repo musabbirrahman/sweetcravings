@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { fetchAdminJson } from '@/lib/adminFetch';
@@ -42,8 +42,7 @@ function AdminOrdersContent() {
   const initialStatus = searchParams.get('status') || 'all';
   const initialSearch = searchParams.get('search') || '';
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
+  const [orders, setOrders] = useState<Order[]>([]);  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -157,7 +156,7 @@ Sweet Cravings Kitchen`;
     if (!sub) return '';
     const methodBn = sub.provider === 'nagad' ? 'নগদ' : 'বিকাশ';
     const text =
-      `সালাম ${ord.customer_name}! Sweet Cravings থেকে বলছি। আপনার অর্ডার #${ord.public_code}-এর জন্য ${methodBn} নম্বরে ৳${ord.total_amount} পাঠিয়ে TrxID ${sub.transaction_ref} দিয়েছেন, কিন্তু আমাদের হিসাবে এই পেমেন্টটি পাওয়া যায়নি।\n\n` +
+      `সালাম ${ord.customer_name}! Sweet Cravings থেকে বলছি। আপনার অর্ডার #${ord.public_code}-এর জন্য ${methodBn} নম্বরে ৳${ord.total_amount} পাঠিয়ে TrxID ${sub.transaction_ref} দিয়েছেন${sub.sender_number ? ` (যে নম্বর থেকে পাঠিয়েছেন: ${sub.sender_number})` : ''}, কিন্তু আমাদের হিসাবে এই পেমেন্টটি পাওয়া যায়নি।\n\n` +
       `দয়া করে TrxID-টি আবার যাচাই করে সঠিক TrxID-টি এই চ্যাটেই reply করুন, তাহলে আমরা আপনার অর্ডারটি নিশ্চিত করতে পারব।\n\nধন্যবাদ — Sweet Cravings, রাজশাহী`;
     return `https://wa.me/${ord.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
   };
@@ -203,6 +202,36 @@ Sweet Cravings Kitchen`;
 
     return matchesStatus && matchesSearch;
   });
+
+  // A TrxID used on more than one order: the same payment cannot cover
+  // two orders. Computed from the already-loaded orders (getAllOrders
+  // attaches payment_submissions), so no extra request. Same-order
+  // re-submits (old row rejected, new row pending) share one order code
+  // and are NOT duplicates. This only marks what is already in the
+  // data — new duplicates are refused at submission time, so this is a
+  // backstop for duplicates from before that change. It never blocks
+  // Confirm Payment: the admin still judges the order.
+  const duplicateTrxOrderCodes = useMemo(() => {
+    const byRef = new Map<string, Set<string>>();
+    for (const o of orders) {
+      for (const s of o.payment_submissions || []) {
+        const key = s.transaction_ref.trim().toUpperCase();
+        if (!key) continue;
+        const set = byRef.get(key) || new Set<string>();
+        set.add(o.public_code);
+        byRef.set(key, set);
+      }
+    }
+    const dup = new Map<string, string[]>();
+    byRef.forEach((codes, key) => {
+      if (codes.size > 1) dup.set(key, Array.from(codes));
+    });
+    return dup;
+  }, [orders]);
+
+  // Other orders carrying the same TrxID as `ref`, if any.
+  const getDuplicateOrderCodes = (ref: string, ownCode: string): string[] =>
+    (duplicateTrxOrderCodes.get(ref.trim().toUpperCase()) || []).filter((c) => c !== ownCode);
 
   return (
     <div className="space-y-6">
@@ -459,12 +488,29 @@ Sweet Cravings Kitchen`;
                 {ord.payment_submissions && ord.payment_submissions.length > 0 && (
                   <div className="bg-brand-cream/90 border border-[#E7DFD6] p-2.5 rounded-xl text-sm space-y-1">
                     <span className="font-bold text-brand-chocolate block">Customer Submitted TrxID:</span>
-                    {ord.payment_submissions.map((sub) => (
+                    {ord.payment_submissions.map((sub) => {
+                      const duplicateOthers = getDuplicateOrderCodes(sub.transaction_ref, ord.public_code);
+                      return (
                       <div key={sub.id} className="space-y-0.5">
                         <div className="flex justify-between font-mono text-sm text-brand-chocolate">
                           <span>TrxID: <strong>{sub.transaction_ref}</strong> ({sub.provider})</span>
                           <span className="capitalize text-brand-caramel font-bold">{sub.review_state}</span>
                         </div>
+                        {sub.sender_number && (
+                          <p className="text-[13px] text-brand-taupe">
+                            {lang === 'bn' ? 'প্রেরক নম্বর:' : 'From:'} <span className="font-mono font-bold text-brand-chocolate">{sub.sender_number}</span>
+                          </p>
+                        )}
+                        {duplicateOthers.length > 0 && (
+                          <p className="flex items-center gap-1 text-[13px] font-bold text-red-700 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>
+                              {lang === 'bn'
+                                ? `ডুপ্লিকেট TrxID — অর্ডার #${duplicateOthers.join(', #')} -এও ব্যবহার হয়েছে`
+                                : `Duplicate TrxID — also used on order #${duplicateOthers.join(', #')}`}
+                            </span>
+                          </p>
+                        )}
                         {sub.review_state === 'rejected' && (
                           <p className="flex items-center gap-1 text-[13px] text-brand-taupe">
                             <MessageSquare className="w-3.5 h-3.5 text-brand-forest shrink-0" />
@@ -472,7 +518,8 @@ Sweet Cravings Kitchen`;
                           </p>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

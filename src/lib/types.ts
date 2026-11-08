@@ -111,6 +111,7 @@ export interface PaymentSubmission {
   order_id: number;
   provider: 'bkash' | 'nagad' | 'cod';
   transaction_ref: string;
+  sender_number: string | null;
   claimed_amount: number;
   submitted_at: string;
   reviewed_at: string | null;

@@ -70,6 +70,10 @@ export default function CheckoutPage() {
   const [requestedTime, setRequestedTime] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'bkash' | 'nagad'>('cod');
   const [trxId, setTrxId] = useState('');
+  // The bKash/Nagad number the customer paid FROM (captured next to the
+  // TrxID, so the admin can verify the payment in the wallet app).
+  const [senderNumber, setSenderNumber] = useState('');
+  const [senderError, setSenderError] = useState<string | null>(null);
 
   // Gift & Surprise Delivery state
   const [isGift, setIsGift] = useState(false);
@@ -279,6 +283,7 @@ export default function CheckoutPage() {
   const placeOrder = async (saveAsDraft: boolean) => {
     setErrorMessage(null);
     setTrxError(null);
+    setSenderError(null);
 
     const fieldError = validateCheckoutFields();
     if (fieldError) {
@@ -300,6 +305,21 @@ export default function CheckoutPage() {
       return;
     }
 
+    // The sender number is required together with the TrxID: the admin
+    // checks the wallet app for a transaction FROM this number. Same
+    // rule as the server — 11 digits starting with 01 (spaces/dashes
+    // and a leading 88 are stripped). A draft skips this too.
+    if (!saveAsDraft && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
+      const senderDigits = senderNumber.replace(/\D/g, '');
+      const senderNorm = senderDigits.startsWith('88') && senderDigits.length === 13 ? senderDigits.slice(2) : senderDigits;
+      if (!/^01\d{9}$/.test(senderNorm)) {
+        const msg = t('checkout.senderNumberInvalid');
+        setErrorMessage(msg);
+        setSenderError(msg);
+        return;
+      }
+    }
+
     if (saveAsDraft) setIsSavingDraft(true);
     else setIsSubmitting(true);
 
@@ -316,6 +336,7 @@ export default function CheckoutPage() {
           requestedTime: requestedTime || undefined,
           paymentMethod,
           trxId: saveAsDraft ? undefined : (trxId.trim() || undefined),
+          senderNumber: saveAsDraft ? undefined : (senderNumber.trim() || undefined),
           couponCode: appliedCoupon?.code || undefined,
           isGift,
           recipientName: isGift ? recipientName.trim() || undefined : undefined,
@@ -334,7 +355,22 @@ export default function CheckoutPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setErrorMessage(data.error || 'Failed to place order. Please try again.');
+        // A missing/invalid sender number: show it at the sender field
+        // as well as the top error, so the customer can correct it and
+        // retry — the form is kept, nothing is lost.
+        if (data.code === 'INVALID_SENDER_NUMBER') {
+          const msg = t('checkout.senderNumberInvalid');
+          setErrorMessage(msg);
+          setSenderError(msg);
+        } else if (data.code === 'DUPLICATE_TRXID') {
+          const msg = lang === 'bn'
+            ? 'এই TrxID-টি ইতিমধ্যে ব্যবহার করা হয়েছে। TrxID-টি যাচাই করে আবার চেষ্টা করুন।'
+            : (data.error || 'This TrxID has already been used. Please check the TrxID and try again.');
+          setErrorMessage(msg);
+          setTrxError(msg);
+        } else {
+          setErrorMessage(data.error || 'Failed to place order. Please try again.');
+        }
         if (saveAsDraft) setIsSavingDraft(false);
         else setIsSubmitting(false);
         return;
@@ -857,6 +893,26 @@ export default function CheckoutPage() {
 
                   <div>
                     <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
+                      {t('checkout.senderNumberLabel')} <span className="text-[#E2136E]">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={senderNumber}
+                      onChange={(e) => { setSenderNumber(e.target.value); setSenderError(null); }}
+                      placeholder={t('checkout.senderNumberPlaceholder')}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#E2136E]/30 bg-white text-sm font-mono tracking-wider focus:outline-none focus:border-[#E2136E] focus:ring-2 focus:ring-[#E2136E]/20"
+                    />
+                    {senderError && (
+                      <p className="text-[13px] text-red-600 mt-1.5 flex items-start gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{senderError}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
                       {t('checkout.walletTrxRequired')} <span className="text-[#E2136E]">*</span>
                     </label>
                     <input
@@ -954,6 +1010,26 @@ export default function CheckoutPage() {
                     <p>1. Nagad অ্যাপ ওপেন করে <strong>Send Money</strong> অপশন নির্বাচন করুন।</p>
                     <p>2. প্রাপক নম্বরে উপরের নম্বরটি দিয়ে মোট <strong>৳{payableTotal}</strong> সেন্ড করুন।</p>
                     <p>3. পেমেন্ট সম্পন্ন হলে প্রাপ্ত <strong>TrxID</strong> নিচের বক্সে দিন — TrxID ছাড়া অর্ডারটি নেওয়া হবে না।</p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
+                      {t('checkout.senderNumberLabel')} <span className="text-[#F7941D]">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={senderNumber}
+                      onChange={(e) => { setSenderNumber(e.target.value); setSenderError(null); }}
+                      placeholder={t('checkout.senderNumberPlaceholder')}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#F7941D]/30 bg-white text-sm font-mono tracking-wider focus:outline-none focus:border-[#F7941D] focus:ring-2 focus:ring-[#F7941D]/20"
+                    />
+                    {senderError && (
+                      <p className="text-[13px] text-red-600 mt-1.5 flex items-start gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{senderError}</span>
+                      </p>
+                    )}
                   </div>
 
                   <div>
