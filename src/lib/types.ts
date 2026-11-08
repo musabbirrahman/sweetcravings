@@ -7,7 +7,8 @@ export type OrderStatus =
   | 'ready'
   | 'out_for_delivery'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'draft';
 
 export type PaymentStatus =
   | 'pending'

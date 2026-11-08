@@ -26,6 +26,7 @@ import {
 const STATUS_FILTERS = [
   { id: 'all', labelEn: 'All', labelBn: 'সকল' },
   { id: 'new', labelEn: 'New', labelBn: 'নতুন' },
+  { id: 'draft', labelEn: 'Saved', labelBn: 'সংরক্ষিত' },
   { id: 'accepted', labelEn: 'Accepted', labelBn: 'গৃহীত' },
   { id: 'preparing', labelEn: 'Preparing', labelBn: 'তৈরি হচ্ছে' },
   { id: 'ready', labelEn: 'Ready', labelBn: 'প্রস্তুত' },
@@ -309,13 +310,17 @@ Sweet Cravings Kitchen`;
                     <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       ord.order_status === 'new'
                         ? 'bg-brand-cream text-brand-caramel border border-[#E7DFD6]'
+                        : ord.order_status === 'draft'
+                        ? 'bg-amber-50 text-amber-800 border border-amber-200'
                         : ord.order_status === 'completed'
                         ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/25'
                         : ord.order_status === 'cancelled'
                         ? 'bg-brand-caramel/10 text-brand-chocolate border border-brand-chocolate/20'
                         : 'bg-brand-cream text-brand-chocolate border border-[#E7DFD6]'
                     }`}>
-                      {ord.order_status.replace(/_/g, ' ')}
+                      {ord.order_status === 'draft'
+                        ? (lang === 'bn' ? 'সংরক্ষিত' : 'Saved')
+                        : ord.order_status.replace(/_/g, ' ')}
                     </span>
 
                     {/* Payment Status Badge */}
@@ -332,6 +337,22 @@ Sweet Cravings Kitchen`;
                     </span>
                   </div>
                 </div>
+
+                {/* Saved draft: not an order yet — no TrxID, no payment
+                    to verify. The customer finishes it with the TrxID,
+                    or the admin cancels it. */}
+                {ord.order_status === 'draft' && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3.5 py-2.5 rounded-xl text-[13px] leading-relaxed">
+                    <span className="font-bold">
+                      {lang === 'bn' ? 'সংরক্ষিত — এখনো সাবমিট হয়নি। ' : 'Saved — not submitted yet. '}
+                    </span>
+                    <span>
+                      {lang === 'bn'
+                        ? 'কাস্টমার এখনো পেমেন্ট করেননি। TrxID পাঠালে অর্ডারটি জমা হবে।'
+                        : 'The customer has not paid yet. The order is submitted once they send the TrxID.'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Customer & Location */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-brand-chocolate">
@@ -549,8 +570,9 @@ Sweet Cravings Kitchen`;
                       </button>
                     )}
 
-                    {/* Payment verification for bKash/Nagad */}
-                    {(ord.payment_method === 'bkash' || ord.payment_method === 'nagad') && ord.payment_status !== 'confirmed' && (
+                    {/* Payment verification for bKash/Nagad — never for
+                        drafts: there is no TrxID to confirm yet. */}
+                    {(ord.payment_method === 'bkash' || ord.payment_method === 'nagad') && ord.order_status !== 'draft' && ord.payment_status !== 'confirmed' && (
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, undefined, 'confirmed', 'Admin confirmed wallet receipt')}

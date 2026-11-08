@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       recipientName,
       recipientPhone,
       giftMessage,
+      saveAsDraft,
     } = body;
     const requestedTime = body.requestedTime || body.requestedDeliveryTime || null;
 
@@ -87,6 +88,37 @@ export async function POST(request: Request) {
       }
       if (!settings.nagad_number || !settings.nagad_number.trim()) {
         return NextResponse.json({ success: false, error: 'Nagad payment is not set up yet. Please choose Cash on Delivery or contact the shop.' }, { status: 400 });
+      }
+    }
+
+    // "Save and pay later" is only for wallet payments: the customer
+    // pays in the bKash/Nagad app and finishes the order with the TrxID
+    // afterwards. A COD order has nothing to pay later, so it cannot be
+    // saved as a draft.
+    if (saveAsDraft === true && paymentMethod === 'cod') {
+      return NextResponse.json({ success: false, error: 'Save and pay later is only for bKash or Nagad payments. Cash on Delivery orders are placed directly.' }, { status: 400 });
+    }
+    // A draft is a saved, NOT submitted order: it reserves no stock,
+    // consumes no coupon use, creates no payment submission and does not
+    // alert the kitchen. It becomes a real order only when the customer
+    // submits the TrxID (track page / order page), which runs the
+    // batch-limit and coupon checks at that point.
+    const isDraft = saveAsDraft === true;
+
+    // bKash/Nagad orders must carry the TrxID at checkout: the customer
+    // pays first, then enters the TrxID they received. A wallet order
+    // without one must never be created. This check runs before any
+    // database write, so a rejected request creates no order, no items,
+    // no coupon use and no submission row. COD needs no TrxID. The
+    // track page stays as the correction path for a mistyped TrxID.
+    // Drafts skip this check: they carry no TrxID by design.
+    if (!isDraft && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
+      const methodName = paymentMethod === 'bkash' ? 'bKash' : 'Nagad';
+      if (!trxId || typeof trxId !== 'string' || !trxId.trim()) {
+        return NextResponse.json({ success: false, error: `Please send the payment via ${methodName} first, then enter the Transaction ID (TrxID). Your order cannot be placed without it.` }, { status: 400 });
+      }
+      if (trxId.trim().length > 50) {
+        return NextResponse.json({ success: false, error: 'Transaction ID is too long (maximum 50 characters).' }, { status: 400 });
       }
     }
 
@@ -180,10 +212,12 @@ export async function POST(request: Request) {
 
       // Daily batch limit: a product can only sell its daily batch. The
       // storefront shows how many are left; the server enforces it, so a
-      // batch that sold out cannot be ordered by any route.
+      // batch that sold out cannot be ordered by any route. Drafts skip
+      // this check: they reserve no stock, and the limit is enforced
+      // when the draft is converted with the TrxID instead.
       const dailyLimit = Number(product.daily_batch_limit ?? 15);
       const soldToday = await countSoldToday(db, product.id);
-      if (soldToday + qty > dailyLimit) {
+      if (!isDraft && soldToday + qty > dailyLimit) {
         const remaining = Math.max(0, dailyLimit - soldToday);
         return NextResponse.json({
           success: false,
@@ -274,7 +308,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const token = idempotencyToken || `auto_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-    const initialPaymentStatus = (paymentMethod === 'bkash' || paymentMethod === 'nagad') && trxId && String(trxId).trim()
+    const initialPaymentStatus = !isDraft && (paymentMethod === 'bkash' || paymentMethod === 'nagad') && trxId && String(trxId).trim()
       ? 'submitted'
       : 'pending';
 
@@ -317,7 +351,7 @@ export async function POST(request: Request) {
           giftMessage ? String(giftMessage).trim().slice(0, 500) : null,
           paymentMethod || 'cod',
           initialPaymentStatus,
-          'new',
+          isDraft ? 'draft' : 'new',
           subtotal,
           deliveryFee,
           discountAmount,
@@ -332,11 +366,12 @@ export async function POST(request: Request) {
 
         // Re-check the batch limit inside the transaction: another order
         // may have taken the last units after the pre-check above. Aborts
-        // the whole order instead of overselling the batch.
+        // the whole order instead of overselling the batch. Drafts skip
+        // this: they reserve no stock (checked at conversion instead).
         for (const vItem of validatedItems) {
           const limitRow = await db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
           const limit = Number(limitRow?.daily_batch_limit ?? 15);
-          if (await countSoldToday(db, vItem.productId) + vItem.quantity > limit) {
+          if (!isDraft && await countSoldToday(db, vItem.productId) + vItem.quantity > limit) {
             batchLimitExceeded = true;
             throw new Error('BATCH_LIMIT_EXCEEDED');
           }
@@ -370,8 +405,9 @@ export async function POST(request: Request) {
           VALUES (?, ?, ?, ?, ?, ?)
         `).run(orderId, 'none', 'new', 'customer', 'Order placed through website', now);
 
-        // Insert payment submission if TrxID provided
-        if (trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
+        // Insert payment submission if TrxID provided. Drafts never
+        // carry a submission: the TrxID arrives at conversion.
+        if (!isDraft && trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
           await db.prepare(`
             INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -380,8 +416,9 @@ export async function POST(request: Request) {
 
         // Reserve one coupon use atomically. If another order just took
         // the last use, abort this order instead of charging full price
-        // while the customer believed a discount applied.
-        if (appliedCouponCode) {
+        // while the customer believed a discount applied. Drafts do not
+        // consume a use: the coupon is reserved at conversion instead.
+        if (!isDraft && appliedCouponCode) {
           if (!await incrementCouponUsage(appliedCouponCode)) {
             couponExhausted = true;
             throw new Error('COUPON_EXHAUSTED');
@@ -415,6 +452,9 @@ export async function POST(request: Request) {
     // the notification finish. Outside Workers (local `next start`) the
     // Cloudflare context does not exist, so fall back to awaiting the
     // dispatch with a timeout — a slow Telegram must never hang checkout.
+    // Drafts do not alert the kitchen: they are not orders yet. The
+    // kitchen is notified when the draft is converted with the TrxID.
+    if (!isDraft) {
     const notificationPromise = notifyKitchenNewOrder({
       order: {
         public_code: publicCode,
@@ -458,6 +498,7 @@ export async function POST(request: Request) {
         new Promise((resolve) => setTimeout(resolve, 8000)),
       ]);
     }
+    }
 
     return NextResponse.json({
       success: true,
@@ -468,6 +509,7 @@ export async function POST(request: Request) {
       discountAmount,
       couponCode: appliedCouponCode,
       totalAmount,
+      isDraft,
     });
   } catch (error: any) {
     console.error('Error placing order:', error);

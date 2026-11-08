@@ -89,7 +89,11 @@ export default function CheckoutPage() {
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [trxError, setTrxError] = useState<string | null>(null);
+  // True once the saved checkout form (if any) has been restored.
+  const [formHydrated, setFormHydrated] = useState(false);
   // Shop settings come from the shared catalogue (fetched once per page
   // load); null until it arrives, same as before.
   const { settings: shopSettings } = useCatalog();
@@ -119,6 +123,53 @@ export default function CheckoutPage() {
       setLoyalty(null);
     }
   }, [customerPhone]);
+
+  // Keep the checkout form safe across a refresh: the customer has to
+  // leave this tab to pay in the bKash/Nagad app, and a refresh or a
+  // closed tab must not lose what they typed. Restored once on load,
+  // saved on every change, cleared after a successful submit or draft
+  // save. The applied coupon is NOT restored (it is re-validated live).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('sc_checkout_form_v1');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved && typeof saved === 'object') {
+          if (typeof saved.customerName === 'string') setCustomerName(saved.customerName);
+          if (typeof saved.customerPhone === 'string') setCustomerPhone(saved.customerPhone);
+          if (typeof saved.areaLandmark === 'string') setAreaLandmark(saved.areaLandmark);
+          if (typeof saved.otherArea === 'string') setOtherArea(saved.otherArea);
+          if (typeof saved.deliveryAddress === 'string') setDeliveryAddress(saved.deliveryAddress);
+          if (typeof saved.deliveryInstructions === 'string') setDeliveryInstructions(saved.deliveryInstructions);
+          if (typeof saved.requestedTime === 'string') setRequestedTime(saved.requestedTime);
+          if (saved.paymentMethod === 'cod' || saved.paymentMethod === 'bkash' || saved.paymentMethod === 'nagad') setPaymentMethod(saved.paymentMethod);
+          if (typeof saved.trxId === 'string') setTrxId(saved.trxId);
+          if (typeof saved.isGift === 'boolean') setIsGift(saved.isGift);
+          if (typeof saved.recipientName === 'string') setRecipientName(saved.recipientName);
+          if (typeof saved.recipientPhone === 'string') setRecipientPhone(saved.recipientPhone);
+          if (typeof saved.giftMessage === 'string') setGiftMessage(saved.giftMessage);
+        }
+      }
+    } catch {}
+    setFormHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!formHydrated) return;
+    try {
+      localStorage.setItem('sc_checkout_form_v1', JSON.stringify({
+        customerName, customerPhone, areaLandmark, otherArea, deliveryAddress,
+        deliveryInstructions, requestedTime, paymentMethod, trxId,
+        isGift, recipientName, recipientPhone, giftMessage,
+      }));
+    } catch {}
+  }, [formHydrated, customerName, customerPhone, areaLandmark, otherArea, deliveryAddress, deliveryInstructions, requestedTime, paymentMethod, trxId, isGift, recipientName, recipientPhone, giftMessage]);
+
+  const clearSavedForm = () => {
+    try {
+      localStorage.removeItem('sc_checkout_form_v1');
+    } catch {}
+  };
 
   // Calculate final total taking coupon discount into account
   const discountAmount = appliedCoupon?.discountAmount || 0;
@@ -179,61 +230,78 @@ export default function CheckoutPage() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
+  // Derived from the form, shared by both checkout paths.
+  const cleanPhone = customerPhone.replace(/\D/g, '');
+  const finalArea = areaLandmark === 'Other Area in Rajshahi (অন্যান্য এলাকা)' ? otherArea.trim() : areaLandmark;
 
+  // Shared field validation for both checkout paths (submit + save).
+  // Returns the error message, or null when the form is valid. The
+  // TrxID check is NOT here: only the submit path requires it.
+  const validateCheckoutFields = (): string | null => {
     if (!customerName.trim()) {
-      setErrorMessage(lang === 'bn' ? 'অনুগ্রহ করে আপনার নাম লিখুন।' : 'Please enter your name.');
-      return;
+      return lang === 'bn' ? 'অনুগ্রহ করে আপনার নাম লিখুন।' : 'Please enter your name.';
     }
-
-    const cleanPhone = customerPhone.replace(/\D/g, '');
     if (cleanPhone.length < 11 || (!cleanPhone.startsWith('01') && !cleanPhone.startsWith('8801'))) {
-      setErrorMessage(
-        lang === 'bn'
-          ? 'অনুগ্রহ করে সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 01712345678)।'
-          : 'Please enter a valid 11-digit Bangladesh phone number (e.g., 01712345678).'
-      );
-      return;
+      return lang === 'bn'
+        ? 'অনুগ্রহ করে সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর দিন (যেমন: 01712345678)।'
+        : 'Please enter a valid 11-digit Bangladesh phone number (e.g., 01712345678).';
     }
-
-    const finalArea = areaLandmark === 'Other Area in Rajshahi (অন্যান্য এলাকা)' ? otherArea.trim() : areaLandmark;
     if (!finalArea) {
-      setErrorMessage(lang === 'bn' ? 'অনুগ্রহ করে রাজশাহীর ডেলিভারি এলাকা নির্বাচন করুন।' : 'Please select your Rajshahi area.');
-      return;
+      return lang === 'bn' ? 'অনুগ্রহ করে রাজশাহীর ডেলিভারি এলাকা নির্বাচন করুন।' : 'Please select your Rajshahi area.';
     }
-
     if (!deliveryAddress.trim()) {
-      setErrorMessage(lang === 'bn' ? 'অনুগ্রহ করে বিস্তারিত ঠিকানা লিখুন।' : 'Please enter your street / house address.');
-      return;
+      return lang === 'bn' ? 'অনুগ্রহ করে বিস্তারিত ঠিকানা লিখুন।' : 'Please enter your street / house address.';
     }
-
     if (isGift && !recipientName.trim()) {
-      setErrorMessage(lang === 'bn' ? 'অনুগ্রহ করে উপহার প্রাপকের নাম লিখুন।' : 'Please enter the gift recipient’s name.');
-      return;
+      return lang === 'bn' ? 'অনুগ্রহ করে উপহার প্রাপকের নাম লিখুন।' : 'Please enter the gift recipient’s name.';
     }
-
     if (items.length === 0) {
-      setErrorMessage(lang === 'bn' ? 'আপনার কার্ট খালি রয়েছে।' : 'Your cart is empty.');
-      return;
+      return lang === 'bn' ? 'আপনার কার্ট খালি রয়েছে।' : 'Your cart is empty.';
     }
-
     // Never submit a wallet method that has no number configured.
     if (paymentMethod === 'bkash' && !bkashAvailable) {
-      setErrorMessage(lang === 'bn' ? 'বিকাশ পেমেন্ট এখনো চালু হয়নি। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।' : 'bKash payment is not set up yet. Please choose Cash on Delivery.');
-      return;
+      return lang === 'bn' ? 'বিকাশ পেমেন্ট এখনো চালু হয়নি। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।' : 'bKash payment is not set up yet. Please choose Cash on Delivery.';
     }
     if (paymentMethod === 'nagad' && !nagadAvailable) {
-      setErrorMessage(lang === 'bn' ? 'নগদ পেমেন্ট এখনো চালু হয়নি। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।' : 'Nagad payment is not set up yet. Please choose Cash on Delivery.');
-      return;
+      return lang === 'bn' ? 'নগদ পেমেন্ট এখনো চালু হয়নি। অনুগ্রহ করে ক্যাশ অন ডেলিভারি বেছে নিন।' : 'Nagad payment is not set up yet. Please choose Cash on Delivery.';
     }
     if (paymentMethod === 'cod' && !codAvailable) {
-      setErrorMessage(lang === 'bn' ? 'ক্যাশ অন ডেলিভারি এখন বন্ধ আছে। অনুগ্রহ করে অন্য পেমেন্ট পদ্ধতি বেছে নিন।' : 'Cash on Delivery is currently unavailable. Please choose another payment method.');
+      return lang === 'bn' ? 'ক্যাশ অন ডেলিভারি এখন বন্ধ আছে। অনুগ্রহ করে অন্য পেমেন্ট পদ্ধতি বেছে নিন।' : 'Cash on Delivery is currently unavailable. Please choose another payment method.';
+    }
+    return null;
+  };
+
+  // Both checkout paths go through here.
+  // - submit (saveAsDraft false): TrxID required, creates a submitted order.
+  // - save draft (saveAsDraft true): no TrxID needed, creates a saved
+  //   order the customer finishes later with the TrxID. Only offered
+  //   for bKash/Nagad; the server rejects a COD draft.
+  const placeOrder = async (saveAsDraft: boolean) => {
+    setErrorMessage(null);
+    setTrxError(null);
+
+    const fieldError = validateCheckoutFields();
+    if (fieldError) {
+      setErrorMessage(fieldError);
       return;
     }
 
-    setIsSubmitting(true);
+    // bKash/Nagad orders cannot be placed without a TrxID: the customer
+    // pays first, then enters the TrxID they received. COD needs none.
+    // A draft skips this: it carries no TrxID by design.
+    if (!saveAsDraft && (paymentMethod === 'bkash' || paymentMethod === 'nagad') && !trxId.trim()) {
+      const msg = lang === 'bn'
+        ? (paymentMethod === 'bkash'
+          ? 'বিকাশে পেমেন্ট পাঠানোর পর প্রাপ্ত TrxID-টি অবশ্যই দিন। TrxID ছাড়া অর্ডার নেওয়া হবে না।'
+          : 'নগদে পেমেন্ট পাঠানোর পর প্রাপ্ত TrxID-টি অবশ্যই দিন। TrxID ছাড়া অর্ডার নেওয়া হবে না।')
+        : `Please enter the TrxID you received after sending the ${paymentMethod === 'bkash' ? 'bKash' : 'Nagad'} payment. Your order cannot be placed without it.`;
+      setErrorMessage(msg);
+      setTrxError(msg);
+      return;
+    }
+
+    if (saveAsDraft) setIsSavingDraft(true);
+    else setIsSubmitting(true);
 
     try {
       const response = await fetch('/api/orders', {
@@ -247,7 +315,7 @@ export default function CheckoutPage() {
           deliveryInstructions,
           requestedTime: requestedTime || undefined,
           paymentMethod,
-          trxId: trxId.trim() || undefined,
+          trxId: saveAsDraft ? undefined : (trxId.trim() || undefined),
           couponCode: appliedCoupon?.code || undefined,
           isGift,
           recipientName: isGift ? recipientName.trim() || undefined : undefined,
@@ -259,6 +327,7 @@ export default function CheckoutPage() {
             quantity: i.quantity,
           })),
           idempotencyToken,
+          saveAsDraft: saveAsDraft || undefined,
         }),
       });
 
@@ -266,10 +335,12 @@ export default function CheckoutPage() {
 
       if (!response.ok || !data.success) {
         setErrorMessage(data.error || 'Failed to place order. Please try again.');
-        setIsSubmitting(false);
+        if (saveAsDraft) setIsSavingDraft(false);
+        else setIsSubmitting(false);
         return;
       }
 
+      clearSavedForm();
       clearCart();
       const finalCode = data.publicCode || data.order?.publicCode;
       // Keep the phone in this browser session only, so the confirmation
@@ -280,8 +351,18 @@ export default function CheckoutPage() {
       router.push(`/order/${finalCode}`);
     } catch (err: any) {
       setErrorMessage(err.message || 'Network error occurred. Please check your connection.');
-      setIsSubmitting(false);
+      if (saveAsDraft) setIsSavingDraft(false);
+      else setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await placeOrder(false);
+  };
+
+  const handleSaveDraft = async () => {
+    await placeOrder(true);
   };
 
   if (items.length === 0) {
@@ -771,20 +852,26 @@ export default function CheckoutPage() {
                     </p>
                     <p>1. bKash অ্যাপ ওপেন করে <strong>Send Money</strong> অপশন নির্বাচন করুন।</p>
                     <p>2. প্রাপক নম্বরে উপরের নম্বরটি দিয়ে মোট <strong>৳{payableTotal}</strong> সেন্ড করুন।</p>
-                    <p>3. পেমেন্ট সম্পন্ন হলে প্রাপ্ত <strong>TrxID (Transaction ID)</strong> নিচের বক্সে দিন (অথবা অর্ডারের পর আমাদের হোয়াটসঅ্যাপেও পাঠাতে পারেন)।</p>
+                    <p>3. পেমেন্ট সম্পন্ন হলে প্রাপ্ত <strong>TrxID (Transaction ID)</strong> নিচের বক্সে দিন — TrxID ছাড়া অর্ডারটি নেওয়া হবে না।</p>
                   </div>
 
                   <div>
                     <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
-                      {t('checkout.walletTrxOptional')}
+                      {t('checkout.walletTrxRequired')} <span className="text-[#E2136E]">*</span>
                     </label>
                     <input
                       type="text"
                       value={trxId}
-                      onChange={(e) => setTrxId(e.target.value)}
+                      onChange={(e) => { setTrxId(e.target.value); setTrxError(null); }}
                       placeholder={t('checkout.walletTrxPlaceholder')}
                       className="w-full px-4 py-2.5 rounded-xl border border-[#E2136E]/30 bg-white text-sm uppercase font-mono tracking-wider focus:outline-none focus:border-[#E2136E] focus:ring-2 focus:ring-[#E2136E]/20"
                     />
+                    {trxError && (
+                      <p className="text-[13px] text-red-600 mt-1.5 flex items-start gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{trxError}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -866,20 +953,26 @@ export default function CheckoutPage() {
                     </p>
                     <p>1. Nagad অ্যাপ ওপেন করে <strong>Send Money</strong> অপশন নির্বাচন করুন।</p>
                     <p>2. প্রাপক নম্বরে উপরের নম্বরটি দিয়ে মোট <strong>৳{payableTotal}</strong> সেন্ড করুন।</p>
-                    <p>3. পেমেন্ট সম্পন্ন হলে প্রাপ্ত <strong>TrxID</strong> নিচের বক্সে দিন।</p>
+                    <p>3. পেমেন্ট সম্পন্ন হলে প্রাপ্ত <strong>TrxID</strong> নিচের বক্সে দিন — TrxID ছাড়া অর্ডারটি নেওয়া হবে না।</p>
                   </div>
 
                   <div>
                     <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
-                      {t('checkout.walletTrxOptional')}
+                      {t('checkout.walletTrxRequired')} <span className="text-[#F7941D]">*</span>
                     </label>
                     <input
                       type="text"
                       value={trxId}
-                      onChange={(e) => setTrxId(e.target.value)}
+                      onChange={(e) => { setTrxId(e.target.value); setTrxError(null); }}
                       placeholder={t('checkout.walletTrxPlaceholder')}
                       className="w-full px-4 py-2.5 rounded-xl border border-[#F7941D]/30 bg-white text-sm uppercase font-mono tracking-wider focus:outline-none focus:border-[#F7941D] focus:ring-2 focus:ring-[#F7941D]/20"
                     />
+                    {trxError && (
+                      <p className="text-[13px] text-red-600 mt-1.5 flex items-start gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>{trxError}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1041,10 +1134,20 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Wallet notice: the order is NOT submitted until the TrxID
+                is sent — pay now and enter it, or save the order and
+                finish it after paying. */}
+            {(paymentMethod === 'bkash' || paymentMethod === 'nagad') && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3.5 rounded-2xl text-[13px] leading-relaxed flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{t('checkout.notSubmittedNote')}</span>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSavingDraft}
               className={`w-full py-4 px-6 rounded-2xl font-semibold text-sm shadow-soft transition-all flex items-center justify-center gap-2 btn-press ${
                 isSubmitting
                   ? 'bg-brand-chocolate/5 text-brand-taupe cursor-wait'
@@ -1059,10 +1162,33 @@ export default function CheckoutPage() {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  <span>{t('checkout.placeOrder')} (৳{payableTotal})</span>
+                  <span>{(paymentMethod === 'bkash' || paymentMethod === 'nagad') ? t('checkout.submitOrder') : t('checkout.placeOrder')} (৳{payableTotal})</span>
                 </>
               )}
             </button>
+
+            {/* Save and pay later — wallet only: saves the order as a
+                draft the customer finishes with the TrxID after paying. */}
+            {(paymentMethod === 'bkash' || paymentMethod === 'nagad') && (
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={isSubmitting || isSavingDraft}
+                className="w-full py-3.5 px-6 rounded-2xl font-semibold text-sm shadow-xs transition-all flex items-center justify-center gap-2 bg-white hover:bg-brand-cream text-brand-chocolate border border-[#E7DFD6] disabled:opacity-60"
+              >
+                {isSavingDraft ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-brand-chocolate border-t-transparent rounded-full animate-spin" />
+                    <span>{t('checkout.savingDraft')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-4 h-4" />
+                    <span>{t('checkout.saveDraft')}</span>
+                  </>
+                )}
+              </button>
+            )}
 
             {/* Security Guarantee */}
             <div className="space-y-2 text-[13px] text-brand-taupe text-center pt-1 border-t border-[#E7DFD6]">

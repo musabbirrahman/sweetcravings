@@ -276,7 +276,7 @@ async function initSchema(db: DbHandle) {
       requested_time TEXT,
       payment_method TEXT NOT NULL, -- cod, bkash, nagad
       payment_status TEXT NOT NULL DEFAULT 'pending', -- pending, submitted, confirmed, rejected, refunded
-      order_status TEXT NOT NULL DEFAULT 'new', -- new, accepted, preparing, ready, out_for_delivery, completed, cancelled
+      order_status TEXT NOT NULL DEFAULT 'new', -- new, accepted, preparing, ready, out_for_delivery, completed, cancelled, draft
       subtotal INTEGER NOT NULL,
       delivery_fee INTEGER NOT NULL,
       total_amount INTEGER NOT NULL,
@@ -857,7 +857,8 @@ export async function getProducts(options: { categoryId?: number; status?: strin
   return products;
 }
 
-/** Units of a product already sold today (non-cancelled orders). */
+/** Units of a product already sold today (non-cancelled orders). Drafts
+ * (saved, not submitted) never reserve stock, so they are excluded. */
 export async function countSoldToday(db: DbHandle, productId: number): Promise<number> {
   const row = await db.prepare(`
     SELECT COALESCE(SUM(oi.quantity), 0) as sold
@@ -866,6 +867,7 @@ export async function countSoldToday(db: DbHandle, productId: number): Promise<n
     WHERE oi.product_id = ?
       AND date(o.created_at) = date('now')
       AND o.order_status != 'cancelled'
+      AND o.order_status != 'draft'
   `).get(productId) as { sold: number } | undefined;
   return Number(row?.sold || 0);
 }
@@ -1124,6 +1126,8 @@ export async function getCustomerLoyalty(phone: string): Promise<LoyaltyInfo> {
   const validPhone = /^01[3-9]\d{8}$/.test(fullPhone) ? fullPhone : '';
 
   const phoneMatch = `substr(replace(replace(customer_phone, ' ', ''), '-', ''), -11) = ?`;
+  // Drafts (saved, not submitted) are not orders yet: they count toward
+  // no loyalty total, no spend, and never consume a reward.
   const row = await db.prepare(`
     SELECT 
       COUNT(*) as total_orders,
@@ -1131,7 +1135,7 @@ export async function getCustomerLoyalty(phone: string): Promise<LoyaltyInfo> {
       SUM(CASE WHEN order_status != 'cancelled' THEN total_amount ELSE 0 END) as total_spent,
       (SELECT customer_name FROM orders WHERE ${phoneMatch} ORDER BY id DESC LIMIT 1) as customer_name
     FROM orders 
-    WHERE ${phoneMatch}
+    WHERE ${phoneMatch} AND order_status != 'draft'
   `).get(validPhone, validPhone) as {
     total_orders: number;
     completed_orders: number;
@@ -1148,11 +1152,11 @@ export async function getCustomerLoyalty(phone: string): Promise<LoyaltyInfo> {
   const stampsToNext = stamps === 0 && completed > 0 ? 0 : perReward - stamps;
   const rewardsEarned = Math.floor(completed / perReward);
 
-  // Rewards already used up: non-cancelled orders that redeemed the
+  // Rewards already used up: non-cancelled, non-draft orders that redeemed the
   // loyalty reward code. A reward is only available when earned > used.
   const redeemedRow = await db.prepare(`
     SELECT COUNT(*) as redeemed FROM orders
-    WHERE ${phoneMatch} AND coupon_code = 'SWEETREWARD' AND order_status != 'cancelled'
+    WHERE ${phoneMatch} AND coupon_code = 'SWEETREWARD' AND order_status != 'cancelled' AND order_status != 'draft'
   `).get(validPhone) as { redeemed: number } | undefined;
   const rewardsRedeemed = Number(redeemedRow?.redeemed || 0);
   const rewardsAvailable = Math.max(0, rewardsEarned - rewardsRedeemed);

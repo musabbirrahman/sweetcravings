@@ -180,7 +180,9 @@ export default function TrackOrderPage() {
 
               <div className="flex items-center gap-2">
                 <span className="text-[13px] font-bold px-3.5 py-1 rounded-full bg-brand-caramel/10 text-brand-caramel border border-brand-caramel/20 capitalize">
-                  {order.order_status.replace(/_/g, ' ')}
+                  {order.order_status === 'draft'
+                    ? (lang === 'bn' ? 'সংরক্ষিত' : 'Saved')
+                    : order.order_status.replace(/_/g, ' ')}
                 </span>
                 <span className="text-[13px] font-bold px-3 py-1 rounded-full bg-brand-cream text-brand-chocolate capitalize">
                   {order.payment_method.toUpperCase()}
@@ -188,7 +190,31 @@ export default function TrackOrderPage() {
               </div>
             </div>
 
-            {/* Stepper with Glowing Pulse */}
+            {/* Saved draft: not submitted yet — the customer pays, then
+                submits the TrxID on the full receipt page. */}
+            {order.order_status === 'draft' && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl text-[13px] leading-relaxed space-y-2">
+                <p className="font-bold">
+                  {lang === 'bn' ? 'সংরক্ষিত — এখনো সাবমিট হয়নি' : 'Saved — not submitted yet'}
+                </p>
+                <p>
+                  {lang === 'bn'
+                    ? 'এই অর্ডারটি এখনো সাবমিট হয়নি। অ্যাপে পেমেন্ট করে সম্পূর্ণ রশিদ পেজে TrxID সাবমিট করুন — তখনই অর্ডারটি সাবমিট হবে।'
+                    : 'This order is not submitted yet. Pay in the app, then submit the TrxID on the full receipt page — that is when the order is submitted.'}
+                </p>
+                <Link
+                  href={`/order/${order.public_code}`}
+                  className="inline-flex items-center gap-1.5 font-bold text-amber-800 underline"
+                >
+                  <span>{lang === 'bn' ? 'TrxID সাবমিট করতে রশিদ দেখুন' : 'View receipt to submit the TrxID'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
+
+            {/* Stepper with Glowing Pulse — hidden for drafts: the order
+                is not in the pipeline until the TrxID is sent. */}
+            {order.order_status !== 'draft' && (
             <div className="py-2">
               <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-left sm:text-center">
                 {orderStages.map((stage, idx) => {
@@ -224,6 +250,7 @@ export default function TrackOrderPage() {
                 })}
               </div>
             </div>
+            )}
 
             {/* Order Items Summary */}
             <div className="border-t border-[#E7DFD6] pt-4 space-y-3">

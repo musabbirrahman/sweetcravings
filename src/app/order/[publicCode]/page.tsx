@@ -308,6 +308,10 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
 
   const currentStageIndex = orderStages.findIndex((s) => s.key === order.order_status);
 
+  // A draft is a saved, NOT submitted order: the celebration, the
+  // timeline and the receipt all wait until the TrxID is sent.
+  const isDraft = order.order_status === 'draft';
+
   // Prefilled WhatsApp message
   const waText = encodeURIComponent(
     `Salam Sweet Cravings! I placed Order #${order.public_code} for ${order.customer_name}. Total: BDT ${order.total_amount}.`
@@ -319,29 +323,29 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-16 space-y-8 font-sans">
       
-      {/* Visual Confetti particle celebration */}
-      <Confetti />
+      {/* Visual Confetti particle celebration — submitted orders only */}
+      {!isDraft && <Confetti />}
 
-      {/* Success Celebration Card */}
+      {/* Success Celebration Card — or the saved-draft card */}
       <div className="bg-white/95 rounded-3xl p-6 sm:p-10 border border-[#E7DFD6] shadow-card text-center space-y-6 relative overflow-hidden">
         
         {/* Soft background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-28 bg-brand-cream/20 blur-3xl rounded-full pointer-events-none" />
 
-        <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-brand-forest/10 text-brand-forest flex items-center justify-center shadow-soft">
-          <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12" />
+        <div className={`w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full flex items-center justify-center shadow-soft ${isDraft ? 'bg-amber-50 text-amber-700' : 'bg-brand-forest/10 text-brand-forest'}`}>
+          {isDraft ? <Clock className="w-10 h-10 sm:w-12 sm:h-12" /> : <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12" />}
         </div>
 
         <div className="space-y-2">
-          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-brand-forest bg-brand-forest/10 px-3.5 py-1 rounded-full">
+          <span className={`inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider px-3.5 py-1 rounded-full ${isDraft ? 'text-amber-800 bg-amber-50 border border-amber-200' : 'text-brand-forest bg-brand-forest/10'}`}>
             <Sparkles className="w-3.5 h-3.5" />
-            <span>{lang === 'bn' ? 'অর্ডার সফলভাবে গৃহীত হয়েছে!' : 'Order Placed Successfully!'}</span>
+            <span>{isDraft ? t('orderConfirm.draftBadge') : (lang === 'bn' ? 'অর্ডার সফলভাবে গৃহীত হয়েছে!' : 'Order Placed Successfully!')}</span>
           </span>
           <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
-            {t('orderConfirm.successTitle')}
+            {isDraft ? t('orderConfirm.draftTitle') : t('orderConfirm.successTitle')}
           </h1>
           <p className="text-sm text-brand-taupe max-w-md mx-auto leading-relaxed">
-            {t('orderConfirm.successSubtitle')}
+            {isDraft ? t('orderConfirm.draftSubtitle') : t('orderConfirm.successSubtitle')}
           </p>
         </div>
 
@@ -381,6 +385,8 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
           </a>
           )}
 
+          {/* No receipt for a draft: the order is not submitted yet. */}
+          {!isDraft && (
           <button
             onClick={handleDownloadReceipt}
             disabled={downloadingReceipt}
@@ -389,6 +395,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             <Download className="w-4 h-4 text-brand-caramel" />
             <span>{downloadingReceipt ? t('orderConfirm.downloadingReceipt') : t('orderConfirm.downloadReceipt')}</span>
           </button>
+          )}
         </div>
 
         <p className="text-[13px] text-brand-taupe">
@@ -396,7 +403,9 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         </p>
       </div>
 
-      {/* Animated Order Status Timeline */}
+      {/* Animated Order Status Timeline — hidden for drafts: the order
+          is not in the pipeline until the TrxID is sent. */}
+      {!isDraft && (
       <div className="bg-white rounded-3xl p-5 sm:p-7 border border-[#E7DFD6] shadow-soft space-y-5">
         <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-3.5">
           <div className="flex items-center gap-2">
@@ -453,6 +462,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
           </div>
         </div>
       </div>
+      )}
 
       {/* Manual Payment Section (bKash / Nagad) */}
       {(order.payment_method === 'bkash' || order.payment_method === 'nagad') && (
@@ -477,6 +487,8 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 ? (lang === 'bn' ? 'পেমেন্ট নিশ্চিত হয়েছে' : 'Payment Confirmed')
                 : order.payment_status === 'submitted'
                 ? (lang === 'bn' ? 'TrxID যাচাই চলছে' : 'TrxID Under Review')
+                : isDraft
+                ? t('orderConfirm.awaitingTrx')
                 : (lang === 'bn' ? 'পেমেন্ট অপেক্ষমাণ' : 'Payment Pending')}
             </span>
           </div>
@@ -531,19 +543,21 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 <label className="block text-[13px] font-bold text-brand-chocolate">
                   {lang === 'bn' ? 'পেমেন্ট শেষে TrxID সাবমিট করুন:' : 'Submit your Payment TrxID (Transaction ID):'}
                 </label>
-                <div className="flex gap-2">
+                {/* Stacked on phones: the input + button row overflowed
+                    at ≤430px (the button is wide in Bangla). */}
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     required
                     value={trxIdInput}
                     onChange={(e) => setTrxIdInput(e.target.value)}
                     placeholder="e.g. 9J4K2L8M1N"
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-[#E7DFD6] bg-brand-cream/50 text-sm font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
+                    className="flex-1 min-w-0 px-4 py-2.5 rounded-xl border border-[#E7DFD6] bg-brand-cream/50 text-sm font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
                   />
                   <button
                     type="submit"
                     disabled={submittingTrx}
-                    className="bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold px-5 py-2.5 rounded-xl text-[13px] sm:text-sm shadow-soft transition-all flex items-center gap-1.5 shrink-0"
+                    className="bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold px-5 py-2.5 rounded-xl text-[13px] sm:text-sm shadow-soft transition-all flex items-center justify-center gap-1.5 shrink-0"
                   >
                     {submittingTrx ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

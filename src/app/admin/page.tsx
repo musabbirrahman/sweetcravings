@@ -99,6 +99,10 @@ export default function AdminTodayDashboard() {
   const activePreparing = orders.filter(
     (o) => o.order_status === 'accepted' || o.order_status === 'preparing' || o.order_status === 'ready'
   );
+  // Saved drafts are not orders yet: they never appear in the counts
+  // above, but the sister can see them here until the customer finishes
+  // them with the TrxID (or the admin cancels them).
+  const draftOrders = orders.filter((o) => o.order_status === 'draft');
 
   return (
     <div className="space-y-6">
@@ -277,6 +281,69 @@ export default function AdminTodayDashboard() {
           </div>
         )}
       </div>
+
+      {/* Saved drafts — visible, but never counted as orders. The
+          customer has not paid yet; the order only becomes real when
+          they submit the TrxID. Drafts stay until completed or cancelled. */}
+      {draftOrders.length > 0 && (
+      <div className="bg-white rounded-2xl border border-amber-200 shadow-soft p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-3">
+          <h2 className="font-heading font-bold text-lg text-brand-chocolate">
+            {lang === 'bn' ? 'সংরক্ষিত অর্ডার (এখনো সাবমিট হয়নি)' : 'Saved — not submitted yet'}
+          </h2>
+          <span className="text-sm bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full font-semibold whitespace-nowrap border border-amber-200">
+            {draftOrders.length} {lang === 'bn' ? 'টি সংরক্ষিত' : 'saved'}
+          </span>
+        </div>
+        <p className="text-sm text-brand-taupe">
+          {lang === 'bn'
+            ? 'এই অর্ডারগুলোর পেমেন্ট এখনো হয়নি। কাস্টমার TrxID পাঠালে অর্ডারটি জমা হবে; না হলে এখান থেকে বাতিল করা যাবে।'
+            : 'These customers have not paid yet. The order is submitted once they send the TrxID; otherwise it can be cancelled from the orders list.'}
+        </p>
+        <div className="space-y-3">
+          {draftOrders.map((ord) => (
+            <div
+              key={ord.id}
+              className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-sm text-brand-chocolate">#{ord.public_code}</span>
+                  <span className="bg-amber-50 text-amber-800 text-sm font-bold px-2 py-0.5 rounded-full uppercase border border-amber-200">
+                    {lang === 'bn' ? 'সংরক্ষিত' : 'Saved'}
+                  </span>
+                  <span className="bg-brand-cream text-brand-chocolate text-sm font-bold px-2 py-0.5 rounded-full uppercase border border-[#E7DFD6]">
+                    {ord.payment_method}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-brand-chocolate mt-1">
+                  {ord.customer_name} • {ord.area_landmark} • ৳{ord.total_amount}
+                </p>
+                <p className="text-sm text-brand-taupe mt-0.5">
+                  Phone: {ord.customer_phone} {ord.requested_time ? `• Preferred: ${ord.requested_time}` : ''}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={`tel:${ord.customer_phone}`}
+                  className="flex items-center gap-1 bg-white border border-[#E7DFD6] px-3 py-1.5 rounded-lg text-sm font-semibold text-brand-chocolate hover:bg-brand-cream transition-colors"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Call</span>
+                </a>
+                <Link
+                  href={`/admin/orders?search=${ord.public_code}`}
+                  className="flex items-center gap-1 bg-brand-chocolate hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-sm font-bold shadow-soft transition-colors"
+                >
+                  <span>Manage Order</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      )}
 
     </div>
   );

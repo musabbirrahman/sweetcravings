@@ -28,6 +28,19 @@ export async function PATCH(
     let updatedOrderStatus = current.order_status;
     let updatedPaymentStatus = current.payment_status;
 
+    // A saved draft is not an order yet: it can only be cancelled (to
+    // clear it). It must never be moved to the kitchen or have its
+    // payment confirmed — it becomes a real order only when the customer
+    // submits the TrxID.
+    if (current.order_status === 'draft') {
+      if (orderStatus && orderStatus !== 'cancelled') {
+        return NextResponse.json({ success: false, error: 'A saved draft cannot be moved to the kitchen. It must be submitted with a TrxID first, or cancelled.' }, { status: 400 });
+      }
+      if (paymentStatus && paymentStatus !== current.payment_status) {
+        return NextResponse.json({ success: false, error: 'A saved draft has no payment to confirm yet.' }, { status: 400 });
+      }
+    }
+
     if (orderStatus && orderStatus !== current.order_status) {
       updatedOrderStatus = orderStatus;
       await db.prepare(`

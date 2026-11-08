@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getOrderWithDetails, getDb, getShopSettings, normalizePhone } from '@/lib/db';
+import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, incrementCouponUsage, countSoldToday, getCustomerLoyalty, runInTransaction } from '@/lib/db';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { notifyKitchenNewOrder } from '@/lib/notifications';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,7 +91,7 @@ export async function PATCH(
     }
 
     const db = await getDb();
-    const order = await db.prepare('SELECT id, total_amount, payment_method, payment_status, customer_phone FROM orders WHERE public_code = ?').get(params.publicCode) as { id: number; total_amount: number; payment_method: string; payment_status: string; customer_phone: string } | null;
+    const order = await db.prepare('SELECT * FROM orders WHERE public_code = ?').get(params.publicCode) as any | null;
 
     if (!order || normalizePhone(order.customer_phone) !== normalizePhone(phone)) {
       return NextResponse.json(NOT_FOUND, { status: 404 });
@@ -118,6 +120,175 @@ export async function PATCH(
     }
 
     const now = new Date().toISOString();
+    const isDraft = order.order_status === 'draft';
+
+    // ---- Draft conversion: a saved order becomes a real order. ----
+    // The batch limit and the coupon use are enforced HERE, not when the
+    // draft was saved (drafts reserve no stock and consume no coupon).
+    // Any failure leaves the draft exactly as it is.
+    if (isDraft) {
+      const items = await db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id) as any[];
+
+      // Batch limit, checked now (and re-checked inside the transaction):
+      // the dessert may have sold out while the draft was waiting.
+      const checkBatch = async (): Promise<string | null> => {
+        for (const item of items) {
+          const limitRow = await db.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(item.product_id) as { daily_batch_limit: number | null } | undefined;
+          const limit = Number(limitRow?.daily_batch_limit ?? 15);
+          const sold = await countSoldToday(db, item.product_id);
+          if (sold + Number(item.quantity) > limit) {
+            return item.product_name_en || 'One of the desserts in this order';
+          }
+        }
+        return null;
+      };
+      const soldOutName = await checkBatch();
+      if (soldOutName) {
+        return NextResponse.json(
+          { success: false, error: `${soldOutName} has reached today's batch limit. Your saved order is still saved — please try again tomorrow or contact the shop.` },
+          { status: 400 }
+        );
+      }
+
+      // The coupon is re-validated now: it may have expired or run out
+      // of uses while the draft was waiting. The stored discount is
+      // kept as-is (it is the price the customer already paid against).
+      if (order.coupon_code) {
+        const couponError = await validateCouponForConversion(order.coupon_code, order.subtotal, order.customer_phone);
+        if (couponError) {
+          return NextResponse.json({ success: false, error: couponError }, { status: 400 });
+        }
+      }
+
+      try {
+        await runInTransaction(db, async () => {
+          // Batch re-check inside the transaction, so two drafts
+          // converting at once cannot both take the last units.
+          const soldOutAgain = await checkBatch();
+          if (soldOutAgain) throw new Error('BATCH_LIMIT_EXCEEDED');
+
+          // Insert new payment submission record
+          await db.prepare(`
+            INSERT INTO payment_submissions (order_id, provider, transaction_ref, claimed_amount, submitted_at, review_state)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(order.id, prov, trxId.trim(), order.total_amount, now, 'pending');
+
+          // Move the draft to a real submitted order
+          await db.prepare(`
+            UPDATE orders
+            SET payment_status = 'submitted', order_status = 'new', updated_at = ?
+            WHERE id = ?
+          `).run(now, order.id);
+
+          // Record audit events: the TrxID submission and the draft
+          // becoming a placed order.
+          await db.prepare(`
+            INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);
+          await db.prepare(`
+            INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(order.id, 'draft', 'new', 'customer', 'Saved order submitted with TrxID', now);
+
+          // Reserve the coupon use now (atomic: fails if another order
+          // just took the last use).
+          if (order.coupon_code) {
+            if (!await incrementCouponUsage(order.coupon_code)) {
+              throw new Error('COUPON_EXHAUSTED');
+            }
+          }
+        });
+      } catch (txErr: any) {
+        const message = txErr instanceof Error ? txErr.message : String(txErr);
+        if (message.includes('BATCH_LIMIT_EXCEEDED')) {
+          return NextResponse.json(
+            { success: false, error: 'One of the desserts in this order has just reached today\'s batch limit. Your saved order is still saved — please try again tomorrow or contact the shop.' },
+            { status: 400 }
+          );
+        }
+        if (message.includes('COUPON_EXHAUSTED')) {
+          return NextResponse.json(
+            { success: false, error: 'The coupon on this saved order has just reached its usage limit. Your saved order is still saved — please contact the shop.' },
+            { status: 400 }
+          );
+        }
+        throw txErr;
+      }
+
+      // The draft just became a real order: alert the kitchen, exactly
+      // as a fresh checkout does. A failed notification never fails the
+      // conversion — the order is already submitted.
+      const notificationPromise = notifyKitchenNewOrder({
+        order: {
+          public_code: order.public_code,
+          customer_name: order.customer_name,
+          customer_phone: order.customer_phone,
+          area_landmark: order.area_landmark,
+          delivery_address: order.delivery_address,
+          delivery_instructions: order.delivery_instructions || undefined,
+          is_gift: Boolean(order.is_gift),
+          recipient_name: order.recipient_name || null,
+          recipient_phone: order.recipient_phone || null,
+          gift_message: order.gift_message || null,
+          payment_method: order.payment_method,
+          total_amount: order.total_amount,
+          subtotal: order.subtotal,
+          delivery_fee: order.delivery_fee,
+          discount_amount: order.discount_amount,
+          coupon_code: order.coupon_code,
+        },
+        items: items.map((item: any) => ({
+          productId: item.product_id,
+          nameEn: item.product_name_en,
+          nameBn: item.product_name_bn,
+          variantLabelEn: item.variant_label_en || '',
+          variantLabelBn: item.variant_label_bn || '',
+          unitPrice: item.unit_price,
+          quantity: item.quantity,
+          lineTotal: item.line_total,
+        })),
+      })
+        .then((result) => {
+          if (result.success) {
+            console.log(`Kitchen notification dispatched for converted draft ${order.public_code} via: ${result.methods.join(', ')}`);
+          } else {
+            console.warn(`Kitchen notification for converted draft ${order.public_code} sent via no channel (check Telegram/SMS settings).`);
+          }
+        })
+        .catch((err) => console.error('Kitchen notification dispatch failed:', err));
+      let notificationAttached = false;
+      try {
+        getCloudflareContext().ctx.waitUntil(notificationPromise);
+        notificationAttached = true;
+      } catch {
+        // Not running on Cloudflare Workers (local dev / plain Node).
+      }
+      if (!notificationAttached) {
+        await Promise.race([
+          notificationPromise,
+          new Promise((resolve) => setTimeout(resolve, 8000)),
+        ]);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Transaction ID submitted successfully. Your order is now placed!',
+        converted: true,
+        orderStatus: 'new',
+        paymentStatus: 'submitted',
+      });
+    }
+
+    // A re-submitted TrxID supersedes the earlier (wrong) one: mark any
+    // still-pending submission for this order as rejected, so only the
+    // latest TrxID waits for review. (A converted draft has no earlier
+    // submission, so this is a no-op there.)
+    await db.prepare(`
+      UPDATE payment_submissions
+      SET review_state = 'rejected'
+      WHERE order_id = ? AND review_state = 'pending'
+    `).run(order.id);
 
     // Insert new payment submission record
     await db.prepare(`
@@ -146,4 +317,23 @@ export async function PATCH(
     console.error('Error updating transaction ID:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
+}
+
+// Re-validate a draft's coupon at conversion time, mirroring the
+// checkout checks. Returns an error message, or null when the coupon
+// is still usable. The stored discount is kept as-is.
+async function validateCouponForConversion(code: string, subtotal: number, phone: string): Promise<string | null> {
+  const coupon = await getCouponByCode(code.trim());
+  if (!coupon) return 'The coupon on this saved order is no longer recognised. Your saved order is still saved — please contact the shop.';
+  if (!coupon.active) return 'The coupon on this saved order is no longer active. Your saved order is still saved — please contact the shop.';
+  if (coupon.expires_at && new Date(coupon.expires_at) < new Date()) return 'The coupon on this saved order has expired. Your saved order is still saved — please contact the shop.';
+  if (coupon.usage_limit !== null && coupon.times_used >= coupon.usage_limit) return 'The coupon on this saved order has reached its maximum usage limit. Your saved order is still saved — please contact the shop.';
+  if (subtotal < coupon.min_order_amount) return `This saved order no longer meets the coupon minimum of ৳${coupon.min_order_amount}. Your saved order is still saved — please contact the shop.`;
+  if (coupon.code === 'SWEETREWARD') {
+    const loyalty = await getCustomerLoyalty(phone);
+    if (loyalty.rewardsAvailable <= 0) {
+      return `The Sweet Reward on this saved order is no longer available (it unlocks after ${loyalty.stampsNeeded} completed orders, and each reward can be used only once). Your saved order is still saved — please contact the shop.`;
+    }
+  }
+  return null;
 }
