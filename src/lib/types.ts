@@ -188,6 +188,9 @@ export interface ShopSettings {
   sms_api_key?: string;
   sms_sender_id?: string;
   notifications_enabled?: boolean;
+  loyalty_orders_per_reward: number;
+  loyalty_reward_amount: number;
+  loyalty_reward_min_order: number;
 }
 
 export interface LoyaltyInfo {
@@ -196,12 +199,14 @@ export interface LoyaltyInfo {
   totalOrders: number;
   completedOrders: number;
   totalSpent: number;
-  stamps: number; // 0 to 4 (or 5 if reward just achieved)
-  stampsNeeded: number; // 5
+  stamps: number; // 0 to (stampsNeeded - 1); 0 also when a reward was just earned
+  stampsNeeded: number; // orders per reward (loyalty setting, default 5)
   stampsToNextReward: number;
   rewardsEarned: number;
-  rewardsAvailable: number; // earned rewards not yet redeemed (0 until 5 completed orders, then earned minus used)
+  rewardsAvailable: number; // earned rewards not yet redeemed (0 until enough completed orders, then earned minus used)
   tier: string;
   tierBn: string;
   rewardCouponCode: string;
+  rewardAmount: number; // ৳ off per reward (loyalty setting, default 150)
+  rewardMinOrder: number; // minimum order ৳ to use a reward (loyalty setting, default 200)
 }

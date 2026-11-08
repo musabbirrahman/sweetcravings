@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       const loyalty = await getCustomerLoyalty(phone);
       if (loyalty.rewardsAvailable <= 0) {
         return NextResponse.json(
-          { success: false, valid: false, error: 'The Sweet Reward unlocks after 5 completed orders, and each reward can be used only once.' },
+          { success: false, valid: false, error: `The Sweet Reward unlocks after ${loyalty.stampsNeeded} completed orders, and each reward can be used only once.` },
           { status: 400 }
         );
       }

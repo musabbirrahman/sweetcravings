@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDb, runInTransaction } from '@/lib/db';
+import { getDb, runInTransaction, syncLoyaltyRewardCoupon } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -248,6 +248,11 @@ export async function POST(request: Request) {
         VALUES (?, ?, ?, ?, ?)
       `).run('admin', 'RESTORE_BACKUP', 'database', `Restored backup "${file.name}" (${now})`, now);
     });
+
+    // Coupons are not part of a backup, but the restored loyalty settings
+    // still decide the reward — re-sync the SWEETREWARD row so it does
+    // not keep pre-restore values.
+    await syncLoyaltyRewardCoupon();
 
     return NextResponse.json({
       success: true,

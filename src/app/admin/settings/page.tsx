@@ -12,6 +12,7 @@ import {
   Check, 
   Bell, 
   Tag, 
+  Gift, 
   Plus, 
   Trash2, 
   Send, 
@@ -64,6 +65,11 @@ export default function AdminSettingsPage() {
   const [testingNotification, setTestingNotification] = useState(false);
   const [testNotificationMsg, setTestNotificationMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Loyalty & Rewards (SWEETREWARD)
+  const [loyaltyOrdersPerReward, setLoyaltyOrdersPerReward] = useState('5');
+  const [loyaltyRewardAmount, setLoyaltyRewardAmount] = useState('150');
+  const [loyaltyRewardMinOrder, setLoyaltyRewardMinOrder] = useState('200');
+
   // Coupons
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loadingCoupons, setLoadingCoupons] = useState(true);
@@ -102,6 +108,9 @@ export default function AdminSettingsPage() {
         setTelegramToken(s.telegram_bot_token || '');
         setTelegramChatId(s.telegram_chat_id || '');
         setNotificationsEnabled(s.notifications_enabled !== false);
+        setLoyaltyOrdersPerReward(String(s.loyalty_orders_per_reward));
+        setLoyaltyRewardAmount(String(s.loyalty_reward_amount));
+        setLoyaltyRewardMinOrder(String(s.loyalty_reward_min_order));
       }
     } catch {
       // Leave the previous form values in place; loading ends below.
@@ -135,6 +144,22 @@ export default function AdminSettingsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Loyalty values must be whole numbers in range; anything else
+    // stops the save with a message instead of storing a broken rule.
+    const parsedOrders = parseInt(loyaltyOrdersPerReward, 10);
+    const parsedAmount = parseInt(loyaltyRewardAmount, 10);
+    const parsedMinOrder = parseInt(loyaltyRewardMinOrder, 10);
+    if (!Number.isFinite(parsedOrders) || !Number.isFinite(parsedAmount) || !Number.isFinite(parsedMinOrder)) {
+      toast(t('admin.loyaltyInvalid'), 'error');
+      return;
+    }
+    const clampedOrders = Math.min(20, Math.max(1, parsedOrders));
+    const clampedAmount = Math.max(0, parsedAmount);
+    const clampedMinOrder = Math.max(0, parsedMinOrder);
+    setLoyaltyOrdersPerReward(String(clampedOrders));
+    setLoyaltyRewardAmount(String(clampedAmount));
+    setLoyaltyRewardMinOrder(String(clampedMinOrder));
+
     if (settings && (bkashNumber !== settings.bkash_number || nagadNumber !== settings.nagad_number)) {
       const confirmed = await confirm({
         title: 'Confirm wallet number changes',
@@ -166,6 +191,9 @@ export default function AdminSettingsPage() {
             telegram_bot_token: telegramToken,
             telegram_chat_id: telegramChatId,
             notifications_enabled: notificationsEnabled ? 'true' : 'false',
+            loyalty_orders_per_reward: String(clampedOrders),
+            loyalty_reward_amount: String(clampedAmount),
+            loyalty_reward_min_order: String(clampedMinOrder),
           },
         }),
       });
@@ -588,6 +616,55 @@ export default function AdminSettingsPage() {
               onChange={(e) => setWhatsappNumber(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono text-sm"
             />
+          </div>
+        </div>
+
+        {/* Loyalty & Rewards */}
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
+          <div className="flex items-center gap-2 border-b border-[#E7DFD6] pb-3">
+            <Gift className="w-4 h-4 text-brand-caramel" />
+            <h2 className="font-heading font-bold text-base text-brand-chocolate">
+              {t('admin.loyaltyTitle')}
+            </h2>
+          </div>
+
+          <p className="text-sm text-brand-taupe leading-relaxed">
+            {t('admin.loyaltyExplainer')}
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+              <label className="block font-bold text-brand-chocolate mb-1">{t('admin.loyaltyOrdersPerReward')}</label>
+              <input
+                type="number"
+                step={1}
+                value={loyaltyOrdersPerReward}
+                onChange={(e) => setLoyaltyOrdersPerReward(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-brand-chocolate mb-1">{t('admin.loyaltyRewardAmount')}</label>
+              <input
+                type="number"
+                step={1}
+                value={loyaltyRewardAmount}
+                onChange={(e) => setLoyaltyRewardAmount(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-brand-chocolate mb-1">{t('admin.loyaltyRewardMinOrder')}</label>
+              <input
+                type="number"
+                step={1}
+                value={loyaltyRewardMinOrder}
+                onChange={(e) => setLoyaltyRewardMinOrder(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
+              />
+            </div>
           </div>
         </div>
 

@@ -192,7 +192,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
                           role="radio"
                           aria-checked={isSelected}
                           onClick={() => setSelectedVariant(v)}
-                          className={`relative flex flex-col items-start gap-1 px-4 py-3 rounded-2xl border text-left text-[13px] sm:text-sm font-medium transition-all ${
+                          className={`relative flex flex-col items-start gap-1 px-4 py-3 rounded-2xl border text-left text-[15px] sm:text-base font-medium transition-all min-w-0 ${
                             isSelected
                               ? 'border-brand-caramel bg-brand-caramel/10 text-brand-chocolate font-bold shadow-sm ring-1 ring-brand-caramel'
                               : 'border-[#E7DFD6] hover:border-brand-caramel/40 text-brand-taupe hover:text-brand-chocolate'
@@ -203,7 +203,13 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
                               <Check className="w-3 h-3" />
                             </span>
                           )}
-                          <span className="pr-6 leading-[1.7] text-balance">{lang === 'bn' ? v.label_bn : v.label_en}</span>
+                          {/* pr-5 (not pr-6): the Baloo digit ১ is ~2px wider
+                              than Hind Siliguri's, and at 768px the button is
+                              only 136px wide — pr-6 let 'ফুল ১ পাউন্ড' wrap to
+                              two lines. pr-5 still clears the 20px check
+                              (text ends 36px from the right edge, the check
+                              starts 28px in). */}
+                          <span className="pr-5 leading-[1.7] text-balance min-w-0 break-words">{lang === 'bn' ? v.label_bn : v.label_en}</span>
                           <span
                             className="text-brand-caramel font-bold font-heading leading-[1.6]"
                             style={{ letterSpacing: 0 }}

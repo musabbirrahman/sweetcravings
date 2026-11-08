@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getShopSettings, updateShopSetting, getDb } from '@/lib/db';
+import { getShopSettings, updateShopSetting, getDb, syncLoyaltyRewardCoupon } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -80,6 +80,17 @@ export async function POST(request: Request) {
 
     for (const [key, value] of Object.entries(settings)) {
       await updateShopSetting(key, String(value), actor);
+    }
+
+    // Loyalty amount / minimum live on the SWEETREWARD coupon row, so a
+    // loyalty change must re-sync that row or the coupon would keep the
+    // old values while the stamp card showed the new ones.
+    if (
+      'loyalty_orders_per_reward' in settings ||
+      'loyalty_reward_amount' in settings ||
+      'loyalty_reward_min_order' in settings
+    ) {
+      await syncLoyaltyRewardCoupon();
     }
 
     const updated = await getShopSettings();

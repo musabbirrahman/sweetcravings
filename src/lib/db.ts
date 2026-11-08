@@ -661,6 +661,15 @@ export async function getShopSettings(): Promise<ShopSettings> {
     map[r.key] = r.value;
   }
 
+  // Loyalty numbers are admin-editable, so anything unreadable or
+  // out of range falls back to the original behaviour (5 / 150 / 200)
+  // instead of breaking the reward math.
+  const loyaltyInt = (value: string | undefined, fallback: number, min: number, max: number): number => {
+    const n = parseInt(value ?? '', 10);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  };
+
   return {
     service_city: map.service_city || 'Rajshahi',
     coverage_statement_en: map.coverage_statement_en || 'Delivery available across Rajshahi City',
@@ -688,6 +697,9 @@ export async function getShopSettings(): Promise<ShopSettings> {
     sms_api_key: map.sms_api_key || '',
     sms_sender_id: map.sms_sender_id || '',
     notifications_enabled: map.notifications_enabled === 'true',
+    loyalty_orders_per_reward: loyaltyInt(map.loyalty_orders_per_reward, 5, 1, 20),
+    loyalty_reward_amount: loyaltyInt(map.loyalty_reward_amount, 150, 0, 100000),
+    loyalty_reward_min_order: loyaltyInt(map.loyalty_reward_min_order, 200, 0, 100000),
   };
 }
 
@@ -1128,9 +1140,13 @@ export async function getCustomerLoyalty(phone: string): Promise<LoyaltyInfo> {
   } | undefined;
 
   const completed = Number(row?.completed_orders || 0);
-  const stamps = completed % 5;
-  const stampsToNext = stamps === 0 && completed > 0 ? 0 : 5 - stamps;
-  const rewardsEarned = Math.floor(completed / 5);
+  // Orders per reward comes from the admin-editable loyalty settings
+  // (default 5). Tier thresholds below are fixed and do NOT follow it.
+  const loyaltySettings = await getShopSettings();
+  const perReward = loyaltySettings.loyalty_orders_per_reward;
+  const stamps = completed % perReward;
+  const stampsToNext = stamps === 0 && completed > 0 ? 0 : perReward - stamps;
+  const rewardsEarned = Math.floor(completed / perReward);
 
   // Rewards already used up: non-cancelled orders that redeemed the
   // loyalty reward code. A reward is only available when earned > used.
@@ -1161,12 +1177,30 @@ export async function getCustomerLoyalty(phone: string): Promise<LoyaltyInfo> {
     completedOrders: completed,
     totalSpent: Number(row?.total_spent || 0),
     stamps,
-    stampsNeeded: 5,
+    stampsNeeded: perReward,
     stampsToNextReward: stampsToNext,
     rewardsEarned,
     rewardsAvailable,
     tier,
     tierBn,
-    rewardCouponCode: 'SWEETREWARD'
+    rewardCouponCode: 'SWEETREWARD',
+    rewardAmount: loyaltySettings.loyalty_reward_amount,
+    rewardMinOrder: loyaltySettings.loyalty_reward_min_order,
   };
+}
+
+/**
+ * Keep the SWEETREWARD coupon row in step with the admin-editable
+ * loyalty settings (discount amount + minimum order). Call after the
+ * loyalty settings are saved or restored. UPDATE only: it never
+ * resurrects a coupon the owner deliberately deleted — the seed's
+ * "insert only if missing" guard still owns creation.
+ */
+export async function syncLoyaltyRewardCoupon(): Promise<void> {
+  const settings = await getShopSettings();
+  const db = await getDb();
+  await db.prepare(`
+    UPDATE coupons SET discount_value = ?, min_order_amount = ?
+    WHERE code = 'SWEETREWARD'
+  `).run(settings.loyalty_reward_amount, settings.loyalty_reward_min_order);
 }

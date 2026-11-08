@@ -15,6 +15,10 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
   const { lang } = useLanguage();
 
   const currentStamps = loyalty.stamps;
+  // Slots come from the admin-editable loyalty setting (default 5);
+  // the server clamps it to 1–20, this guard only covers stale data.
+  const totalSlots = Math.max(1, loyalty.stampsNeeded || 5);
+  const slots = Array.from({ length: totalSlots }, (_, i) => i + 1);
   // Ready only when an earned reward is still unused. Checking the
   // earned count alone would keep offering a reward already redeemed.
   const isRewardReady = loyalty.rewardsAvailable > 0;
@@ -42,8 +46,8 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
             </div>
             <p className="text-[13px] text-brand-cream/70 mt-0.5">
               {lang === 'bn'
-                ? `প্রতি ৫টি সম্পন্ন অর্ডারে পান ১টি ফ্রি স্পেশাল ডেজার্ট ডিসকাউন্ট!`
-                : `Every 5 completed orders unlocks a complimentary dessert reward!`}
+                ? `প্রতি ${totalSlots}টি সম্পন্ন অর্ডারে পান ১টি ফ্রি স্পেশাল ডেজার্ট ডিসকাউন্ট!`
+                : `Every ${totalSlots} completed orders unlocks a complimentary dessert reward!`}
             </p>
           </div>
         </div>
@@ -53,17 +57,20 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
             {lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed Orders'}
           </span>
           <span className="font-heading font-extrabold text-lg text-brand-cream">
-            {loyalty.completedOrders} <span className="text-[13px] font-normal text-white/50">/ 5 {lang === 'bn' ? 'স্ট্যাম্প' : 'stamps'}</span>
+            {loyalty.completedOrders} <span className="text-[13px] font-normal text-white/50">/ {totalSlots} {lang === 'bn' ? 'স্ট্যাম্প' : 'stamps'}</span>
           </span>
         </div>
       </div>
 
       {/* Stamp Slots Row */}
       <div className="relative z-10 py-5">
-        <div className="grid grid-cols-5 gap-2 sm:gap-4">
-          {[1, 2, 3, 4, 5].map((slotNum) => {
-            const isStamped = slotNum <= currentStamps || (slotNum === 5 && isRewardReady);
-            const isTarget = slotNum === 5;
+        <div
+          className="grid gap-2 sm:gap-4"
+          style={{ gridTemplateColumns: `repeat(${totalSlots}, minmax(0, 1fr))` }}
+        >
+          {slots.map((slotNum) => {
+            const isStamped = slotNum <= currentStamps || (slotNum === totalSlots && isRewardReady);
+            const isTarget = slotNum === totalSlots;
 
             return (
               <div
@@ -127,8 +134,8 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
               <Sparkles className="w-4 h-4 text-brand-cream" />
               <span>
                 {lang === 'bn' 
-                  ? 'অভিনন্দন! আপনার ৫টি অর্ডারের উপহার সক্রিয় হয়েছে।' 
-                  : 'Congratulations! Your 5-order reward is active.'}
+                  ? `অভিনন্দন! আপনার ${totalSlots}টি অর্ডারের উপহার সক্রিয় হয়েছে।` 
+                  : `Congratulations! Your ${totalSlots}-order reward is active.`}
               </span>
             </p>
           ) : (
@@ -162,7 +169,7 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
                 }`}
               >
                 <Gift className="w-3.5 h-3.5" />
-                <span>{lang === 'bn' ? 'কুপন প্রয়োগ করুন (৳১৫০ ছাড়)' : 'Apply Reward (৳150 Off)'}</span>
+                <span>{lang === 'bn' ? `কুপন প্রয়োগ করুন (৳${loyalty.rewardAmount} ছাড়)` : `Apply Reward (৳${loyalty.rewardAmount} Off)`}</span>
               </button>
             )}
           </div>

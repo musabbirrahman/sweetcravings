@@ -140,6 +140,50 @@ Sweet Cravings Kitchen`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   };
 
+  // Latest still-unreviewed TrxID submission, if any. The "payment not
+  // received" button only shows while one exists.
+  const getLatestPendingSubmission = (ord: Order) => {
+    const pending = (ord.payment_submissions || []).filter((s) => s.review_state === 'pending');
+    return pending.length > 0 ? pending[pending.length - 1] : undefined;
+  };
+
+  // Prefilled WhatsApp message to the customer (Bangla-first): order code,
+  // submitted TrxID, amount and payment method, asking them to double-check
+  // and reply with the correct TrxID. wa.me only prefills — the admin
+  // still presses Send in WhatsApp, so a mis-tap sends nothing.
+  const generatePaymentNotReceivedUrl = (ord: Order) => {
+    const sub = getLatestPendingSubmission(ord);
+    if (!sub) return '';
+    const methodBn = sub.provider === 'nagad' ? 'নগদ' : 'বিকাশ';
+    const text =
+      `সালাম ${ord.customer_name}! Sweet Cravings থেকে বলছি। আপনার অর্ডার #${ord.public_code}-এর জন্য ${methodBn} নম্বরে ৳${ord.total_amount} পাঠিয়ে TrxID ${sub.transaction_ref} দিয়েছেন, কিন্তু আমাদের হিসাবে এই পেমেন্টটি পাওয়া যায়নি।\n\n` +
+      `দয়া করে TrxID-টি আবার যাচাই করে সঠিক TrxID-টি এই চ্যাটেই reply করুন, তাহলে আমরা আপনার অর্ডারটি নিশ্চিত করতে পারব।\n\nধন্যবাদ — Sweet Cravings, রাজশাহী`;
+    return `https://wa.me/${ord.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+  };
+
+  // Record the notice through the existing PATCH path (sets payment_status
+  // to 'rejected', marks the pending TrxID rejected, writes an event).
+  // The WhatsApp tab opens from the same click via the link's href, so the
+  // admin tab stays open and this request completes. The record means the
+  // message was opened for sending — 'rejected' is also the only path to
+  // that state, so the marker below is unambiguous.
+  const handlePaymentNotReceived = (ord: Order) => {
+    const sub = getLatestPendingSubmission(ord);
+    if (!sub) return;
+    handleUpdateStatus(
+      ord.id,
+      undefined,
+      'rejected',
+      `Payment not received — customer notified on WhatsApp (TrxID ${sub.transaction_ref}, ${sub.provider})`
+    );
+    toast(
+      lang === 'bn'
+        ? 'হোয়াটসঅ্যাপ খুলছে — পাঠাতে Send চাপুন'
+        : 'Opening WhatsApp — press Send to notify the customer',
+      'success'
+    );
+  };
+
   const filteredOrders = orders.filter((o) => {
     const matchesStatus = 
       selectedStatus === 'all' 
@@ -240,6 +284,8 @@ Sweet Cravings Kitchen`;
           {filteredOrders.map((ord) => {
             const waMsg = encodeURIComponent(`Salam ${ord.customer_name}! This is Sweet Cravings regarding your order #${ord.public_code}.`);
             const waLink = `https://wa.me/${ord.customer_phone.replace(/\D/g, '')}?text=${waMsg}`;
+            const latestPendingSubmission = getLatestPendingSubmission(ord);
+            const payNotifyUrl = generatePaymentNotReceivedUrl(ord);
             const isUpdating = updatingId === ord.id;
 
             return (
@@ -278,6 +324,8 @@ Sweet Cravings Kitchen`;
                         ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/25'
                         : ord.payment_status === 'submitted'
                         ? 'bg-brand-cream text-brand-caramel border border-[#E7DFD6]'
+                        : ord.payment_status === 'rejected'
+                        ? 'bg-red-50 text-red-700 border border-red-200'
                         : 'bg-brand-cream text-brand-taupe'
                     }`}>
                       {ord.payment_method.toUpperCase()} • {ord.payment_status}
@@ -391,9 +439,17 @@ Sweet Cravings Kitchen`;
                   <div className="bg-brand-cream/90 border border-[#E7DFD6] p-2.5 rounded-xl text-sm space-y-1">
                     <span className="font-bold text-brand-chocolate block">Customer Submitted TrxID:</span>
                     {ord.payment_submissions.map((sub) => (
-                      <div key={sub.id} className="flex justify-between font-mono text-sm text-brand-chocolate">
-                        <span>TrxID: <strong>{sub.transaction_ref}</strong> ({sub.provider})</span>
-                        <span className="capitalize text-brand-caramel font-bold">{sub.review_state}</span>
+                      <div key={sub.id} className="space-y-0.5">
+                        <div className="flex justify-between font-mono text-sm text-brand-chocolate">
+                          <span>TrxID: <strong>{sub.transaction_ref}</strong> ({sub.provider})</span>
+                          <span className="capitalize text-brand-caramel font-bold">{sub.review_state}</span>
+                        </div>
+                        {sub.review_state === 'rejected' && (
+                          <p className="flex items-center gap-1 text-[13px] text-brand-taupe">
+                            <MessageSquare className="w-3.5 h-3.5 text-brand-forest shrink-0" />
+                            <span>{lang === 'bn' ? 'কাস্টমারকে হোয়াটসঅ্যাপে জানানো হয়েছে — পেমেন্ট পাওয়া যায়নি' : 'Customer notified on WhatsApp — payment not received'}</span>
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -502,6 +558,27 @@ Sweet Cravings Kitchen`;
                       >
                         ✓ Confirm Payment
                       </button>
+                    )}
+
+                    {/* Payment not received — notify customer on WhatsApp.
+                        Only while a TrxID is submitted and unreviewed; the
+                        link opens WhatsApp with the message prefilled, and
+                        the click records the notice (payment_status ->
+                        'rejected') so the sister can see she already asked.
+                        Confirm Payment above keeps showing afterwards. */}
+                    {(ord.payment_method === 'bkash' || ord.payment_method === 'nagad') &&
+                      ord.payment_status === 'submitted' && latestPendingSubmission && (
+                      <a
+                        href={payNotifyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => handlePaymentNotReceived(ord)}
+                        className="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors inline-flex items-center gap-1.5"
+                        title={lang === 'bn' ? 'কাস্টমারকে হোয়াটসঅ্যাপে জানান — পেমেন্ট পাওয়া যায়নি' : 'Notify customer on WhatsApp — payment not received'}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{lang === 'bn' ? 'পেমেন্ট পাওয়া যায়নি' : 'Payment not received'}</span>
+                      </a>
                     )}
 
                     {/* Cancel order button if not already completed/cancelled */}

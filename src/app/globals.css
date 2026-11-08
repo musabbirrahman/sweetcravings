@@ -1,10 +1,53 @@
 /* Self-hosted font only — no Google Fonts request at runtime or build.
    ONE family: Hind Siliguri for everything (Latin + Bangla). Fraunces is
-   gone (no Bangla glyphs; its italic was a faux-oblique Bangla). */
+   gone (no Bangla glyphs; its italic was a faux-oblique Bangla).
+   EXCEPTION — Bengali digits (U+09E6–09EF) render in Baloo Da 2 (see the
+   @font-face rules below): Hind Siliguri's ১ is a short comma-like tick,
+   Baloo's is a full clear digit. */
 @import '@fontsource/hind-siliguri/400.css';
 @import '@fontsource/hind-siliguri/500.css';
 @import '@fontsource/hind-siliguri/600.css';
 @import '@fontsource/hind-siliguri/700.css';
+
+/* Bengali digits only — Baloo Da 2, subsetted to U+09E6–09EF (the 10
+   digits, ~1.9KB per weight; no other glyphs in these files).
+   These faces share the 'Hind Siliguri' family name and are declared
+   AFTER the Fontsource imports above, so for the digit code points they
+   win the unicode-range match; every other character — Latin, Bangla
+   letters, conjuncts, ৳ (U+09F3) — still renders in Hind Siliguri.
+   Source: Baloo Da 2 (SIL OFL), via Fontsource; subsetted with fontTools. */
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/baloo-da-2-digits-400.woff2') format('woff2');
+  unicode-range: U+09E6-09EF;
+}
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/baloo-da-2-digits-500.woff2') format('woff2');
+  unicode-range: U+09E6-09EF;
+}
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/baloo-da-2-digits-600.woff2') format('woff2');
+  unicode-range: U+09E6-09EF;
+}
+@font-face {
+  font-family: 'Hind Siliguri';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/baloo-da-2-digits-700.woff2') format('woff2');
+  unicode-range: U+09E6-09EF;
+}
 
 @tailwind base;
 @tailwind components;

@@ -246,11 +246,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: `Minimum order amount of ৳${coupon.min_order_amount} required to use this coupon.` }, { status: 400 });
       }
       // The loyalty reward code is earned, not public: one reward per
-      // 5 completed orders, and each earned reward can be used only once.
+      // loyalty_orders_per_reward completed orders (admin setting,
+      // default 5), and each earned reward can be used only once.
       if (coupon.code === 'SWEETREWARD') {
         const loyalty = await getCustomerLoyalty(cleanPhone);
         if (loyalty.rewardsAvailable <= 0) {
-          return NextResponse.json({ success: false, error: 'The Sweet Reward unlocks after 5 completed orders, and each reward can be used only once.' }, { status: 400 });
+          return NextResponse.json({ success: false, error: `The Sweet Reward unlocks after ${loyalty.stampsNeeded} completed orders, and each reward can be used only once.` }, { status: 400 });
         }
       }
 
