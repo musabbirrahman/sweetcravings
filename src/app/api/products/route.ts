@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getProducts, getCategories, getShopSettings } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`products:${ip}`, 60, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     const { searchParams } = new URL(request.url);
     const categoryId = searchParams.get('category') ? parseInt(searchParams.get('category')!, 10) : undefined;
@@ -49,6 +58,6 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error('API products error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

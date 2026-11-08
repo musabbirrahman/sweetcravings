@@ -1048,6 +1048,61 @@ export async function countSoldToday(db: DbHandle, productId: number): Promise<n
   return Number(row?.sold || 0);
 }
 
+// Maximum orders one phone number can place per day (all payment
+// methods, submitted orders only), tiered by trust: a number that has
+// never completed an order gets the low cap, so a flood of prank orders
+// to a fresh (or someone else's) number stops at 3; once the number has
+// at least one completed order the shop already knows the customer is
+// real, so the cap rises to 6 — enough to earn the 5-order reward in a
+// single day if they want to. Flood control, not a hard invariant: two
+// simultaneous checkouts for the same phone can each pass the pre-check
+// and both land (same trade-off as the batch limit). Turn the numbers
+// into admin settings later if the shop wants them adjustable.
+export const MAX_ORDERS_PER_PHONE_PER_DAY_NEW = 3;
+export const MAX_ORDERS_PER_PHONE_PER_DAY_PROVEN = 6;
+
+// Completed orders for this phone number, any day: the trust signal
+// behind the tiered daily cap. Drafts and cancelled orders never count.
+export async function countCompletedOrders(db: DbHandle, phone: string): Promise<number> {
+  const digits = phone.replace(/\D/g, '');
+  const fullPhone = digits.length === 13 && digits.startsWith('88') ? digits.slice(2) : digits;
+  const row = await db.prepare(`
+    SELECT COUNT(*) as completed
+    FROM orders
+    WHERE substr(replace(replace(customer_phone, ' ', ''), '-', ''), -11) = ?
+      AND order_status = 'completed'
+  `).get(fullPhone) as { completed: number } | undefined;
+  return Number(row?.completed || 0);
+}
+
+// The daily order limit that applies to this phone number right now:
+// 6 once it has at least one completed order, 3 otherwise. Evaluated
+// at the moment of the check, so a customer who places 3 orders today,
+// gets one marked completed, and then places a 4th the same day is
+// already proven and the 4th goes through.
+export async function getDailyOrderLimit(db: DbHandle, phone: string): Promise<number> {
+  const completed = await countCompletedOrders(db, phone);
+  return completed >= 1 ? MAX_ORDERS_PER_PHONE_PER_DAY_PROVEN : MAX_ORDERS_PER_PHONE_PER_DAY_NEW;
+}
+
+// Orders this phone number placed today: non-draft, non-cancelled.
+// Drafts do not count (they place nothing yet) and cancelled orders do
+// not count (a cancelled order frees its slot). The day boundary is
+// UTC (06:00 Dhaka), the same convention as countSoldToday.
+export async function countPlacedOrdersToday(db: DbHandle, phone: string): Promise<number> {
+  const digits = phone.replace(/\D/g, '');
+  const fullPhone = digits.length === 13 && digits.startsWith('88') ? digits.slice(2) : digits;
+  const row = await db.prepare(`
+    SELECT COUNT(*) as placed
+    FROM orders
+    WHERE substr(replace(replace(customer_phone, ' ', ''), '-', ''), -11) = ?
+      AND order_status != 'draft'
+      AND order_status != 'cancelled'
+      AND date(created_at) = date('now')
+  `).get(fullPhone) as { placed: number } | undefined;
+  return Number(row?.placed || 0);
+}
+
 /** Attach active variants and today's batch counts to one product row. */
 async function attachProductExtras(db: DbHandle, p: Product): Promise<void> {
   const varStmt = await db.prepare('SELECT * FROM product_variants WHERE product_id = ? AND active = 1 ORDER BY sort_order ASC');

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, reserveCouponUse, releaseCouponUse, isRetryableTxError, batchErrorIndex, countSoldToday, getCustomerLoyalty, findTrxIdConflict, normalizeSenderNumber, type BatchStatement, type DbHandle } from '@/lib/db';
+import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, reserveCouponUse, releaseCouponUse, isRetryableTxError, batchErrorIndex, countSoldToday, getCustomerLoyalty, findTrxIdConflict, normalizeSenderNumber, countPlacedOrdersToday, getDailyOrderLimit, type BatchStatement, type DbHandle } from '@/lib/db';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyKitchenNewOrder } from '@/lib/notifications';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
@@ -150,6 +150,16 @@ export async function PATCH(
     // draft was saved (drafts reserve no stock and consume no coupon).
     // Any failure leaves the draft exactly as it is.
     if (isDraft) {
+      // Daily per-phone order cap, tiered by trust (see
+      // getDailyOrderLimit in src/lib/db.ts): a draft saved yesterday
+      // and converted today counts toward today. On hit the draft stays
+      // a draft and the customer gets the WhatsApp alternative in the UI.
+      const dailyLimit = await getDailyOrderLimit(db, order.customer_phone);
+      const placedToday = await countPlacedOrdersToday(db, order.customer_phone);
+      if (placedToday >= dailyLimit) {
+        return NextResponse.json({ success: false, error: `You have reached today's limit of ${dailyLimit} online orders for this phone number. Message us on WhatsApp and we will take your order manually.`, code: 'ORDER_LIMIT_REACHED' }, { status: 400 });
+      }
+
       const items = await db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id) as any[];
 
       // Batch limit, checked now (and re-checked inside the transaction):

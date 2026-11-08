@@ -9,16 +9,16 @@
  * form WhatsApp links need.
  *
  * wa.me takes the number in international format with NO '+' and no
- * spaces, dashes or brackets: https://wa.me/8801330792610. A number
- * stored in local form (01330792610) carries no country code, and
+ * spaces, dashes or brackets: https://wa.me/8801712345678. A number
+ * stored in local form (01712345678) carries no country code, and
  * WhatsApp refuses it ("couldn't look up phone number ... missing a
  * country code or has the wrong one").
  *
- *   01330792610    -> 8801330792610   (+8801330792610)
- *   +8801330792610 -> 8801330792610
- *   8801330792610  -> 8801330792610
- *   01330-792610   -> 8801330792610
- *   1330792610     -> 8801330792610
+ *   01712345678    -> 8801712345678   (+8801712345678)
+ *   +8801712345678 -> 8801712345678
+ *   8801712345678  -> 8801712345678
+ *   01712-345678   -> 8801712345678
+ *   1712345678     -> 8801712345678
  *   ''             -> '' (caller hides the link)
  */
 export function toWhatsAppDigits(raw: string | null | undefined): string {

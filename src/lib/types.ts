@@ -212,3 +212,19 @@ export interface LoyaltyInfo {
   rewardAmount: number; // ৳ off per reward (loyalty setting, default 150)
   rewardMinOrder: number; // minimum order ৳ to use a reward (loyalty setting, default 200)
 }
+
+// What GET /api/loyalty returns to the browser: only the fields the
+// stamp card renders. The customer's name, order totals and spending
+// NEVER leave the server through this endpoint — anyone holding a phone
+// number could read them off it. Server-side callers (coupon validation,
+// checkout) use getCustomerLoyalty directly and keep the full shape.
+export interface PublicLoyaltyInfo {
+  stamps: number;
+  stampsNeeded: number;
+  stampsToNextReward: number;
+  rewardsAvailable: number;
+  tier: string;
+  tierBn: string;
+  rewardCouponCode: string;
+  rewardAmount: number;
+}

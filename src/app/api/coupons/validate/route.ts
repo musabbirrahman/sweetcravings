@@ -109,6 +109,7 @@ export async function POST(request: Request) {
       message: `Coupon applied: ৳${discountAmount} discount!`,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, valid: false, error: error.message }, { status: 500 });
+    console.error('Coupon validate error:', error);
+    return NextResponse.json({ success: false, valid: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

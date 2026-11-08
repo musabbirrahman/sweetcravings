@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getDb, runInTransaction, syncLoyaltyRewardCoupon } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
@@ -175,6 +176,14 @@ function validateBackup(parsed: unknown): { ok: true; data: Record<string, Row[]
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-restore:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -261,6 +270,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Backup restore error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Restore failed.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Restore failed.' }, { status: 500 });
   }
 }

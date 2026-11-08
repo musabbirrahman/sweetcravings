@@ -23,10 +23,12 @@ import {
   ArrowLeft,
   Tag,
   Gift,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react';
 import LoyaltyStampCard from '@/components/LoyaltyStampCard';
-import { LoyaltyInfo } from '@/lib/types';
+import { PublicLoyaltyInfo } from '@/lib/types';
+import { toWhatsAppDigits } from '@/lib/phone';
 
 const POPULAR_RAJSHAHI_AREAS = [
   'Shaheb Bazar (সাহেব বাজার)',
@@ -95,6 +97,10 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // True when the server refused the order for the daily per-phone cap:
+  // the error banner then offers a WhatsApp chat with the shop instead
+  // of leaving a real customer stranded.
+  const [orderLimitReached, setOrderLimitReached] = useState(false);
   const [trxError, setTrxError] = useState<string | null>(null);
   // True once the saved checkout form (if any) has been restored.
   const [formHydrated, setFormHydrated] = useState(false);
@@ -102,10 +108,19 @@ export default function CheckoutPage() {
   // load); null until it arrives, same as before.
   const { settings: shopSettings } = useCatalog();
 
+  // WhatsApp fallback for the daily order cap (see orderLimitReached):
+  // the shop's number, normalized to wa.me form. Empty until settings
+  // load or the shop has no WhatsApp number configured — then the
+  // button is hidden and only the message shows.
+  const limitWaDigits = toWhatsAppDigits(shopSettings?.whatsapp_number || '');
+  const limitWaUrl = limitWaDigits
+    ? `https://wa.me/${limitWaDigits}?text=${encodeURIComponent("Salam Sweet Cravings! I've reached today's online order limit and would like to place another order.")}`
+    : '';
+
   const [idempotencyToken] = useState(() => `ord_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
 
   // Loyalty Rewards State
-  const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
+  const [loyalty, setLoyalty] = useState<PublicLoyaltyInfo | null>(null);
 
   // Auto-lookup loyalty when phone number reaches 11 digits
   useEffect(() => {
@@ -116,10 +131,6 @@ export default function CheckoutPage() {
         .then((data) => {
           if (data.success && data.loyalty) {
             setLoyalty(data.loyalty);
-            // Autofill name if customer hasn't typed one yet
-            if (data.loyalty.customerName && !customerName) {
-              setCustomerName(data.loyalty.customerName);
-            }
           }
         })
         .catch(() => {});
@@ -284,6 +295,7 @@ export default function CheckoutPage() {
     setErrorMessage(null);
     setTrxError(null);
     setSenderError(null);
+    setOrderLimitReached(false);
 
     const fieldError = validateCheckoutFields();
     if (fieldError) {
@@ -368,6 +380,15 @@ export default function CheckoutPage() {
             : (data.error || 'This TrxID has already been used. Please check the TrxID and try again.');
           setErrorMessage(msg);
           setTrxError(msg);
+        } else if (data.code === 'ORDER_LIMIT_REACHED') {
+          // Daily per-phone cap: the form is kept, and the banner below
+          // offers a WhatsApp chat with the shop so a real customer can
+          // still place the order manually.
+          const msg = lang === 'bn'
+            ? 'এই নম্বরে আজকের অনলাইন অর্ডারের সীমা শেষ হয়ে গেছে। WhatsApp-এ মেসেজ করুন, আমরা আপনার অর্ডারটি নিজে নিয়ে নেব।'
+            : (data.error || 'You have reached today\'s online order limit for this phone number. Message us on WhatsApp and we will take your order manually.');
+          setErrorMessage(msg);
+          setOrderLimitReached(true);
         } else {
           setErrorMessage(data.error || 'Failed to place order. Please try again.');
         }
@@ -472,9 +493,20 @@ export default function CheckoutPage() {
       {errorMessage && (
         <div className="bg-brand-caramel/10 border border-brand-chocolate/20 text-brand-chocolate p-4 rounded-2xl flex items-start gap-3 shadow-soft animate-shake">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div className="text-sm">
+          <div className="text-sm min-w-0">
             <p className="font-bold">{lang === 'bn' ? 'ত্রুটি' : 'Action Required'}</p>
             <p>{errorMessage}</p>
+            {orderLimitReached && limitWaUrl && (
+              <a
+                href={limitWaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 bg-[#25D366] hover:brightness-95 text-white font-bold px-4 py-2 rounded-xl text-[13px] shadow-soft transition-all"
+              >
+                <MessageCircle className="w-4 h-4 shrink-0" />
+                <span>{lang === 'bn' ? 'WhatsApp-এ অর্ডার করুন' : 'Order on WhatsApp'}</span>
+              </a>
+            )}
           </div>
         </div>
       )}

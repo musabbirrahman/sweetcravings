@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { verifyAdminSession } from '@/lib/auth';
 import { getDb, isTursoEnabled } from '@/lib/db';
 
@@ -35,6 +36,14 @@ const EXT_BY_TYPE: Record<string, string> = {
  * Old files / rows are never deleted here (see CODEMAP.md).
  */
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-upload:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -106,6 +115,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Photo upload error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Photo upload failed.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Photo upload failed.' }, { status: 500 });
   }
 }

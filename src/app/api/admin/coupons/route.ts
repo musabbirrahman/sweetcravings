@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getAllCoupons, createCoupon, toggleCouponStatus, deleteCoupon } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-coupons:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -13,11 +22,20 @@ export async function GET(request: Request) {
     const coupons = await getAllCoupons();
     return NextResponse.json({ success: true, coupons });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin coupons error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-coupons:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -111,11 +129,20 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, couponId });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin coupons error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-coupons:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -131,11 +158,20 @@ export async function PATCH(request: Request) {
     await toggleCouponStatus(id, active ? 1 : 0);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin coupons error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-coupons:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -151,6 +187,7 @@ export async function DELETE(request: Request) {
     await deleteCoupon(parseInt(id, 10));
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin coupons error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

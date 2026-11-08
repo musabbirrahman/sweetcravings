@@ -5,6 +5,7 @@ import {
   isAdminConfigured,
   verifyAdminPassword,
 } from '@/lib/auth';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +22,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Basic IP identification for rate limiting
-    const ip = request.headers.get('x-forwarded-for') || 'local_client';
+    // IP for the brute-force lockout. getClientIp() prefers
+    // cf-connecting-ip (unspoofable through Cloudflare) and otherwise
+    // takes the LAST X-Forwarded-For entry — never the first, which is
+    // client-controlled and used to rotate past the lockout.
+    const ip = getClientIp(request);
+    const authLimit = checkRateLimit(`admin-auth:${ip}`, 120, 60 * 1000);
+    if (!authLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Too many requests. Please wait ${authLimit.retryAfterSeconds} seconds and try again.` },
+        { status: 429 }
+      );
+    }
     const now = Date.now();
     const clientRecord = attemptsMap.get(ip) || { count: 0, lockedUntil: 0 };
 
@@ -76,7 +87,8 @@ export async function POST(request: Request) {
       { status: 401 }
     );
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin login error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
 

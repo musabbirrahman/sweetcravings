@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getShopSettings, updateShopSetting, getDb, syncLoyaltyRewardCoupon } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-settings:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -61,11 +70,20 @@ export async function GET(request: Request) {
       auditLogs,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin settings error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-settings:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -99,6 +117,7 @@ export async function POST(request: Request) {
       settings: updated,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin settings error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

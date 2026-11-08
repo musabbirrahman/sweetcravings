@@ -1,13 +1,37 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getDb } from '@/lib/db';
 import { verifyAdminSession } from '@/lib/auth';
+import type { OrderStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+// The only order statuses the admin panel may set. Anything else is a
+// client bug or a tampered request — reject it rather than storing a
+// status nothing in the app understands.
+const ALLOWED_ORDER_STATUSES: readonly OrderStatus[] = [
+  'new',
+  'accepted',
+  'preparing',
+  'ready',
+  'out_for_delivery',
+  'completed',
+  'cancelled',
+  'draft',
+];
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-order:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -27,6 +51,12 @@ export async function PATCH(
     const now = new Date().toISOString();
     let updatedOrderStatus = current.order_status;
     let updatedPaymentStatus = current.payment_status;
+
+    // Reject unknown order statuses outright: only the OrderStatus
+    // union may be stored. The draft guard below stays as it is.
+    if (orderStatus && !(ALLOWED_ORDER_STATUSES as readonly string[]).includes(orderStatus)) {
+      return NextResponse.json({ success: false, error: 'Invalid order status.' }, { status: 400 });
+    }
 
     // A saved draft is not an order yet: it can only be cancelled (to
     // clear it). It must never be moved to the kitchen or have its
@@ -86,6 +116,6 @@ export async function PATCH(
     });
   } catch (error: any) {
     console.error('Error updating order:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

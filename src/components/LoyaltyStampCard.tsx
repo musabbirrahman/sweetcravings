@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { Award, Sparkles, Gift, Check, Flame } from 'lucide-react';
-import { LoyaltyInfo } from '@/lib/types';
+import { PublicLoyaltyInfo } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
 
 interface LoyaltyStampCardProps {
-  loyalty: LoyaltyInfo;
+  loyalty: PublicLoyaltyInfo;
   onApplyCoupon?: (code: string) => void;
   isApplied?: boolean;
 }
@@ -54,10 +54,10 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
 
         <div className="text-left sm:text-right">
           <span className="text-[13px] text-brand-cream/60 block">
-            {lang === 'bn' ? 'সম্পন্ন অর্ডার' : 'Completed Orders'}
+            {lang === 'bn' ? 'স্ট্যাম্প' : 'Stamps'}
           </span>
           <span className="font-heading font-extrabold text-lg text-brand-cream">
-            {loyalty.completedOrders} <span className="text-[13px] font-normal text-white/50">/ {totalSlots} {lang === 'bn' ? 'স্ট্যাম্প' : 'stamps'}</span>
+            {loyalty.stamps} <span className="text-[13px] font-normal text-white/50">/ {totalSlots} {lang === 'bn' ? 'স্ট্যাম্প' : 'stamps'}</span>
           </span>
         </div>
       </div>

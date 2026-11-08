@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import {
   getCategories,
   countProductsInCategory,
@@ -12,6 +13,14 @@ export const dynamic = 'force-dynamic';
 
 /** List all categories (including archived ones) with live product counts. */
 export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-categories:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -23,12 +32,21 @@ export async function GET(request: Request) {
     })));
     return NextResponse.json({ success: true, categories });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Admin categories error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
 
 /** Create a category. The web address (slug) is made from the English name. */
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-categories:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -56,6 +74,14 @@ export async function POST(request: Request) {
 
 /** Edit a category (names, descriptions, order, active flag). Slug never changes. */
 export async function PUT(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-categories:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -81,7 +107,7 @@ export async function PUT(request: Request) {
     }
     return NextResponse.json({ success: true, category });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message || 'Failed to update category' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to update category' }, { status: 500 });
   }
 }
 
@@ -91,6 +117,14 @@ export async function PUT(request: Request) {
  * message — archive the category instead (PUT active = 0).
  */
 export async function DELETE(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-categories:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -112,6 +146,6 @@ export async function DELETE(request: Request) {
     }
     return NextResponse.json({ success: true, message: 'Category deleted.' });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message || 'Failed to delete category' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to delete category' }, { status: 500 });
   }
 }

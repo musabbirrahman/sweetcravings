@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { verifyAdminSession } from '@/lib/auth';
 import { notifyKitchenNewOrder } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`admin-notify-test:${ip}`, 120, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   try {
     if (!verifyAdminSession(request)) {
       return NextResponse.json({ success: false, error: 'Unauthorized operator session' }, { status: 401 });
@@ -58,6 +67,7 @@ export async function POST(request: Request) {
       message: `Test alert sent successfully via: ${result.methods.join(', ')}!`,
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Test notification error:', error);
+    return NextResponse.json({ success: false, error: 'Something went wrong while sending the test alert. Please try again.' }, { status: 500 });
   }
 }

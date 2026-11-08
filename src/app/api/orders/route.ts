@@ -13,6 +13,8 @@ import {
   countSoldToday,
   findTrxIdConflict,
   normalizeSenderNumber,
+  countPlacedOrdersToday,
+  getDailyOrderLimit,
   type BatchStatement
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
@@ -217,8 +219,23 @@ export async function POST(request: Request) {
     const varStmt = await db.prepare('SELECT * FROM product_variants WHERE id = ? AND product_id = ?');
 
     for (const item of items) {
-      // Impose a safe maximum of 50 units per line item
-      const qty = Math.min(50, Math.max(1, parseInt(item.quantity || 1, 10)));
+      // Quantity must be a whole number from 1 to 50 — reject anything
+      // else with 400 and create no order. The old code silently
+      // clamped (qty -3 or 0 became 1, 2.5 became 2), so an order was
+      // created with a quantity the customer never chose; a non-numeric
+      // quantity slipped through as NaN and failed later with a 500.
+      // A missing quantity keeps the old default of 1 (the storefront
+      // always sends one); anything present must be valid.
+      const rawQty = item.quantity ?? 1;
+      const qty =
+        typeof rawQty === 'number'
+          ? rawQty
+          : typeof rawQty === 'string' && rawQty.trim() !== ''
+            ? Number(rawQty)
+            : NaN;
+      if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+        return NextResponse.json({ success: false, error: 'Each item quantity must be a whole number between 1 and 50.' }, { status: 400 });
+      }
       const product = await prodStmt.get(item.productId) as unknown as Product | null;
       if (!product) {
         return NextResponse.json({ success: false, error: `Product ID ${item.productId} not found` }, { status: 400 });
@@ -318,6 +335,21 @@ export async function POST(request: Request) {
         discountAmount = Math.min(subtotal, raw);
       }
       appliedCouponCode = coupon.code;
+    }
+
+    // Daily per-phone order cap, tiered by trust: 3 a day for a number
+    // that has never completed an order, 6 once it has (see
+    // getDailyOrderLimit in src/lib/db.ts). This stops a flood of
+    // orders to one number (e.g. prank orders to someone else's number)
+    // while a real customer who hits it gets a WhatsApp alternative in
+    // the UI. Drafts skip this: they place nothing yet (the cap is
+    // checked again at conversion).
+    if (!isDraft) {
+      const dailyLimit = await getDailyOrderLimit(db, cleanPhone);
+      const placedToday = await countPlacedOrdersToday(db, cleanPhone);
+      if (placedToday >= dailyLimit) {
+        return NextResponse.json({ success: false, error: `You have reached today's limit of ${dailyLimit} online orders for this phone number. Message us on WhatsApp and we will take your order manually.`, code: 'ORDER_LIMIT_REACHED' }, { status: 400 });
+      }
     }
 
     // Recalculate delivery fee
@@ -618,7 +650,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: 'Something went wrong while loading orders. Please try again.' },
       { status: 500, headers: { 'Cache-Control': 'no-store' } }
     );
   }

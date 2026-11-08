@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getDb } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -10,9 +11,17 @@ export const dynamic = 'force-dynamic';
  * files. Long cache: an image row never changes once stored.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
+  const ip = getClientIp(request);
+  const limit = checkRateLimit(`images:${ip}`, 60, 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { success: false, error: `Too many requests. Please wait ${limit.retryAfterSeconds} seconds and try again.` },
+      { status: 429 }
+    );
+  }
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return NextResponse.json({ success: false, error: 'Image not found.' }, { status: 404 });

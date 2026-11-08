@@ -31,15 +31,19 @@ export async function GET(request: Request) {
 
     const loyalty = await getCustomerLoyalty(fullPhone);
 
+    // Public shape only: the stamp card renders stamps, tiers and the
+    // reward — never the customer's name, order totals or spending.
+    // Anyone holding a phone number could read those off this endpoint.
+    const { stamps, stampsNeeded, stampsToNextReward, rewardsAvailable, tier, tierBn, rewardCouponCode, rewardAmount } = loyalty;
     return NextResponse.json({
       success: true,
-      loyalty
+      loyalty: { stamps, stampsNeeded, stampsToNextReward, rewardsAvailable, tier, tierBn, rewardCouponCode, rewardAmount }
     });
   } catch (error: any) {
     console.error('Error fetching loyalty stamps:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: 'Something went wrong. Please try again.'
     }, { status: 500 });
   }
 }

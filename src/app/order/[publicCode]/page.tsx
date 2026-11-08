@@ -25,7 +25,7 @@ import {
 import LoyaltyStampCard from '@/components/LoyaltyStampCard';
 import OrderReceipt from '@/components/OrderReceipt';
 import { useToast } from '@/components/DialogProvider';
-import { LoyaltyInfo } from '@/lib/types';
+import { PublicLoyaltyInfo } from '@/lib/types';
 
 export default function OrderConfirmationPage({ params }: { params: { publicCode: string } }) {
   const { lang, t } = useLanguage();
@@ -42,7 +42,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const [trxSuccessMessage, setTrxSuccessMessage] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
-  const [loyalty, setLoyalty] = useState<LoyaltyInfo | null>(null);
+  const [loyalty, setLoyalty] = useState<PublicLoyaltyInfo | null>(null);
+  // True when the server refused the TrxID submit for the daily
+  // per-phone cap: the form then offers a WhatsApp chat with the shop
+  // (with this order's code in the message) instead of leaving a real
+  // customer stranded. The draft stays a draft.
+  const [orderLimitReached, setOrderLimitReached] = useState(false);
   const [shopSettings, setShopSettings] = useState<any>(null);
   // The order is only shown after phone verification. Checkout stores the
   // phone in this browser session; anyone arriving by a shared link is
@@ -187,6 +192,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const handleTrxSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trxIdInput.trim()) return;
+    setOrderLimitReached(false);
 
     // The sender number is required together with the TrxID (same rule
     // as the server: 11 digits starting with 01). The inputs are kept
@@ -221,7 +227,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
           ? (lang === 'bn'
             ? 'এই TrxID-টি ইতিমধ্যে ব্যবহার করা হয়েছে। TrxID-টি যাচাই করে আবার চেষ্টা করুন।'
             : (data.error || 'This TrxID has already been used. Please check the TrxID and try again.'))
+          : data.code === 'ORDER_LIMIT_REACHED'
+          ? (lang === 'bn'
+            ? 'এই নম্বরে আজকের অনলাইন অর্ডারের সীমা শেষ হয়ে গেছে। WhatsApp-এ মেসেজ করুন, আমরা আপনার অর্ডারটি নিজে নিয়ে নেব।'
+            : (data.error || 'You have reached today\'s online order limit for this phone number. Message us on WhatsApp and we will take your order manually.'))
           : (data.error || 'Failed to update TrxID');
+        if (data.code === 'ORDER_LIMIT_REACHED') setOrderLimitReached(true);
         toast(msg, 'error');
       }
     } catch (err: any) {
@@ -629,6 +640,22 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                     <Check className="w-4 h-4" />
                     <span>{t('orderConfirm.trxReceivedNotice')}</span>
                   </p>
+                )}
+
+                {/* Daily per-phone cap: the draft stays saved, and the
+                    customer reaches the shop on WhatsApp in one tap —
+                    the order code rides in the message so the shop can
+                    take this exact order manually. */}
+                {orderLimitReached && waPhone && (
+                  <a
+                    href={`https://wa.me/${waPhone}?text=${encodeURIComponent(`Salam Sweet Cravings! I've reached today's online order limit and would like to place another order (Order #${params.publicCode}).`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 bg-[#25D366] hover:brightness-95 text-white font-bold px-4 py-2.5 rounded-xl text-[13px] shadow-soft transition-all"
+                  >
+                    <MessageCircle className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'bn' ? 'WhatsApp-এ অর্ডার করুন' : 'Order on WhatsApp'}</span>
+                  </a>
                 )}
               </form>
             )}
