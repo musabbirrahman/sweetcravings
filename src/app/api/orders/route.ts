@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
-import { 
-  getDb, 
-  generateUniquePublicOrderCode, 
-  getShopSettings, 
-  getAllOrders, 
-  getCouponByCode, 
+import {
+  getDb,
+  generateUniquePublicOrderCode,
+  getShopSettings,
+  getAllOrders,
+  getCouponByCode,
   getCustomerLoyalty,
-  incrementCouponUsage,
+  reserveCouponUse,
+  releaseCouponUse,
+  isRetryableTxError,
+  batchErrorIndex,
   countSoldToday,
   findTrxIdConflict,
   normalizeSenderNumber,
-  runInTransaction
+  type BatchStatement
 } from '@/lib/db';
 import { Product, ProductVariant } from '@/lib/types';
 import { verifyAdminSession } from '@/lib/auth';
@@ -34,14 +37,6 @@ const DUPLICATE_TRXID_MESSAGE = 'This TrxID has already been used. Please check 
 const SENDER_NUMBER_MESSAGE = 'Please enter the 11-digit bKash/Nagad number you paid from (starts with 01).';
 
 export async function POST(request: Request) {
-  // Set inside the order transaction when a coupon's last use is taken by
-  // another order first; the catch below turns it into a clear 400.
-  let couponExhausted = false;
-  // Same pattern for the daily batch limit (see the in-transaction check).
-  let batchLimitExceeded = false;
-  // Same pattern for a TrxID already used on another order: the
-  // in-transaction duplicate check sets this, then throws.
-  let duplicateTrxId = false;
   try {
     const ip = getClientIp(request);
     const limit = checkRateLimit(`order-create:${ip}`, 10, 60 * 1000);
@@ -336,99 +331,109 @@ export async function POST(request: Request) {
       ? 'submitted'
       : 'pending';
 
-    // ATOMIC TRANSACTION: Insert order, items, status event, and payment submission together.
-    // Retries with a fresh public code if the (very unlikely) random code
-    // collides with an existing order; any other failure aborts at once.
-    let orderId: number = 0;
-    let publicCode = '';
-    let lastTxError: unknown = null;
+    // ATOMIC BATCH: the order, its items, the status event and the
+    // payment submission land together or not at all — as ONE batch,
+    // executed by the database in a single round trip.
+    //
+    // Why a batch, not an interactive transaction: the previous code
+    // opened client.transaction('write') and ran ~10-12 statements
+    // across it (prepare + run per statement, each its own HTTPS round
+    // trip to Turso). Turso rolls an interactive transaction back when
+    // its stream sits idle for too long (5-second window), so a slow
+    // checkout failed with "SQLITE_BUSY: ... rolled back because the
+    // stream was idle for too long" — the customer saw a raw database
+    // error and no order was created. client.batch(..., 'write')
+    // pipelines BEGIN + every statement + COMMIT into one HTTP request,
+    // so there is no idle stream to roll back.
+    //
+    // Checks that need a read (duplicate TrxID, batch limit, coupon)
+    // run BEFORE the batch, on the outer handle. The batch-limit and
+    // coupon checks already ran above during pricing/validation; the
+    // duplicate TrxID is re-checked here, immediately before the batch,
+    // and the batch itself is guarded by a partial unique index on
+    // payment_submissions (see initSchema in src/lib/db.ts), so two
+    // simultaneous submits of the same TrxID cannot both land: the
+    // second batch fails with a UNIQUE-constraint error on the
+    // submission statement and is mapped to DUPLICATE_TRXID below.
+    // (The old in-transaction batch-limit re-check is gone with the
+    // transaction: the pre-check above is the guard now. Two checkouts
+    // racing for the last units of one dessert could oversell by one —
+    // accepted, documented trade-off; the daily limit is a soft cap,
+    // and the pre-check still blocks every ordinary oversell.)
+    const hasWalletTrx = !isDraft && trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad');
+    if (hasWalletTrx) {
+      const conflict = await findTrxIdConflict(db, String(trxId).trim());
+      if (conflict) {
+        return NextResponse.json({ success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' }, { status: 400 });
+      }
+    }
 
+    // Reserve one coupon use first (guarded UPDATE: only moves when a
+    // use is left). It is released again if the batch below fails, so a
+    // failed order never consumes a coupon use. Drafts do not consume a
+    // use: the coupon is reserved at conversion instead.
+    let couponReserved = false;
+    if (!isDraft && appliedCouponCode) {
+      if (!await reserveCouponUse(db, appliedCouponCode)) {
+        return NextResponse.json({ success: false, error: 'This coupon has just reached its usage limit. Please try again without it.' }, { status: 400 });
+      }
+      couponReserved = true;
+    }
+
+    let orderId = 0;
+    let publicCode = '';
+    let lastBatchError: unknown = null;
+    let busyRetries = 0;
+    // Retries with a fresh public code if the (very unlikely) random
+    // code collides with an existing order; a batch that fails with
+    // SQLITE_BUSY / an idle-rollback is retried ONCE (it committed
+    // nothing). Any other failure aborts at once.
     for (let attempt = 0; attempt < 3; attempt++) {
       publicCode = await generateUniquePublicOrderCode(db);
 
-      try {
-        // One transaction: the order, its items, the status event, the
-        // payment record and the coupon reservation all land together
-        // or not at all. runInTransaction (src/lib/db.ts) commits on
-        // success and rolls back on throw, on either database driver.
-        // NOTE: use the `tx` handle inside, not the outer `db` — on the
-        // Turso driver the statements only run inside the transaction
-        // on `tx`; the outer handle would run them outside it.
-        await runInTransaction(db, async (tx) => {
-        // A TrxID is proof of one payment: refuse it here, before the
-        // order is inserted, when another order already carries it
-        // (trimmed, case-insensitive, any review state). Throwing
-        // rolls the whole transaction back, so a rejected request
-        // creates no order, no items, no coupon use and no submission.
-        // Drafts never reach this: they carry no TrxID.
-        if (!isDraft && trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
-          const conflict = await findTrxIdConflict(tx, String(trxId).trim());
-          if (conflict) {
-            duplicateTrxId = true;
-            throw new Error('DUPLICATE_TRXID');
-          }
-        }
-
-        const insertOrder = await tx.prepare(`
-          INSERT INTO orders (
+      const statements: BatchStatement[] = [
+        {
+          sql: `INSERT INTO orders (
             public_code, customer_name, customer_phone, delivery_address, area_landmark,
             delivery_instructions, requested_time, is_gift, recipient_name, recipient_phone, gift_message,
             payment_method, payment_status, order_status,
             subtotal, delivery_fee, discount_amount, coupon_code, total_amount, idempotency_token, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        const result = await insertOrder.run(
-          publicCode,
-          customerName.trim(),
-          cleanPhone,
-          deliveryAddress.trim(),
-          areaLandmark.trim(),
-          deliveryInstructions ? String(deliveryInstructions).trim().slice(0, 500) : '',
-          requestedTime ? String(requestedTime).trim().slice(0, 100) : '',
-          isGift ? 1 : 0,
-          recipientName ? String(recipientName).trim().slice(0, 100) : null,
-          recipientPhone ? String(recipientPhone).trim().slice(0, 20) : null,
-          giftMessage ? String(giftMessage).trim().slice(0, 500) : null,
-          paymentMethod || 'cod',
-          initialPaymentStatus,
-          isDraft ? 'draft' : 'new',
-          subtotal,
-          deliveryFee,
-          discountAmount,
-          appliedCouponCode,
-          totalAmount,
-          token,
-          now,
-          now
-        );
-
-        orderId = Number(result.lastInsertRowid);
-
-        // Re-check the batch limit inside the transaction: another order
-        // may have taken the last units after the pre-check above. Aborts
-        // the whole order instead of overselling the batch. Drafts skip
-        // this: they reserve no stock (checked at conversion instead).
-        for (const vItem of validatedItems) {
-          const limitRow = await tx.prepare('SELECT daily_batch_limit FROM products WHERE id = ?').get(vItem.productId) as { daily_batch_limit: number | null } | undefined;
-          const limit = Number(limitRow?.daily_batch_limit ?? 15);
-          if (!isDraft && await countSoldToday(tx, vItem.productId) + vItem.quantity > limit) {
-            batchLimitExceeded = true;
-            throw new Error('BATCH_LIMIT_EXCEEDED');
-          }
-        }
-
-        // Insert order items
-        const insertItem = await tx.prepare(`
-          INSERT INTO order_items (
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            publicCode,
+            customerName.trim(),
+            cleanPhone,
+            deliveryAddress.trim(),
+            areaLandmark.trim(),
+            deliveryInstructions ? String(deliveryInstructions).trim().slice(0, 500) : '',
+            requestedTime ? String(requestedTime).trim().slice(0, 100) : '',
+            isGift ? 1 : 0,
+            recipientName ? String(recipientName).trim().slice(0, 100) : null,
+            recipientPhone ? String(recipientPhone).trim().slice(0, 20) : null,
+            giftMessage ? String(giftMessage).trim().slice(0, 500) : null,
+            paymentMethod || 'cod',
+            initialPaymentStatus,
+            isDraft ? 'draft' : 'new',
+            subtotal,
+            deliveryFee,
+            discountAmount,
+            appliedCouponCode,
+            totalAmount,
+            token,
+            now,
+            now,
+          ],
+        },
+        // Child rows reach the new order through its (unique) public
+        // code instead of the insert's row id, which the batch only
+        // reports after the whole batch has run.
+        ...validatedItems.map((vItem) => ({
+          sql: `INSERT INTO order_items (
             order_id, product_id, product_name_en, product_name_bn,
             variant_label_en, variant_label_bn, unit_price, quantity, line_total
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        for (const vItem of validatedItems) {
-          await insertItem.run(
-            orderId,
+          ) SELECT (SELECT id FROM orders WHERE public_code = ?), ?, ?, ?, ?, ?, ?, ?, ?`,
+          args: [
+            publicCode,
             vItem.productId,
             vItem.nameEn,
             vItem.nameBn,
@@ -436,52 +441,73 @@ export async function POST(request: Request) {
             vItem.variantLabelBn,
             vItem.unitPrice,
             vItem.quantity,
-            vItem.lineTotal
-          );
-        }
+            vItem.lineTotal,
+          ],
+        })),
+        {
+          sql: `INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+            SELECT (SELECT id FROM orders WHERE public_code = ?), 'none', 'new', 'customer', 'Order placed through website', ?`,
+          args: [publicCode, now],
+        },
+        // A payment submission only for a real (non-draft) wallet order
+        // with a TrxID. Drafts never carry a submission: the TrxID
+        // arrives at conversion.
+        ...(hasWalletTrx ? [{
+          sql: `INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
+            SELECT (SELECT id FROM orders WHERE public_code = ?), ?, ?, ?, ?, ?, 'pending'`,
+          args: [
+            publicCode,
+            paymentMethod,
+            String(trxId).trim().slice(0, 50),
+            normalizeSenderNumber(senderNumber),
+            totalAmount,
+            now,
+          ],
+        }] : []),
+      ];
+      // The submission is the last statement when one exists: a UNIQUE
+      // failure there means the TrxID is already live on another order.
+      const submissionIndex = statements.length - 1;
 
-        // Insert initial status event
-        await tx.prepare(`
-          INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(orderId, 'none', 'new', 'customer', 'Order placed through website', now);
-
-        // Insert payment submission if TrxID provided. Drafts never
-        // carry a submission: the TrxID arrives at conversion.
-        if (!isDraft && trxId && String(trxId).trim() && (paymentMethod === 'bkash' || paymentMethod === 'nagad')) {
-          await tx.prepare(`
-            INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).run(orderId, paymentMethod, String(trxId).trim().slice(0, 50), normalizeSenderNumber(senderNumber), totalAmount, now, 'pending');
-        }
-
-        // Reserve one coupon use atomically. If another order just took
-        // the last use, abort this order instead of charging full price
-        // while the customer believed a discount applied. Drafts do not
-        // consume a use: the coupon is reserved at conversion instead.
-        if (!isDraft && appliedCouponCode) {
-          if (!await incrementCouponUsage(appliedCouponCode)) {
-            couponExhausted = true;
-            throw new Error('COUPON_EXHAUSTED');
-          }
-        }
-
-        });
-        lastTxError = null;
+      try {
+        const results = await db.batch(statements);
+        orderId = Number(results[0].lastInsertRowid);
         break;
-      } catch (txErr) {
-        const message = txErr instanceof Error ? txErr.message : String(txErr);
-        if (message.includes('UNIQUE constraint failed') && message.includes('public_code')) {
-          lastTxError = txErr;
+      } catch (batchErr) {
+        lastBatchError = batchErr;
+        const message = batchErr instanceof Error ? batchErr.message : String(batchErr);
+        const idx = batchErrorIndex(batchErr);
+        const isUnique = /UNIQUE constraint/i.test(message);
+        if (isUnique && idx === 0) {
+          // Random public code collided with an existing order: fresh code, try again.
           continue;
         }
-        throw txErr;
+        if (hasWalletTrx && isUnique && idx === submissionIndex) {
+          // The partial unique index on payment_submissions fired: this
+          // TrxID is already live on another order (a simultaneous submit
+          // passed the pre-check above). Nothing was created.
+          if (couponReserved && appliedCouponCode) await releaseCouponUse(db, appliedCouponCode);
+          return NextResponse.json({ success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' }, { status: 400 });
+        }
+        if (isRetryableTxError(batchErr) && busyRetries < 1) {
+          busyRetries++;
+          continue; // the batch committed nothing; retry it once
+        }
+        if (couponReserved && appliedCouponCode) await releaseCouponUse(db, appliedCouponCode);
+        console.error('Error placing order (batch failed):', batchErr);
+        return NextResponse.json({ success: false, error: 'Something went wrong while placing your order. Please try again.', code: 'ORDER_FAILED' }, { status: 500 });
       }
     }
 
-    if (lastTxError) {
-      throw lastTxError;
+    if (!orderId) {
+      // Three attempts ended without an order (repeated public-code
+      // collisions, or repeated SQLITE_BUSY): fail friendly rather than
+      // looping forever. Nothing was created.
+      if (couponReserved && appliedCouponCode) await releaseCouponUse(db, appliedCouponCode);
+      console.error('Error placing order (batch failed after retries):', lastBatchError);
+      return NextResponse.json({ success: false, error: 'Something went wrong while placing your order. Please try again.', code: 'ORDER_FAILED' }, { status: 500 });
     }
+
 
     // Kitchen notification — attached to the Worker's lifetime so it
     // actually runs. The old code fired notifyKitchenNewOrder() without
@@ -559,16 +585,9 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     console.error('Error placing order:', error);
-    if (duplicateTrxId) {
-      return NextResponse.json({ success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' }, { status: 400 });
-    }
-    if (couponExhausted) {
-      return NextResponse.json({ success: false, error: 'This coupon has just reached its usage limit. Please try again without it.' }, { status: 400 });
-    }
-    if (batchLimitExceeded) {
-      return NextResponse.json({ success: false, error: 'One of the desserts in your order has just reached today\'s batch limit. Please reduce the quantity or choose another dessert.' }, { status: 400 });
-    }
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    // Never surface a raw database error to the customer: a failed
+    // checkout shows one friendly line, the detail stays in the log.
+    return NextResponse.json({ success: false, error: 'Something went wrong while placing your order. Please try again.', code: 'ORDER_FAILED' }, { status: 500 });
   }
 }
 

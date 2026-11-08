@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, incrementCouponUsage, countSoldToday, getCustomerLoyalty, findTrxIdConflict, normalizeSenderNumber, runInTransaction, type DbHandle } from '@/lib/db';
+import { getOrderWithDetails, getDb, getShopSettings, normalizePhone, getCouponByCode, reserveCouponUse, releaseCouponUse, isRetryableTxError, batchErrorIndex, countSoldToday, getCustomerLoyalty, findTrxIdConflict, normalizeSenderNumber, type BatchStatement, type DbHandle } from '@/lib/db';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyKitchenNewOrder } from '@/lib/notifications';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
@@ -62,7 +62,8 @@ export async function GET(
     });
   } catch (error: any) {
     console.error('Error fetching order by code:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    // Never surface a raw database error to the customer.
+    return NextResponse.json({ success: false, error: 'Something went wrong while loading your order. Please try again.', code: 'LOAD_FAILED' }, { status: 500 });
   }
 }
 
@@ -184,74 +185,94 @@ export async function PATCH(
         }
       }
 
-      try {
-        await runInTransaction(db, async (tx) => {
-          // Batch re-check inside the transaction, so two drafts
-          // converting at once cannot both take the last units.
-          const soldOutAgain = await checkBatch(tx);
-          if (soldOutAgain) throw new Error('BATCH_LIMIT_EXCEEDED');
+      // The duplicate check runs immediately before the batch, and the
+      // batch itself is guarded by the partial unique index on
+      // payment_submissions (see initSchema in src/lib/db.ts), so two
+      // simultaneous converts of the same TrxID cannot both land: the
+      // second batch fails with a UNIQUE-constraint error on the
+      // submission statement and is mapped to DUPLICATE_TRXID below.
+      const conflict = await findTrxIdConflict(db, trxId.trim(), order.id);
+      if (conflict) {
+        return NextResponse.json(
+          { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
+          { status: 400 }
+        );
+      }
 
-          // A TrxID is proof of one payment: refuse it when another
-          // order already carries it (trimmed, case-insensitive, any
-          // review state). Throwing rolls the conversion back, so the
-          // draft stays a draft and nothing is submitted.
-          const conflict = await findTrxIdConflict(tx, trxId.trim(), order.id);
-          if (conflict) throw new Error('DUPLICATE_TRXID');
-
-          // Insert new payment submission record
-          await tx.prepare(`
-            INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).run(order.id, prov, trxId.trim(), sender, order.total_amount, now, 'pending');
-
-          // Move the draft to a real submitted order
-          await tx.prepare(`
-            UPDATE orders
-            SET payment_status = 'submitted', order_status = 'new', updated_at = ?
-            WHERE id = ?
-          `).run(now, order.id);
-
-          // Record audit events: the TrxID submission and the draft
-          // becoming a placed order.
-          await tx.prepare(`
-            INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);
-          await tx.prepare(`
-            INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(order.id, 'draft', 'new', 'customer', 'Saved order submitted with TrxID', now);
-
-          // Reserve the coupon use now (atomic: fails if another order
-          // just took the last use).
-          if (order.coupon_code) {
-            if (!await incrementCouponUsage(order.coupon_code)) {
-              throw new Error('COUPON_EXHAUSTED');
-            }
-          }
-        });
-      } catch (txErr: any) {
-        const message = txErr instanceof Error ? txErr.message : String(txErr);
-        if (message.includes('BATCH_LIMIT_EXCEEDED')) {
-          return NextResponse.json(
-            { success: false, error: 'One of the desserts in this order has just reached today\'s batch limit. Your saved order is still saved — please try again tomorrow or contact the shop.' },
-            { status: 400 }
-          );
-        }
-        if (message.includes('COUPON_EXHAUSTED')) {
+      // Reserve the coupon use before the batch; released if the batch
+      // fails, so a failed conversion never consumes a coupon use.
+      let couponReserved = false;
+      if (order.coupon_code) {
+        if (!await reserveCouponUse(db, order.coupon_code)) {
           return NextResponse.json(
             { success: false, error: 'The coupon on this saved order has just reached its usage limit. Your saved order is still saved — please contact the shop.' },
             { status: 400 }
           );
         }
-        if (message.includes('DUPLICATE_TRXID')) {
-          return NextResponse.json(
-            { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
-            { status: 400 }
-          );
-        }
-        throw txErr;
+        couponReserved = true;
       }
+
+      // ONE batch, ONE round trip. The previous code held an interactive
+      // Turso transaction open across ~7 sequential statements (each its
+      // own HTTPS round trip from the Worker), and Turso rolled it back
+      // with "SQLITE_BUSY: ... rolled back because the stream was idle
+      // for too long" — the raw error the customer saw as a toast, and
+      // the TrxID was never saved. A batch pipelines BEGIN + every write
+      // + COMMIT into a single request, so there is no idle stream to
+      // roll back. The batch-limit re-check that used to run inside the
+      // transaction is gone with it: the checkBatch(db) pre-check above
+      // is the guard now (two drafts converting at once could oversell
+      // the last units by one — accepted, documented trade-off).
+      const conversionStatements: BatchStatement[] = [
+        {
+          sql: `INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          args: [order.id, prov, trxId.trim(), sender, order.total_amount, now, 'pending'],
+        },
+        {
+          sql: `UPDATE orders
+            SET payment_status = 'submitted', order_status = 'new', updated_at = ?
+            WHERE id = ?`,
+          args: [now, order.id],
+        },
+        {
+          sql: `INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now],
+        },
+        {
+          sql: `INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+          args: [order.id, 'draft', 'new', 'customer', 'Saved order submitted with TrxID', now],
+        },
+      ];
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            await db.batch(conversionStatements);
+            break;
+          } catch (batchErr) {
+            const message = batchErr instanceof Error ? batchErr.message : String(batchErr);
+            if (/UNIQUE constraint/i.test(message) && batchErrorIndex(batchErr) === 0) {
+              if (couponReserved && order.coupon_code) await releaseCouponUse(db, order.coupon_code);
+              return NextResponse.json(
+                { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
+                { status: 400 }
+              );
+            }
+            if (isRetryableTxError(batchErr) && attempt === 0) continue; // the batch committed nothing; retry it
+            throw batchErr;
+          }
+        }
+      } catch (batchErr) {
+        if (couponReserved && order.coupon_code) await releaseCouponUse(db, order.coupon_code);
+        console.error('Draft conversion batch failed:', batchErr);
+        return NextResponse.json(
+          { success: false, error: 'Something went wrong while saving your TrxID. Please try again.', code: 'SUBMIT_FAILED' },
+          { status: 500 }
+        );
+      }
+
 
       // The draft just became a real order: alert the kitchen, exactly
       // as a fresh checkout does. A failed notification never fails the
@@ -330,50 +351,72 @@ export async function PATCH(
     // The whole re-submit runs in one transaction: the duplicate check
     // and the supersede + insert cannot interleave with another submit
     // of the same TrxID, so two orders can never both accept it.
-    try {
-      await runInTransaction(db, async (tx) => {
-        // A TrxID is proof of one payment: refuse it when another order
-        // already carries it (trimmed, case-insensitive, any review
-        // state). This order is excluded, so re-submitting the same
-        // TrxID for this order (double-tap / correction) stays allowed.
-        const conflict = await findTrxIdConflict(tx, trxId.trim(), order.id);
-        if (conflict) throw new Error('DUPLICATE_TRXID');
-
-        await tx.prepare(`
-          UPDATE payment_submissions
-          SET review_state = 'rejected'
-          WHERE order_id = ? AND review_state = 'pending'
-        `).run(order.id);
-
-        // Insert new payment submission record
-        await tx.prepare(`
-          INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(order.id, prov, trxId.trim(), sender, order.total_amount, now, 'pending');
-
-        // Update order payment status to 'submitted'
-        await tx.prepare(`
-          UPDATE orders
-          SET payment_status = 'submitted', updated_at = ?
-          WHERE id = ?
-        `).run(now, order.id);
-
-        // Record audit event
-        await tx.prepare(`
-          INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now);
-      });
-    } catch (txErr: any) {
-      const message = txErr instanceof Error ? txErr.message : String(txErr);
-      if (message.includes('DUPLICATE_TRXID')) {
-        return NextResponse.json(
-          { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
-          { status: 400 }
-        );
-      }
-      throw txErr;
+    // The duplicate check runs immediately before the batch, and the
+    // batch is guarded by the partial unique index (see the conversion
+    // branch above for why this is a batch, not an interactive tx: the
+    // old transaction held a Turso stream open across ~6 sequential
+    // statements and was rolled back for idleness). The batch rejects
+    // the old pending submission before inserting the new one, so a
+    // corrected re-submit of the same TrxID for this order still works.
+    const conflict = await findTrxIdConflict(db, trxId.trim(), order.id);
+    if (conflict) {
+      return NextResponse.json(
+        { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
+        { status: 400 }
+      );
     }
+
+    const resubmitStatements: BatchStatement[] = [
+      {
+        sql: `UPDATE payment_submissions
+          SET review_state = 'rejected'
+          WHERE order_id = ? AND review_state = 'pending'`,
+        args: [order.id],
+      },
+      {
+        sql: `INSERT INTO payment_submissions (order_id, provider, transaction_ref, sender_number, claimed_amount, submitted_at, review_state)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [order.id, prov, trxId.trim(), sender, order.total_amount, now, 'pending'],
+      },
+      {
+        sql: `UPDATE orders
+          SET payment_status = 'submitted', updated_at = ?
+          WHERE id = ?`,
+        args: [now, order.id],
+      },
+      {
+        sql: `INSERT INTO order_status_events (order_id, from_status, to_status, acting_admin, note, created_at)
+          VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [order.id, 'payment_update', 'submitted', 'customer', `Customer submitted TrxID: ${trxId.trim()} (${prov})`, now],
+      },
+    ];
+    try {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await db.batch(resubmitStatements);
+          break;
+        } catch (batchErr) {
+          const message = batchErr instanceof Error ? batchErr.message : String(batchErr);
+          // The submission is statement 1: a UNIQUE failure there means
+          // the TrxID is already live on another order.
+          if (/UNIQUE constraint/i.test(message) && batchErrorIndex(batchErr) === 1) {
+            return NextResponse.json(
+              { success: false, error: DUPLICATE_TRXID_MESSAGE, code: 'DUPLICATE_TRXID' },
+              { status: 400 }
+            );
+          }
+          if (isRetryableTxError(batchErr) && attempt === 0) continue; // the batch committed nothing; retry it
+          throw batchErr;
+        }
+      }
+    } catch (batchErr) {
+      console.error('TrxID re-submit batch failed:', batchErr);
+      return NextResponse.json(
+        { success: false, error: 'Something went wrong while saving your TrxID. Please try again.', code: 'SUBMIT_FAILED' },
+        { status: 500 }
+      );
+    }
+
 
     return NextResponse.json({
       success: true,
@@ -381,7 +424,8 @@ export async function PATCH(
     });
   } catch (error: any) {
     console.error('Error updating transaction ID:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    // Never surface a raw database error to the customer.
+    return NextResponse.json({ success: false, error: 'Something went wrong while saving your TrxID. Please try again.', code: 'SUBMIT_FAILED' }, { status: 500 });
   }
 }
 

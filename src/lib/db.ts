@@ -44,10 +44,45 @@ export interface DbStatement {
   run(...params: unknown[]): Promise<{ changes: number; lastInsertRowid: number | bigint }>;
 }
 
+/** One statement inside a batch: SQL text plus its bound arguments. */
+export interface BatchStatement {
+  sql: string;
+  args?: unknown[];
+}
+
+/** The per-statement result of a batch: rows changed and the new row id. */
+export interface BatchResult {
+  rowsAffected: number;
+  lastInsertRowid: number | bigint;
+}
+
 /** The database handle every query in the app runs through. */
 export interface DbHandle {
   exec(sql: string): Promise<void>;
   prepare(sql: string): DbStatement;
+  /**
+   * Run several write statements as ONE atomic batch in a SINGLE round
+   * trip (remote driver) / one local transaction (local driver).
+   *
+   * This exists because an interactive transaction
+   * (client.transaction('write')) holds one Hrana stream open across
+   * every statement, and Turso rolls it back when the stream sits idle
+   * for too long (5-second window). A checkout/conversion transaction
+   * ran ~7-12 statements, each its own HTTPS round trip from a
+   * Cloudflare Worker, so slow checkouts failed with "SQLITE_BUSY:
+   * ... rolled back because the stream was idle for too long" and no
+   * order was created. client.batch(..., 'write') pipelines BEGIN +
+   * every statement + COMMIT into one HTTP request, so there is no idle
+   * stream to roll back. Customer-facing writes (checkout, draft
+   * conversion, TrxID re-submit) must use this; runInTransaction stays
+   * for admin-only paths (product edits, backup restore).
+   *
+   * On failure the whole batch is rolled back and the error carries
+   * the failing statement's 0-based index (see batchErrorIndex) — a
+   * UNIQUE-constraint failure on the payment-submission statement
+   * means a duplicate TrxID.
+   */
+  batch(statements: BatchStatement[]): Promise<BatchResult[]>;
   /**
    * Run fn() inside one transaction (commit on success, rollback on
    * throw). Both drivers run this the same way; callers must use this
@@ -74,8 +109,13 @@ function toLibsqlArgs(params: unknown[]): Array<string | number | bigint | boole
  */
 type LibsqlExecutor = Pick<LibsqlClient, 'execute' | 'executeMultiple'>;
 
-/** Wrap a @libsql/client Client (or a Transaction) as a DbHandle. */
-function wrapRemote(ex: LibsqlExecutor): DbHandle {
+/**
+ * Wrap a @libsql/client Client (or a Transaction) as a DbHandle.
+ * `batchFn` is supplied only at the client level: a batch runs on the
+ * client (one pipelined request), never inside an interactive
+ * transaction, where it would defeat the purpose.
+ */
+function wrapRemote(ex: LibsqlExecutor, batchFn?: (statements: BatchStatement[]) => Promise<BatchResult[]>): DbHandle {
   return {
     exec: async (sql: string): Promise<void> => {
       await ex.executeMultiple(sql);
@@ -94,6 +134,10 @@ function wrapRemote(ex: LibsqlExecutor): DbHandle {
         return { changes: rs.rowsAffected, lastInsertRowid: rs.lastInsertRowid ?? 0 };
       },
     }),
+    batch: async (statements: BatchStatement[]): Promise<BatchResult[]> => {
+      if (!batchFn) throw new Error('batch() is not available inside a transaction');
+      return batchFn(statements);
+    },
     transaction: async <T>(): Promise<T> => {
       // A bare executor has no transaction of its own; the client-level
       // wrapper below replaces this method with a real one.
@@ -104,7 +148,17 @@ function wrapRemote(ex: LibsqlExecutor): DbHandle {
 
 /** Wrap a @libsql/client Client as a DbHandle with real transactions. */
 function wrapRemoteClient(client: LibsqlClient): DbHandle {
-  const base = wrapRemote(client);
+  const base = wrapRemote(client, async (statements: BatchStatement[]): Promise<BatchResult[]> => {
+    // One HTTP request: BEGIN IMMEDIATE + every statement + COMMIT,
+    // pipelined by the client. A failure rolls the whole batch back
+    // and throws a LibsqlBatchError carrying the failing statement's
+    // 0-based index (statementIndex).
+    const results = await client.batch(
+      statements.map((s) => ({ sql: s.sql, args: toLibsqlArgs(s.args ?? []) })),
+      'write'
+    );
+    return results.map((r) => ({ rowsAffected: r.rowsAffected, lastInsertRowid: r.lastInsertRowid ?? 0 }));
+  });
   return {
     ...base,
     transaction: async <T>(fn: (tx: DbHandle) => Promise<T> | T): Promise<T> => {
@@ -142,13 +196,28 @@ async function makeLocalHandle(): Promise<DbHandle> {
   db.exec('PRAGMA busy_timeout = 5000;');
   // The local driver is ONE shared connection: two route handlers calling
   // transaction() at once would collide on it ("cannot start a
-  // transaction within a transaction"). Serialize whole transactions
-  // through this queue, so a check-then-write inside one transaction
-  // (batch limit, duplicate TrxID) really cannot race with another.
-  // No runInTransaction call nests inside another, so this cannot
-  // deadlock. The remote (Turso) driver does not need it: each
-  // client.transaction('write') is a separate server-side transaction.
+  // transaction within a transaction"). Serialize whole multi-statement
+  // writes (transactions and batches) through this queue, so a
+  // check-then-write inside one transaction (batch limit, duplicate
+  // TrxID) really cannot race with another. No runInTransaction call
+  // nests inside another, so this cannot deadlock. The remote (Turso)
+  // driver does not need it: each client.transaction('write') is a
+  // separate server-side transaction.
   let txQueue: Promise<void> = Promise.resolve();
+  async function runSerialized<T>(fn: () => T | Promise<T>): Promise<T> {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const prev = txQueue;
+    // Adopt the gate even if the previous write failed, so a failure
+    // never wedges the queue.
+    txQueue = prev.then(() => gate, () => gate);
+    await prev.catch(() => {});
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
   const handle: DbHandle = {
     exec: async (sql: string): Promise<void> => {
       db.exec(sql);
@@ -161,15 +230,37 @@ async function makeLocalHandle(): Promise<DbHandle> {
         run: async (...params: unknown[]) => stmt.run(...(params as never[])),
       };
     },
+    batch: async (statements: BatchStatement[]): Promise<BatchResult[]> => {
+      return runSerialized(() => {
+        // One local transaction: every statement lands or none does.
+        // Errors carry the failing statement's 0-based index
+        // (statementIndex), matching the remote driver's
+        // LibsqlBatchError, so callers map failures the same way.
+        db.exec('BEGIN IMMEDIATE TRANSACTION;');
+        try {
+          const out: BatchResult[] = [];
+          for (let i = 0; i < statements.length; i++) {
+            const st = statements[i];
+            try {
+              const stmt = db.prepare(st.sql);
+              const info = stmt.run(...(toLocalArgs(st.args ?? []) as never[]));
+              out.push({ rowsAffected: info.changes, lastInsertRowid: info.lastInsertRowid });
+            } catch (e) {
+              const err = e instanceof Error ? e : new Error(String(e));
+              (err as Error & { statementIndex?: number }).statementIndex = i;
+              throw err;
+            }
+          }
+          db.exec('COMMIT;');
+          return out;
+        } catch (e) {
+          try { db.exec('ROLLBACK;'); } catch {}
+          throw e;
+        }
+      });
+    },
     transaction: async <T>(fn: (tx: DbHandle) => Promise<T> | T): Promise<T> => {
-      let release!: () => void;
-      const gate = new Promise<void>((resolve) => { release = resolve; });
-      const prev = txQueue;
-      // Adopt the gate even if the previous transaction failed, so a
-      // failure never wedges the queue.
-      txQueue = prev.then(() => gate, () => gate);
-      await prev.catch(() => {});
-      try {
+      return runSerialized(async () => {
         // IMMEDIATE: take the write lock up front, so the check inside
         // the transaction reads a stable snapshot.
         db.exec('BEGIN IMMEDIATE TRANSACTION;');
@@ -181,12 +272,23 @@ async function makeLocalHandle(): Promise<DbHandle> {
           try { db.exec('ROLLBACK;'); } catch {}
           throw err;
         }
-      } finally {
-        release();
-      }
+      });
     },
   };
   return handle;
+}
+
+/**
+ * Convert batch arguments to the values node:sqlite accepts.
+ * (undefined is not a valid SQLite value there — it becomes NULL.)
+ */
+function toLocalArgs(params: unknown[]): Array<string | number | bigint | boolean | null | Uint8Array> {
+  return params.map((p) => {
+    if (p === undefined) return null;
+    if (typeof p === 'string' || typeof p === 'number' || typeof p === 'bigint' || typeof p === 'boolean' || p === null) return p;
+    if (p instanceof Uint8Array) return p;
+    return String(p);
+  });
 }
 
 // Turso is on when a database URL is set. The auth token is optional:
@@ -237,6 +339,41 @@ export async function getDb(): Promise<DbHandle> {
  */
 export async function runInTransaction<T>(db: DbHandle, fn: (tx: DbHandle) => Promise<T> | T): Promise<T> {
   return db.transaction(fn);
+}
+
+/**
+ * True when a batch/transaction failure is worth one retry: Turso rolls
+ * an interactive transaction back with SQLITE_BUSY when its stream sits
+ * idle for too long, and the error text itself says to retry. A batch
+ * that failed this way committed nothing, so retrying it is safe.
+ */
+export function isRetryableTxError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  const e = err as { code?: unknown; errcode?: unknown; rawCode?: unknown } | null;
+  return (
+    e?.code === 'SQLITE_BUSY' ||
+    // node:sqlite reports a busy database as "database is locked" with
+    // errcode 5 (SQLITE_BUSY); @libsql/client reports the same condition
+    // as rawCode 5 on its LibsqlError. Match the code, not just the text,
+    // so the retry works on both drivers.
+    e?.errcode === 5 ||
+    e?.rawCode === 5 ||
+    /SQLITE_BUSY/i.test(message) ||
+    /database is locked/i.test(message) ||
+    /idle for too long/i.test(message) ||
+    /TRANSACTION_CLOSED/i.test(message)
+  );
+}
+
+/**
+ * The 0-based index of the statement that failed inside a batch, when
+ * the driver reports one (remote: LibsqlBatchError.statementIndex;
+ * local: the same property, attached by the local batch runner).
+ */
+export function batchErrorIndex(err: unknown): number | null {
+  const idx = (err as { statementIndex?: unknown; index?: unknown } | null)?.statementIndex
+    ?? (err as { index?: unknown } | null)?.index;
+  return typeof idx === 'number' ? idx : null;
 }
 
 async function initSchema(db: DbHandle) {
@@ -423,6 +560,17 @@ async function initSchema(db: DbHandle) {
     // captured next to the TrxID so the admin can verify the payment in
     // the wallet app. Old rows get NULL (no sender recorded then).
     await db.exec("ALTER TABLE payment_submissions ADD COLUMN sender_number TEXT;");
+  } catch {}
+  try {
+    // One live TrxID per payment: a partial unique index on the
+    // transaction reference for rows still awaiting (or passing) review.
+    // Rejected/superseded rows stay outside it, so a corrected re-submit
+    // of the same TrxID for the same order still works — the batch
+    // rejects the old row before inserting the new one. If an older
+    // database already holds two live rows with the same TrxID, this
+    // fails and is skipped (the pre-check in the routes still guards the
+    // common case); it is created on every fresh database.
+    await db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_submissions_trxid_active ON payment_submissions(UPPER(transaction_ref)) WHERE review_state IN ('pending','verified')`);
   } catch {}
 }
 
@@ -1135,8 +1283,21 @@ export async function getCouponByCode(code: string): Promise<Coupon | null> {
   return coupon;
 }
 
-export async function incrementCouponUsage(code: string): Promise<boolean> {
-  const db = await getDb();
+/**
+ * Reserve one coupon use, on the given handle: the counter only moves
+ * when the coupon still has uses left, so two orders racing at the
+ * usage limit cannot both redeem. Returns false when the coupon is
+ * already exhausted.
+ *
+ * Takes the handle explicitly (and is called BEFORE the order batch, on
+ * the outer handle) because the old helper opened its own connection
+ * mid-transaction: inside a Turso interactive transaction it ran on the
+ * OUTER handle, outside the transaction it was supposed to belong to.
+ * Callers release the reservation (releaseCouponUse) when the batch
+ * that was supposed to consume it fails, so a failed order never eats
+ * a coupon use.
+ */
+export async function reserveCouponUse(db: DbHandle, code: string): Promise<boolean> {
   const cleanCode = code.trim().toUpperCase();
   // Atomic reservation: the counter only moves when the coupon still has
   // uses left, so two orders racing at the usage limit cannot both redeem.
@@ -1145,6 +1306,17 @@ export async function incrementCouponUsage(code: string): Promise<boolean> {
     'UPDATE coupons SET times_used = times_used + 1 WHERE UPPER(code) = ? AND (usage_limit IS NULL OR times_used < usage_limit)'
   ).run(cleanCode);
   return result.changes > 0;
+}
+
+/** Undo a coupon reservation (best-effort compensation when the batch that was supposed to consume it fails). */
+export async function releaseCouponUse(db: DbHandle, code: string): Promise<void> {
+  try {
+    await db.prepare(
+      'UPDATE coupons SET times_used = MAX(times_used - 1, 0) WHERE UPPER(code) = ?'
+    ).run(code.trim().toUpperCase());
+  } catch {
+    // Best-effort only: the batch failure is the error that matters, not the compensation.
+  }
 }
 
 export async function getAllCoupons(): Promise<Coupon[]> {
