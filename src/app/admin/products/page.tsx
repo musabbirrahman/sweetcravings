@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchAdminJson } from '@/lib/adminFetch';
 import { Product, Category } from '@/lib/types';
 import { useConfirm, useToast } from '@/components/DialogProvider';
 import { Plus, Search, Trash2, Pencil, X } from 'lucide-react';
 
 export default function AdminProductsPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,20 +178,27 @@ export default function AdminProductsPage() {
     setIsModalOpen(true);
   };
 
-  const fetchCatalog = () => {
-    fetch('/api/admin/products')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          setProducts(data.products || []);
-          setCategories(data.categories || []);
-          if (data.categories && data.categories.length > 0) {
-            setCategoryId(data.categories[0].id);
-          }
+  const fetchCatalog = async () => {
+    try {
+      const { status, data } = await fetchAdminJson('/api/admin/products');
+      // A dead session must go visibly to login, not render an empty menu
+      // that still looks logged-in.
+      if (status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (data.success) {
+        setProducts(data.products || []);
+        setCategories(data.categories || []);
+        if (data.categories && data.categories.length > 0) {
+          setCategoryId(data.categories[0].id);
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      }
+    } catch {
+      // Leave the previous list in place; the loading state ends below.
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -333,7 +343,7 @@ export default function AdminProductsPage() {
             {t('admin.tabProducts')}
           </h1>
           <p className="text-sm text-brand-taupe">
-            Manage your homemade dessert catalog, prices, and availability
+            {t('admin.productsSubtitle')}
           </p>
         </div>
 

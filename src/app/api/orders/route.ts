@@ -481,13 +481,15 @@ export async function POST(request: Request) {
 }
 
 // PROTECTED: Only authenticated operator can view all orders
+// no-store on every response: this list must always be fresh — a cached
+// copy would hide new orders from the admin panel.
 export async function GET(request: Request) {
   try {
     const isAuthed = verifyAdminSession(request);
     if (!isAuthed) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Operator session required.' },
-        { status: 401 }
+        { status: 401, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
@@ -495,12 +497,18 @@ export async function GET(request: Request) {
     const filterStatus = searchParams.get('status') || undefined;
 
     const orders = await getAllOrders(filterStatus);
-    return NextResponse.json({
-      success: true,
-      orders,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        orders,
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error: any) {
     console.error('Error fetching orders:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 }

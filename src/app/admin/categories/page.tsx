@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchAdminJson } from '@/lib/adminFetch';
 import { Category } from '@/lib/types';
 import { useConfirm } from '@/components/DialogProvider';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
@@ -12,6 +14,7 @@ interface CategoryRow extends Category {
 
 export default function AdminCategoriesPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,14 +32,21 @@ export default function AdminCategoriesPage() {
   const [sortOrder, setSortOrder] = useState('');
   const [isActive, setIsActive] = useState(true);
 
-  const fetchCategories = () => {
-    fetch('/api/admin/categories')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setCategories(data.categories || []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchCategories = async () => {
+    try {
+      const { status, data } = await fetchAdminJson('/api/admin/categories');
+      // A dead session must go visibly to login, not render an empty list
+      // that still looks logged-in.
+      if (status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (data.success) setCategories(data.categories || []);
+    } catch {
+      // Leave the previous list in place; the loading state ends below.
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -171,7 +181,7 @@ export default function AdminCategoriesPage() {
             {t('admin.tabCategories')}
           </h1>
           <p className="text-sm text-brand-taupe">
-            Food categories for the menu — create a new one and it appears in the dessert form right away
+            {t('admin.categoriesSubtitle')}
           </p>
         </div>
 

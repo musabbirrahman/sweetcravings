@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchAdminJson } from '@/lib/adminFetch';
 import { ShopSettings, Coupon } from '@/lib/types';
 import { useConfirm, useToast } from '@/components/DialogProvider';
 import { 
@@ -20,6 +22,7 @@ import {
 
 export default function AdminSettingsPage() {
   const { t } = useLanguage();
+  const router = useRouter();
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -72,44 +75,56 @@ export default function AdminSettingsPage() {
   const [newMaxDiscount, setNewMaxDiscount] = useState('');
   const [creatingCoupon, setCreatingCoupon] = useState(false);
 
-  const fetchSettings = () => {
-    fetch('/api/admin/settings')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success && data.settings) {
-          const s: ShopSettings = data.settings;
-          setSettings(s);
-          setDeliveryFee(String(s.delivery_fee));
-          setFreeThreshold(String(s.free_delivery_threshold));
-          setWhatsappNumber(s.whatsapp_number);
-          setCodEnabled(s.cod_enabled);
-          setBkashEnabled(s.bkash_enabled);
-          setBkashNumber(s.bkash_number);
-          setBkashType(s.bkash_type);
-          setNagadEnabled(s.nagad_enabled);
-          setNagadNumber(s.nagad_number);
-          setNagadType(s.nagad_type);
-          setCoverageEn(s.coverage_statement_en);
-          setCoverageBn(s.coverage_statement_bn);
-          setTelegramToken(s.telegram_bot_token || '');
-          setTelegramChatId(s.telegram_chat_id || '');
-          setNotificationsEnabled(s.notifications_enabled !== false);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const fetchSettings = async () => {
+    try {
+      const { status, data } = await fetchAdminJson('/api/admin/settings');
+      // A dead session must go visibly to login, not render empty forms
+      // that still look logged-in.
+      if (status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (data.success && data.settings) {
+        const s: ShopSettings = data.settings;
+        setSettings(s);
+        setDeliveryFee(String(s.delivery_fee));
+        setFreeThreshold(String(s.free_delivery_threshold));
+        setWhatsappNumber(s.whatsapp_number);
+        setCodEnabled(s.cod_enabled);
+        setBkashEnabled(s.bkash_enabled);
+        setBkashNumber(s.bkash_number);
+        setBkashType(s.bkash_type);
+        setNagadEnabled(s.nagad_enabled);
+        setNagadNumber(s.nagad_number);
+        setNagadType(s.nagad_type);
+        setCoverageEn(s.coverage_statement_en);
+        setCoverageBn(s.coverage_statement_bn);
+        setTelegramToken(s.telegram_bot_token || '');
+        setTelegramChatId(s.telegram_chat_id || '');
+        setNotificationsEnabled(s.notifications_enabled !== false);
+      }
+    } catch {
+      // Leave the previous form values in place; loading ends below.
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const fetchCoupons = () => {
-    fetch('/api/admin/coupons')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success && data.coupons) {
-          setCoupons(data.coupons);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoadingCoupons(false));
+  const fetchCoupons = async () => {
+    try {
+      const { status, data } = await fetchAdminJson('/api/admin/coupons');
+      if (status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (data.success && data.coupons) {
+        setCoupons(data.coupons);
+      }
+    } catch {
+      // Leave the previous list in place; loading ends below.
+    } finally {
+      setLoadingCoupons(false);
+    }
   };
 
   useEffect(() => {
@@ -292,7 +307,7 @@ export default function AdminSettingsPage() {
             {t('admin.tabSettings')}
           </h1>
           <p className="text-sm text-brand-taupe mt-0.5">
-            Configure delivery fees, payment wallets, kitchen notifications, and promo codes
+            {t('admin.settingsSubtitle')}
           </p>
         </div>
 
@@ -472,13 +487,13 @@ export default function AdminSettingsPage() {
           {/* bKash */}
           <div className="bg-white p-5 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
             <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-2.5">
-              <span className="font-heading font-bold text-sm text-[#8C1347]">bKash Configuration</span>
+              <span className="font-heading font-bold text-sm text-brand-chocolate">bKash Configuration</span>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer font-semibold">
                 <input
                   type="checkbox"
                   checked={bkashEnabled}
                   onChange={(e) => setBkashEnabled(e.target.checked)}
-                  className="rounded text-[#E2136E]"
+                  className="rounded text-brand-caramel"
                 />
                 <span>Active</span>
               </label>
@@ -512,13 +527,13 @@ export default function AdminSettingsPage() {
           {/* Nagad */}
           <div className="bg-white p-5 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
             <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-2.5">
-              <span className="font-heading font-bold text-sm text-[#A35200]">Nagad Configuration</span>
+              <span className="font-heading font-bold text-sm text-brand-chocolate">Nagad Configuration</span>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer font-semibold">
                 <input
                   type="checkbox"
                   checked={nagadEnabled}
                   onChange={(e) => setNagadEnabled(e.target.checked)}
-                  className="rounded text-[#F7941D]"
+                  className="rounded text-brand-caramel"
                 />
                 <span>Active</span>
               </label>
@@ -699,8 +714,8 @@ export default function AdminSettingsPage() {
                   key={c.id}
                   className="p-3.5 rounded-xl border border-[#E7DFD6] flex items-center justify-between gap-3 text-sm bg-white hover:bg-brand-cream/30 transition-colors"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
+                  <div className="space-y-0.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono font-extrabold text-sm text-brand-chocolate tracking-wider">
                         {c.code}
                       </span>
@@ -719,7 +734,7 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleToggleCoupon(c.id, c.active)}

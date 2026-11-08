@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchAdminJson } from '@/lib/adminFetch';
 import { Order } from '@/lib/types';
 import { 
   Bell, 
@@ -10,25 +12,85 @@ import {
   ChefHat, 
   CheckCircle, 
   ArrowRight, 
-  Phone
+  Phone,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function AdminTodayDashboard() {
   const { lang, t } = useLanguage();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Same rules as the orders list: always fresh, 401 goes visibly to the
+  // login page, other failures show an error — never a fake "All clear".
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const { status, data } = await fetchAdminJson('/api/orders');
+      if (status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!data.success) {
+        setLoadError(data.error || 'Could not load orders.');
+        return;
+      }
+      setLoadError(null);
+      setOrders(data.orders || []);
+    } catch {
+      setLoadError('Could not load orders. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [router]);
 
   useEffect(() => {
-    fetch('/api/orders')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          setOrders(data.orders || []);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    fetchOrders();
+    const interval = setInterval(() => fetchOrders(true), 30000);
+    const onVisible = () => {
+      if (!document.hidden) fetchOrders(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [fetchOrders]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="py-20 text-center text-brand-taupe text-sm">
+          Loading dashboard...
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-2xl border border-[#E7DFD6] p-12 text-center shadow-soft space-y-3">
+          <AlertTriangle className="w-8 h-8 mx-auto text-brand-caramel" />
+          <p className="text-sm font-semibold text-brand-chocolate">{loadError}</p>
+          <button
+            onClick={() => { setLoading(true); setLoadError(null); fetchOrders(); }}
+            className="inline-flex items-center gap-1.5 bg-brand-chocolate text-white px-4 py-2 rounded-xl text-sm font-bold shadow-soft"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>{lang === 'bn' ? 'আবার চেষ্টা করুন' : 'Try again'}</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const newOrders = orders.filter((o) => o.order_status === 'new');
   const pendingPayments = orders.filter(
@@ -52,13 +114,24 @@ export default function AdminTodayDashboard() {
           </p>
         </div>
 
-        <Link
-          href="/admin/orders"
-          className="inline-flex items-center gap-1.5 bg-brand-chocolate hover:bg-brand-chocolate text-white text-sm font-bold py-2.5 px-4 rounded-xl shadow-soft transition-all self-start sm:self-auto"
-        >
-          <span>{lang === 'bn' ? 'সকল অর্ডার দেখুন' : 'View All Orders'}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => fetchOrders(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 bg-white border border-[#E7DFD6] text-brand-chocolate text-sm font-bold py-2.5 px-4 rounded-xl shadow-soft transition-colors disabled:opacity-60"
+            title={lang === 'bn' ? 'ড্যাশবোর্ড রিফ্রেশ করুন' : 'Refresh dashboard'}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{lang === 'bn' ? 'রিফ্রেশ' : 'Refresh'}</span>
+          </button>
+          <Link
+            href="/admin/orders"
+            className="inline-flex items-center gap-1.5 bg-brand-chocolate hover:bg-brand-chocolate text-white text-sm font-bold py-2.5 px-4 rounded-xl shadow-soft transition-all"
+          >
+            <span>{lang === 'bn' ? 'সকল অর্ডার দেখুন' : 'View All Orders'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Urgent Attention Cards Grid */}
@@ -143,7 +216,7 @@ export default function AdminTodayDashboard() {
           <h2 className="font-heading font-bold text-lg text-brand-chocolate">
             {lang === 'bn' ? 'জরুরি দৃষ্টি প্রয়োজন এমন অর্ডারসমূহ' : 'Orders Needing Attention'}
           </h2>
-          <span className="text-sm bg-brand-cream text-brand-taupe px-2.5 py-1 rounded-full font-semibold">
+          <span className="text-sm bg-brand-cream text-brand-taupe px-2.5 py-1 rounded-full font-semibold whitespace-nowrap">
             {newOrders.length + pendingPayments.length} Pending
           </span>
         </div>

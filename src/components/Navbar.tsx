@@ -198,16 +198,6 @@ export default function Navbar() {
                 </button>
               </div>
             </div>
-
-            <div className="pt-2 text-center">
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="inline-block text-[13px] font-medium text-brand-taupe hover:text-brand-caramel py-1"
-              >
-                🔒 {t('nav.admin')}
-              </Link>
-            </div>
           </div>
         )}
       </header>

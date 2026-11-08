@@ -188,6 +188,10 @@ export const translations = {
       archiveProduct: "Archive",
       toggleAvailability: "Availability",
       exportBackup: "Download Full Data Backup (JSON)",
+      ordersCountLabel: "total orders recorded in Sweet Cravings database",
+      productsSubtitle: "Manage your homemade dessert catalog, prices, and availability",
+      categoriesSubtitle: "Food categories for the menu — create a new one and it appears in the dessert form right away",
+      settingsSubtitle: "Configure delivery fees, payment wallets, kitchen notifications, and promo codes",
     },
     about: {
       title: "Sweet Cravings — Our Sweet Story",
@@ -404,6 +408,10 @@ export const translations = {
       archiveProduct: "আর্কাইভ",
       toggleAvailability: "উপলব্ধতা",
       exportBackup: "সম্পূর্ণ ডাটা ব্যাকআপ ডাউনলোড (JSON)",
+      ordersCountLabel: "টি অর্ডার সুইট ক্রেভিংস ডাটাবেসে রেকর্ড করা হয়েছে",
+      productsSubtitle: "আপনার ঘরোয়া ডেজার্ট ক্যাটালগ, দাম ও সহজলভ্যতা পরিচালনা করুন",
+      categoriesSubtitle: "মেনুর খাবারের ক্যাটাগরি — নতুন একটি তৈরি করুন, ডেজার্ট ফর্মে সঙ্গে সঙ্গে দেখা যাবে",
+      settingsSubtitle: "ডেলিভারি ফি, পেমেন্ট ওয়ালেট, কিচেন নোটিফিকেশন ও প্রোমো কোড সেট করুন",
     },
     about: {
       title: "সুইট ক্রেভিংস — আমাদের মিষ্টি গল্প",

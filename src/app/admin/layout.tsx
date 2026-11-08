@@ -38,6 +38,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isLoginPage, settings]);
 
+  // On mobile the tab strip scrolls horizontally: keep the active tab
+  // visible instead of leaving it cut off past the edge.
+  useEffect(() => {
+    document
+      .querySelector('[data-active-tab="true"]')
+      ?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [pathname]);
+
   const handleTogglePause = async () => {
     setLoadingStatus(true);
     const newStatus = !isStorePaused;
@@ -146,6 +154,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={tab.href}
                 href={tab.href}
+                data-active-tab={isActive ? 'true' : undefined}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 ${
                   isActive
                     ? 'border-brand-caramel text-brand-cream bg-brand-chocolate/40'

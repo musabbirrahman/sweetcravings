@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { fetchAdminJson } from '@/lib/adminFetch';
 import { Order, OrderStatus, PaymentStatus } from '@/lib/types';
 import { useConfirm, useToast } from '@/components/DialogProvider';
 import { 
@@ -17,7 +18,9 @@ import {
   Truck, 
   CheckCircle2,
   Gift,
-  Bike
+  Bike,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 
 const STATUS_FILTERS = [
@@ -34,6 +37,7 @@ const STATUS_FILTERS = [
 function AdminOrdersContent() {
   const { lang, t } = useLanguage();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialStatus = searchParams.get('status') || 'all';
   const initialSearch = searchParams.get('search') || '';
 
@@ -41,25 +45,54 @@ function AdminOrdersContent() {
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const confirm = useConfirm();
   const toast = useToast();
 
-  const fetchOrders = () => {
-    fetch('/api/orders')
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          setOrders(data.orders || []);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  };
+  // Always fetch fresh (no-store): a new order must appear on refresh
+  // without re-login. A 401 means the session is gone — send the operator
+  // to the login page visibly instead of rendering an empty list that
+  // still looks logged-in. Any other failure shows an error with Retry.
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const { status, data } = await fetchAdminJson('/api/orders');
+      if (status === 401) {
+        router.push('/admin/login');
+        return;
+      }
+      if (!data.success) {
+        setLoadError(data.error || 'Could not load orders.');
+        return;
+      }
+      setLoadError(null);
+      setOrders(data.orders || []);
+    } catch {
+      setLoadError('Could not load orders. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [router]);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+    // New orders arrive while the tab sits open: poll, and refetch the
+    // moment the tab is focused or becomes visible again.
+    const interval = setInterval(() => fetchOrders(true), 30000);
+    const onVisible = () => {
+      if (!document.hidden) fetchOrders(true);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [fetchOrders]);
 
   const handleUpdateStatus = async (orderId: number, newOrderStatus?: OrderStatus, newPaymentStatus?: PaymentStatus, note?: string) => {
     setUpdatingId(orderId);
@@ -136,20 +169,31 @@ Sweet Cravings Kitchen`;
             {t('admin.tabOrders')}
           </h1>
           <p className="text-sm text-brand-taupe">
-            {orders.length} total orders recorded in Sweet Cravings database
+            {orders.length} {t('admin.ordersCountLabel')}
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-xs w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-taupe/50" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search code, name, phone..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E7DFD6] bg-white text-sm focus:outline-none focus:border-brand-caramel shadow-soft"
-          />
+        {/* Refresh + Search */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => fetchOrders(true)}
+            disabled={refreshing || loading}
+            className="inline-flex items-center gap-1.5 bg-white border border-[#E7DFD6] text-brand-chocolate px-3 py-2 rounded-xl text-sm font-semibold hover:bg-brand-cream transition-colors shrink-0 disabled:opacity-60"
+            title={lang === 'bn' ? 'অর্ডার তালিকা রিফ্রেশ করুন' : 'Refresh order list'}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>{lang === 'bn' ? 'রিফ্রেশ' : 'Refresh'}</span>
+          </button>
+          <div className="relative max-w-xs w-full min-w-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-taupe/50" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search code, name, phone..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E7DFD6] bg-white text-sm focus:outline-none focus:border-brand-caramel shadow-soft"
+            />
+          </div>
         </div>
       </div>
 
@@ -174,6 +218,18 @@ Sweet Cravings Kitchen`;
       {loading ? (
         <div className="py-20 text-center text-brand-taupe text-sm">
           Loading orders...
+        </div>
+      ) : loadError ? (
+        <div className="bg-white rounded-2xl border border-[#E7DFD6] p-12 text-center shadow-soft space-y-3">
+          <AlertTriangle className="w-8 h-8 mx-auto text-brand-caramel" />
+          <p className="text-sm font-semibold text-brand-chocolate">{loadError}</p>
+          <button
+            onClick={() => { setLoading(true); setLoadError(null); fetchOrders(); }}
+            className="inline-flex items-center gap-1.5 bg-brand-chocolate text-white px-4 py-2 rounded-xl text-sm font-bold shadow-soft"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>{lang === 'bn' ? 'আবার চেষ্টা করুন' : 'Try again'}</span>
+          </button>
         </div>
       ) : filteredOrders.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#E7DFD6] p-12 text-center text-brand-taupe shadow-soft">
@@ -347,7 +403,7 @@ Sweet Cravings Kitchen`;
                 <div className="border-t border-[#E7DFD6] pt-3 flex flex-wrap items-center justify-between gap-3">
                   
                   {/* Direct Contact Buttons */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={`tel:${ord.customer_phone}`}
                       className="inline-flex items-center gap-1.5 bg-brand-cream hover:bg-brand-cream text-brand-chocolate border border-[#E7DFD6] px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"

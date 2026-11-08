@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
-import { Phone, MapPin, ShieldCheck, Clock } from 'lucide-react';
+import { Phone, MapPin, Clock } from 'lucide-react';
 
 export default function Footer() {
   const { lang, t } = useLanguage();
@@ -122,15 +122,6 @@ export default function Footer() {
                   {lang === 'bn' ? 'অর্ডার গ্রহণের সময়: সকাল ১০টা - রাত ৯টা' : 'Order Hours: 10:00 AM - 9:00 PM'}
                 </span>
               </p>
-              <div className="pt-2">
-                <Link 
-                  href="/admin" 
-                  className="inline-flex items-center gap-1.5 text-[13px] text-brand-cream/65 hover:text-white border border-white/10 px-3 py-1.5 rounded-full transition-colors"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{lang === 'bn' ? 'এডমিন পোর্টাল' : 'Admin Portal'}</span>
-                </Link>
-              </div>
             </div>
           </div>
 
