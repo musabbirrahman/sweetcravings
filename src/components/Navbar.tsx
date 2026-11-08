@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { useCart } from '@/context/CartContext';
+import { toWhatsAppDigits } from '@/lib/phone';
 import { ShoppingBag, Menu, X, Globe, Phone } from 'lucide-react';
 
 export default function Navbar() {
@@ -52,7 +53,7 @@ export default function Navbar() {
           <div className="flex items-center gap-3.5 shrink-0">
             {phoneNum && (
             <a 
-              href={`https://wa.me/${phoneNum.replace(/\D/g, '').startsWith('88') ? phoneNum.replace(/\D/g, '') : '88' + phoneNum.replace(/\D/g, '')}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
+              href={`https://wa.me/${toWhatsAppDigits(phoneNum)}?text=${encodeURIComponent('Salam! I have an inquiry about Sweet Cravings desserts.')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:flex items-center gap-1.5 text-brand-cream/90 hover:text-white transition-colors"

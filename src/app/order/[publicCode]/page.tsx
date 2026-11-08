@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { Order } from '@/lib/types';
+import { toWhatsAppDigits } from '@/lib/phone';
 import Confetti from '@/components/Confetti';
 import { 
   CheckCircle, 
@@ -345,9 +346,8 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const waText = encodeURIComponent(
     `Salam Sweet Cravings! I placed Order #${order.public_code} for ${order.customer_name}. Total: BDT ${order.total_amount}.`
   );
-  const rawWa = (shopSettings?.whatsapp_number || '').replace(/\D/g, '');
-  const waPhone = rawWa.startsWith('88') ? rawWa : `88${rawWa}`;
-  const waUrl = rawWa ? `https://wa.me/${waPhone}?text=${waText}` : '';
+  const waPhone = toWhatsAppDigits(shopSettings?.whatsapp_number || '');
+  const waUrl = waPhone ? `https://wa.me/${waPhone}?text=${waText}` : '';
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-16 space-y-8 font-sans">

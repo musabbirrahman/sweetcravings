@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { toWhatsAppDigits } from '@/lib/phone';
 import ProductCard from '@/components/ProductCard';
 import { 
   ArrowRight, 
@@ -32,10 +33,8 @@ export default function HomePage() {
   // WhatsApp number from settings; empty until the shop configures it, in
   // which case WhatsApp buttons are hidden instead of showing a fake number.
   const whatsappNumber = (settings?.whatsapp_number || '').trim();
-  const whatsappDigits = whatsappNumber.replace(/\D/g, '');
-  const whatsappUrl = whatsappDigits
-    ? `https://wa.me/${whatsappDigits.startsWith('88') ? whatsappDigits : '88' + whatsappDigits}`
-    : '';
+  const whatsappDigits = toWhatsAppDigits(whatsappNumber);
+  const whatsappUrl = whatsappDigits ? `https://wa.me/${whatsappDigits}` : '';
 
   const displayProducts = selectedCat === 'all'
     ? featuredProducts

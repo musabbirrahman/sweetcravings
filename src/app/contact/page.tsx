@@ -2,6 +2,7 @@
 
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { toWhatsAppDigits } from '@/lib/phone';
 import { Phone, MapPin, Clock, MessageSquare } from 'lucide-react';
 
 export default function ContactPage() {
@@ -11,8 +12,7 @@ export default function ContactPage() {
   const { settings } = useCatalog();
   const phoneNum = settings?.whatsapp_number || '';
 
-  const clean = phoneNum.replace(/\D/g, '');
-  const waPhone = clean.startsWith('88') ? clean : `88${clean}`;
+  const waPhone = toWhatsAppDigits(phoneNum);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-12">

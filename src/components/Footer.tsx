@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { toWhatsAppDigits } from '@/lib/phone';
 import { Phone, MapPin, Clock } from 'lucide-react';
 
 export default function Footer() {
@@ -106,7 +107,7 @@ export default function Footer() {
                 <span>
                   WhatsApp: <br />
                   <a 
-                    href={`https://wa.me/${phoneNum.replace(/\D/g, '').startsWith('88') ? phoneNum.replace(/\D/g, '') : '88' + phoneNum.replace(/\D/g, '')}`} 
+                    href={`https://wa.me/${toWhatsAppDigits(phoneNum)}`} 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     className="text-emerald-300 hover:text-emerald-200 hover:underline font-semibold"

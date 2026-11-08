@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { MessageCircle } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { toWhatsAppDigits } from '@/lib/phone';
 
 export default function FloatingWhatsAppButton() {
   const pathname = usePathname();
@@ -23,8 +24,7 @@ export default function FloatingWhatsAppButton() {
     return null;
   }
 
-  const cleanNum = whatsappNumber.replace(/\D/g, '');
-  const waPhone = cleanNum.startsWith('88') ? cleanNum : `88${cleanNum}`;
+  const waPhone = toWhatsAppDigits(whatsappNumber);
   const greeting = encodeURIComponent('Salam Sweet Cravings! I have a question about placing an order in Rajshahi.');
   const waUrl = `https://wa.me/${waPhone}?text=${greeting}`;
 

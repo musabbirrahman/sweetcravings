@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { fetchAdminJson } from '@/lib/adminFetch';
+import { toWhatsAppDigits } from '@/lib/phone';
 import { Order, OrderStatus, PaymentStatus } from '@/lib/types';
 import { useConfirm, useToast } from '@/components/DialogProvider';
 import { 
@@ -158,7 +159,10 @@ Sweet Cravings Kitchen`;
     const text =
       `সালাম ${ord.customer_name}! Sweet Cravings থেকে বলছি। আপনার অর্ডার #${ord.public_code}-এর জন্য ${methodBn} নম্বরে ৳${ord.total_amount} পাঠিয়ে TrxID ${sub.transaction_ref} দিয়েছেন${sub.sender_number ? ` (যে নম্বর থেকে পাঠিয়েছেন: ${sub.sender_number})` : ''}, কিন্তু আমাদের হিসাবে এই পেমেন্টটি পাওয়া যায়নি।\n\n` +
       `দয়া করে TrxID-টি আবার যাচাই করে সঠিক TrxID-টি এই চ্যাটেই reply করুন, তাহলে আমরা আপনার অর্ডারটি নিশ্চিত করতে পারব।\n\nধন্যবাদ — Sweet Cravings, রাজশাহী`;
-    return `https://wa.me/${ord.customer_phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+    // The customer number is stored in local form (013...); wa.me needs
+    // the international form with the country code, or WhatsApp refuses
+    // the lookup ("missing a country code").
+    return `https://wa.me/${toWhatsAppDigits(ord.customer_phone)}?text=${encodeURIComponent(text)}`;
   };
 
   // Record the notice through the existing PATCH path (sets payment_status
@@ -313,7 +317,7 @@ Sweet Cravings Kitchen`;
         <div className="space-y-4">
           {filteredOrders.map((ord) => {
             const waMsg = encodeURIComponent(`Salam ${ord.customer_name}! This is Sweet Cravings regarding your order #${ord.public_code}.`);
-            const waLink = `https://wa.me/${ord.customer_phone.replace(/\D/g, '')}?text=${waMsg}`;
+            const waLink = `https://wa.me/${toWhatsAppDigits(ord.customer_phone)}?text=${waMsg}`;
             const latestPendingSubmission = getLatestPendingSubmission(ord);
             const payNotifyUrl = generatePaymentNotReceivedUrl(ord);
             const isUpdating = updatingId === ord.id;
