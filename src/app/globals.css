@@ -27,18 +27,35 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Bengali rendering: Hind Siliguri throughout, generous line-height */
+/* Bengali rendering: Hind Siliguri throughout, generous line-height.
+   NO letter-spacing anywhere on Bangla text: tracking breaks conjunct
+   shaping and squeezes vowel signs. */
 [lang="bn"], .font-bn {
   font-family: var(--font-bengali), var(--font-sans);
   line-height: 1.78;
-  letter-spacing: 0.015em;
 }
 
-/* Headings use the same family as body — no serif, no italics anywhere */
+/* Headings use the same family as body — no serif, no italics anywhere.
+   The old -0.01em heading tracking is gone entirely: it was visually
+   imperceptible on Latin headings, but it still landed on Bengali text
+   (prices, hardcoded Bangla strings) whenever the page was in English
+   mode, and Bangla text must carry no letter-spacing anywhere. */
 h1, h2, h3, h4, .font-heading {
   font-family: var(--font-heading);
-  letter-spacing: -0.01em;
   font-style: normal;
+}
+
+/* Bangla must never carry letter-spacing. While the page is in Bangla,
+   neutralise Tailwind tracking utilities too: section eyebrows, form
+   labels, badges and buttons are all translated, so their tracking
+   classes would otherwise land on Bangla text. (Specificity beats the
+   utilities; unlayered rules beat Tailwind's layered ones.) */
+html[lang="bn"] .tracking-tighter,
+html[lang="bn"] .tracking-tight,
+html[lang="bn"] .tracking-wide,
+html[lang="bn"] .tracking-wider,
+html[lang="bn"] .tracking-widest {
+  letter-spacing: normal;
 }
 
 /* Former editorial/serif classes kept as aliases so old class names do

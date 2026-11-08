@@ -65,7 +65,12 @@ export default function ProductCard({ product }: ProductCardProps) {
   );
 
   return (
-    <article className="group bg-white rounded-2xl overflow-hidden border border-[#E7DFD6] hover:border-brand-caramel/40 shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col transform hover:-translate-y-1">
+    <article
+      className="group bg-white rounded-2xl overflow-hidden border border-[#E7DFD6] hover:border-brand-caramel/40 shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col transform hover:-translate-y-1"
+      // Neutralise the global [lang="bn"] letter-spacing (0.015em): any
+      // tracking on Bangla loosens conjunct shaping.
+      style={{ letterSpacing: 0 }}
+    >
       {/* The card itself is a real link: keyboard-accessible, openable in
           a new tab, and announced as a link to screen readers. The price
           and add-to-bag row below sits outside the link so its button
@@ -87,7 +92,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           {/* Sold out overlay */}
           {!isAvailable && (
             <div className="absolute inset-0 bg-brand-chocolate/60 flex items-center justify-center">
-              <span className="bg-brand-chocolate text-white font-bold text-[13px] uppercase px-3.5 py-1.5 rounded-full shadow-md tracking-wider">
+              <span className="bg-brand-chocolate text-white font-bold text-[13px] px-3.5 py-1.5 rounded-full shadow-md">
                 {t('menu.soldOut')}
               </span>
             </div>
@@ -101,11 +106,17 @@ export default function ProductCard({ product }: ProductCardProps) {
               {lang === 'bn' ? product.category_name_bn : product.category_name_en}
             </span>
 
-            <h3 className="font-heading font-bold text-lg text-brand-chocolate group-hover:text-brand-caramel transition-colors line-clamp-1">
+            {/* Two lines, not one: line-clamp-1 cut long Bangla titles
+                mid-word ("রাজশাহী স্পেশাল ম্যা…"). 1.6 leading gives the
+                vowel signs room inside the clamp box. */}
+            <h3
+              className="font-heading font-bold text-lg text-brand-chocolate group-hover:text-brand-caramel transition-colors line-clamp-2 leading-[1.6]"
+              style={{ letterSpacing: 0 }}
+            >
               {name}
             </h3>
 
-            <p className="text-[13px] text-brand-taupe line-clamp-2 leading-relaxed">
+            <p className="text-[13px] text-brand-taupe line-clamp-2 leading-[1.8]">
               {lang === 'bn' ? product.description_bn : product.description_en}
             </p>
 
@@ -120,10 +131,15 @@ export default function ProductCard({ product }: ProductCardProps) {
       {/* Price & Action Row — outside the link, so the button stays a button */}
       <div className="px-5 pb-5 pt-3 border-t border-[#E7DFD6] flex items-center justify-between">
         <div>
-          <span className="text-[13px] text-brand-taupe block leading-none font-medium">
+          {/* leading-none squeezed the label's vowel signs (measured
+              13px line box, 17px of ink). 1.7 gives them room. */}
+          <span className="text-[13px] text-brand-taupe block leading-[1.7] font-medium">
             {hasVariants ? (lang === 'bn' ? 'শুরু মাত্র' : 'Starting from') : t('menu.price')}
           </span>
-          <span className="font-heading text-xl font-bold text-brand-chocolate tracking-tight mt-0.5 block">
+          <span
+            className="font-heading text-xl font-bold text-brand-chocolate leading-[1.5] mt-0.5 block"
+            style={{ letterSpacing: 0 }}
+          >
             ৳{product.base_price}
           </span>
         </div>
