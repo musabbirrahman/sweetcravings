@@ -8,27 +8,28 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Three core colours + one accent. Everything else in the old
-        // palette was a near-duplicate tint of one of these and is gone:
-        // borders use chocolate at low opacity, tints use caramel/forest
-        // at low opacity, light text on dark surfaces is cream.
+        // Restrained warm palette (redesign 2026-11-08). ONE muted accent
+        // (caramel, darkened so it passes AA on cream). Primary CTAs are
+        // solid ink. Forest green survives ONLY for success states and
+        // the small WhatsApp icon — never as a surface or block. Gold is gone.
         brand: {
-          chocolate: "#2C1E19", // Deep cocoa — text, buttons, dark surfaces
-          caramel: "#9C6237", // Warm caramel — the one accent colour for CTAs
-          cream: "#FAF7F2", // Warm cream — page background, light text on dark
-          taupe: "#6D5C53", // Muted cocoa — body text on cream
-          gold: "#8A6B3F", // Darkened gold — small text that must pass contrast
-          forest: "#2D5943", // Deep green — success, WhatsApp, secondary accent
+          chocolate: "#221A14", // Ink — text, buttons, dark surfaces
+          caramel: "#8A5A33", // Muted caramel — the one accent (text, thin borders)
+          cream: "#FBF9F6", // Warm off-white — page background
+          taupe: "#6B5D52", // Muted cocoa — secondary text on cream
+          forest: "#2D5943", // Deep green — success states + WhatsApp icon only
         }
       },
       fontFamily: {
-        // Two self-hosted families only (@fontsource, no Google request):
-        // Fraunces for display headings, Hind Siliguri for body + Bangla.
-        heading: ["Fraunces Variable", "Hind Siliguri", "Georgia", "serif"],
+        // ONE family only: Hind Siliguri for everything (Latin + Bangla).
+        // Fraunces is gone — it has no Bangla glyphs, so Bangla headlines
+        // fell back while Latin rendered in serif, and its italic was a
+        // faux-oblique Bangla. No italics anywhere in the redesign.
+        heading: ["Hind Siliguri", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
         sans: ["Hind Siliguri", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
         bengali: ["Hind Siliguri", "Noto Sans Bengali", "sans-serif"],
-        editorial: ["Fraunces Variable", "Hind Siliguri", "Georgia", "serif"],
-        serif: ["Fraunces Variable", "Hind Siliguri", "Georgia", "serif"],
+        editorial: ["Hind Siliguri", "system-ui", "sans-serif"],
+        serif: ["Hind Siliguri", "system-ui", "sans-serif"],
       },
       boxShadow: {
         'soft': '0 2px 16px -2px rgba(60, 40, 30, 0.04)',

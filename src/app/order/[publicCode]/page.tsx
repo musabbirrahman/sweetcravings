@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import LoyaltyStampCard from '@/components/LoyaltyStampCard';
 import OrderReceipt from '@/components/OrderReceipt';
+import { useToast } from '@/components/DialogProvider';
 import { LoyaltyInfo } from '@/lib/types';
 
 export default function OrderConfirmationPage({ params }: { params: { publicCode: string } }) {
@@ -44,6 +45,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
   const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
   const [phoneInput, setPhoneInput] = useState('');
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+  const toast = useToast();
   // Off-screen receipt card (rendered, but positioned far off-viewport)
   // that html2canvas rasterises into the downloadable PDF.
   const receiptRef = useRef<HTMLDivElement | null>(null);
@@ -166,7 +168,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
       }
       pdf.save(`Sweet-Cravings-${order.public_code}.pdf`);
     } catch (err) {
-      alert(lang === 'bn' ? 'রশিদ ডাউনলোড করা যায়নি। আবার চেষ্টা করুন।' : 'Could not download the receipt. Please try again.');
+      toast(lang === 'bn' ? 'রশিদ ডাউনলোড করা যায়নি। আবার চেষ্টা করুন।' : 'Could not download the receipt. Please try again.', 'error');
     } finally {
       setDownloadingReceipt(false);
     }
@@ -190,10 +192,10 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         fetchOrder();
         setTimeout(() => setTrxSuccessMessage(false), 5000);
       } else {
-        alert(data.error || 'Failed to update TrxID');
+        toast(data.error || 'Failed to update TrxID', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Error submitting TrxID');
+      toast(err.message || 'Error submitting TrxID', 'error');
     } finally {
       setSubmittingTrx(false);
     }
@@ -236,12 +238,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
             placeholder={lang === 'bn' ? 'যেমন: 01712345678' : 'e.g. 01712345678'}
-            className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-white text-sm text-brand-chocolate focus:outline-none focus:border-brand-caramel"
+            className="w-full px-4 py-3 rounded-xl border border-[#E7DFD6] bg-white text-sm text-brand-chocolate focus:outline-none focus:border-brand-caramel"
           />
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-brand-caramel hover:bg-brand-caramel text-white font-bold py-3 px-6 rounded-xl text-sm shadow-soft transition-all"
+            className="w-full bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold py-3 px-6 rounded-xl text-sm shadow-soft transition-all"
           >
             {loading
               ? (lang === 'bn' ? 'যাচাই করা হচ্ছে…' : 'Verifying…')
@@ -321,7 +323,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
       <Confetti />
 
       {/* Success Celebration Card */}
-      <div className="bg-white/95 rounded-3xl p-6 sm:p-10 border border-brand-chocolate/10 shadow-card text-center space-y-6 relative overflow-hidden">
+      <div className="bg-white/95 rounded-3xl p-6 sm:p-10 border border-[#E7DFD6] shadow-card text-center space-y-6 relative overflow-hidden">
         
         {/* Soft background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-28 bg-brand-cream/20 blur-3xl rounded-full pointer-events-none" />
@@ -331,11 +333,11 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         </div>
 
         <div className="space-y-2">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-brand-forest bg-brand-forest/10 px-3.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wider text-brand-forest bg-brand-forest/10 px-3.5 py-1 rounded-full">
             <Sparkles className="w-3.5 h-3.5" />
             <span>{lang === 'bn' ? 'অর্ডার সফলভাবে গৃহীত হয়েছে!' : 'Order Placed Successfully!'}</span>
           </span>
-          <h1 className="font-heading text-2xl sm:text-4xl font-semibold text-brand-chocolate">
+          <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
             {t('orderConfirm.successTitle')}
           </h1>
           <p className="text-sm text-brand-taupe max-w-md mx-auto leading-relaxed">
@@ -344,8 +346,8 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         </div>
 
         {/* Public Order Reference Code Box */}
-        <div className="bg-brand-cream/70 border border-brand-chocolate/10 rounded-2xl p-4 sm:p-5 max-w-sm mx-auto space-y-2 shadow-xs">
-          <span className="text-[11px] uppercase tracking-wider font-bold text-brand-taupe block">
+        <div className="bg-brand-cream/70 border border-[#E7DFD6] rounded-2xl p-4 sm:p-5 max-w-sm mx-auto space-y-2 shadow-xs">
+          <span className="text-[13px] uppercase tracking-wider font-bold text-brand-taupe block">
             {t('orderConfirm.orderRef')}
           </span>
           <div className="flex items-center justify-center gap-3">
@@ -354,13 +356,13 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             </span>
             <button
               onClick={handleCopyCode}
-              className="p-2 rounded-xl bg-white border border-brand-chocolate/10 text-brand-chocolate hover:bg-brand-cream transition-colors shadow-xs active:scale-95"
+              className="p-2 rounded-xl bg-white border border-[#E7DFD6] text-brand-chocolate hover:bg-brand-cream transition-colors shadow-xs active:scale-95"
               title="Copy Order Code"
             >
               {copiedCode ? <Check className="w-4 h-4 text-brand-forest" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
-          <p className="text-[11px] text-brand-taupe">
+          <p className="text-[13px] text-brand-taupe">
             {t('orderConfirm.orderRefHelp')}
           </p>
         </div>
@@ -372,7 +374,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-brand-forest hover:bg-brand-chocolate text-white font-bold py-3 px-6 rounded-full text-sm shadow-soft transition-all active:scale-98"
+            className="inline-flex items-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold py-3 px-6 rounded-full text-sm shadow-soft transition-all active:scale-98"
           >
             <MessageCircle className="w-4 h-4" />
             <span>{t('orderConfirm.whatsAppCTA')}</span>
@@ -382,28 +384,28 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
           <button
             onClick={handleDownloadReceipt}
             disabled={downloadingReceipt}
-            className="inline-flex items-center gap-2 bg-white hover:bg-brand-cream text-brand-chocolate font-semibold py-3 px-5 rounded-full text-sm border border-brand-chocolate/10 shadow-xs transition-all active:scale-98 disabled:opacity-60"
+            className="inline-flex items-center gap-2 bg-white hover:bg-brand-cream text-brand-chocolate font-semibold py-3 px-5 rounded-full text-sm border border-[#E7DFD6] shadow-xs transition-all active:scale-98 disabled:opacity-60"
           >
             <Download className="w-4 h-4 text-brand-caramel" />
             <span>{downloadingReceipt ? t('orderConfirm.downloadingReceipt') : t('orderConfirm.downloadReceipt')}</span>
           </button>
         </div>
 
-        <p className="text-[11px] text-brand-taupe">
+        <p className="text-[13px] text-brand-taupe">
           {t('orderConfirm.whatsAppNotice')}
         </p>
       </div>
 
       {/* Animated Order Status Timeline */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-brand-chocolate/10 shadow-soft space-y-5">
-        <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-3.5">
+      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-[#E7DFD6] shadow-soft space-y-5">
+        <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-3.5">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-brand-caramel" />
             <h2 className="font-heading font-bold text-lg text-brand-chocolate">
               {t('orderConfirm.statusTimeline')}
             </h2>
           </div>
-          <span className="text-xs font-bold px-3 py-1 rounded-full bg-brand-caramel/10 text-brand-caramel border border-brand-caramel/20 capitalize">
+          <span className="text-[13px] font-bold px-3 py-1 rounded-full bg-brand-caramel/10 text-brand-caramel border border-brand-caramel/20 capitalize">
             {order.order_status.replace(/_/g, ' ')}
           </span>
         </div>
@@ -422,12 +424,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                       <span className="absolute -inset-1 rounded-full bg-brand-caramel/30 animate-ping opacity-75" />
                     )}
                     <div
-                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all shadow-xs ${
+                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold transition-all shadow-xs ${
                         isCurrent
-                          ? 'bg-brand-caramel text-white ring-4 ring-brand-caramel/10'
+                          ? 'bg-brand-chocolate text-white ring-4 ring-brand-caramel/10'
                           : isPast
                           ? 'bg-brand-forest text-white'
-                          : 'bg-brand-cream text-brand-taupe/50 border border-brand-chocolate/10'
+                          : 'bg-brand-cream text-brand-taupe/50 border border-[#E7DFD6]'
                       }`}
                     >
                       {isPast ? <Check className="w-4 h-4" /> : idx + 1}
@@ -435,13 +437,13 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                   </div>
                   <div>
                     <span
-                      className={`text-xs block font-bold ${
+                      className={`text-[13px] block font-bold ${
                         isCurrent ? 'text-brand-caramel font-extrabold' : isPast ? 'text-brand-chocolate' : 'text-brand-taupe/70'
                       }`}
                     >
                       {lang === 'bn' ? stage.labelBn : stage.labelEn}
                     </span>
-                    <span className="text-[10px] text-brand-taupe hidden sm:block mt-0.5">
+                    <span className="text-[13px] text-brand-taupe hidden sm:block mt-0.5">
                       {lang === 'bn' ? stage.descBn : stage.descEn}
                     </span>
                   </div>
@@ -454,8 +456,8 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
 
       {/* Manual Payment Section (bKash / Nagad) */}
       {(order.payment_method === 'bkash' || order.payment_method === 'nagad') && (
-        <div className="bg-white rounded-3xl p-5 sm:p-7 border border-brand-chocolate/10 shadow-soft space-y-5">
-          <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-3.5">
+        <div className="bg-white rounded-3xl p-5 sm:p-7 border border-[#E7DFD6] shadow-soft space-y-5">
+          <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-3.5">
             <div className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-brand-caramel" />
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -463,7 +465,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
               </h2>
             </div>
             <span
-              className={`text-xs font-bold px-3 py-1 rounded-full ${
+              className={`text-[13px] font-bold px-3 py-1 rounded-full ${
                 order.payment_status === 'confirmed'
                   ? 'bg-brand-forest/10 text-brand-forest'
                   : order.payment_status === 'submitted'
@@ -479,7 +481,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             </span>
           </div>
 
-          <div className="text-xs sm:text-sm text-brand-taupe space-y-3">
+          <div className="text-[13px] sm:text-sm text-brand-taupe space-y-3">
             <p>
               {lang === 'bn' 
                 ? `অনুগ্রহ করে আমাদের ভেরিফায়েড ${order.payment_method.toUpperCase()} নম্বরে নির্ধারিত `
@@ -498,12 +500,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 : (shopSettings?.bkash_type || 'Personal');
 
               return (
-                <div className="bg-brand-cream/80 p-4 rounded-2xl border border-brand-chocolate/10 flex items-center justify-between">
+                <div className="bg-brand-cream/80 p-4 rounded-2xl border border-[#E7DFD6] flex items-center justify-between">
                   <div>
                     <p className="font-mono text-xl font-extrabold text-brand-chocolate">
                       {walletNum || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                     </p>
-                    <p className="text-[11px] text-brand-taupe capitalize">
+                    <p className="text-[13px] text-brand-taupe capitalize">
                       {walletNum
                         ? `${walletType} Account (Send Money) • Sweet Cravings`
                         : (lang === 'bn' ? 'পেমেন্ট নম্বর সেট করা হয়নি — দয়া করে দোকানে যোগাযোগ করুন।' : 'Payment number not set yet — please contact the shop.')}
@@ -513,7 +515,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                   <button
                     type="button"
                     onClick={() => handleCopyPhone(walletNum)}
-                    className="flex items-center gap-1.5 text-xs bg-white border border-brand-chocolate/10 text-brand-chocolate px-3 py-1.5 rounded-xl font-bold shadow-xs hover:bg-brand-cream transition-colors"
+                    className="flex items-center gap-1.5 text-[13px] bg-white border border-[#E7DFD6] text-brand-chocolate px-3 py-1.5 rounded-xl font-bold shadow-xs hover:bg-brand-cream transition-colors"
                   >
                     {copiedPhone ? <Check className="w-3.5 h-3.5 text-brand-forest" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedPhone ? (lang === 'bn' ? 'কপি হয়েছে' : 'Copied') : (lang === 'bn' ? 'নম্বর কপি' : 'Copy')}</span>
@@ -526,7 +528,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             {/* TrxID Submit / Update Form */}
             {order.payment_status !== 'confirmed' && (
               <form onSubmit={handleTrxSubmit} className="pt-2 space-y-3">
-                <label className="block text-xs font-bold text-brand-chocolate">
+                <label className="block text-[13px] font-bold text-brand-chocolate">
                   {lang === 'bn' ? 'পেমেন্ট শেষে TrxID সাবমিট করুন:' : 'Submit your Payment TrxID (Transaction ID):'}
                 </label>
                 <div className="flex gap-2">
@@ -536,12 +538,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                     value={trxIdInput}
                     onChange={(e) => setTrxIdInput(e.target.value)}
                     placeholder="e.g. 9J4K2L8M1N"
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-brand-chocolate/10 bg-brand-cream/50 text-sm font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-[#E7DFD6] bg-brand-cream/50 text-sm font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
                   />
                   <button
                     type="submit"
                     disabled={submittingTrx}
-                    className="bg-brand-caramel hover:bg-brand-caramel text-white font-bold px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-soft transition-all flex items-center gap-1.5 shrink-0"
+                    className="bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold px-5 py-2.5 rounded-xl text-[13px] sm:text-sm shadow-soft transition-all flex items-center gap-1.5 shrink-0"
                   >
                     {submittingTrx ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -553,7 +555,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 </div>
 
                 {trxSuccessMessage && (
-                  <p className="text-xs text-brand-forest font-bold flex items-center gap-1 animate-fadeIn">
+                  <p className="text-[13px] text-brand-forest font-bold flex items-center gap-1 animate-fadeIn">
                     <Check className="w-4 h-4" />
                     <span>{t('orderConfirm.trxSuccessNotice')}</span>
                   </p>
@@ -565,15 +567,15 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
       )}
 
       {/* Order Itemized Receipt Card */}
-      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-brand-chocolate/10 shadow-soft space-y-5">
-        <div className="border-b border-brand-chocolate/10 pb-3.5 flex items-center justify-between">
+      <div className="bg-white rounded-3xl p-5 sm:p-7 border border-[#E7DFD6] shadow-soft space-y-5">
+        <div className="border-b border-[#E7DFD6] pb-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-4 h-4 text-brand-caramel" />
             <h2 className="font-heading font-bold text-lg text-brand-chocolate">
               {t('orderConfirm.itemsTitle')}
             </h2>
           </div>
-          <span className="text-xs text-brand-taupe">
+          <span className="text-[13px] text-brand-taupe">
             Order #{order.public_code}
           </span>
         </div>
@@ -581,12 +583,12 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         {/* Items List */}
         <div className="space-y-3 divide-y divide-brand-cream">
           {order.items?.map((item, idx) => (
-            <div key={idx} className="pt-3 first:pt-0 flex justify-between items-center text-xs sm:text-sm">
+            <div key={idx} className="pt-3 first:pt-0 flex justify-between items-center text-[13px] sm:text-sm">
               <div>
                 <p className="font-bold text-brand-chocolate">
                   {lang === 'bn' ? item.product_name_bn : item.product_name_en}
                 </p>
-                <p className="text-brand-taupe text-[11px] mt-0.5">
+                <p className="text-brand-taupe text-[13px] mt-0.5">
                   {item.quantity} × ৳{item.unit_price}
                   {(item.variant_label_en || item.variant_label_bn) && (
                     <span> • {lang === 'bn' ? item.variant_label_bn : item.variant_label_en}</span>
@@ -601,7 +603,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         </div>
 
         {/* Pricing Subtotal & Delivery */}
-        <div className="border-t border-brand-chocolate/10 pt-3 space-y-2 text-xs sm:text-sm text-brand-taupe">
+        <div className="border-t border-[#E7DFD6] pt-3 space-y-2 text-[13px] sm:text-sm text-brand-taupe">
           <div className="flex justify-between">
             <span>{t('cart.subtotal')}</span>
             <span className="font-semibold text-brand-chocolate">৳{order.subtotal}</span>
@@ -622,7 +624,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
               )}
             </span>
           </div>
-          <div className="border-t border-brand-chocolate/10 pt-2.5 flex justify-between font-heading text-lg font-bold text-brand-chocolate items-baseline">
+          <div className="border-t border-[#E7DFD6] pt-2.5 flex justify-between font-heading text-lg font-bold text-brand-chocolate items-baseline">
             <span>{t('cart.total')}</span>
             <span className="text-brand-caramel font-extrabold text-xl">৳{order.total_amount}</span>
           </div>
@@ -630,7 +632,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
 
         {/* Gift Order Card (if is_gift is true) */}
         {Boolean(order.is_gift) && (
-          <div className="bg-[#FFF9F6] border border-brand-caramel/25 rounded-2xl p-4 text-xs space-y-2">
+          <div className="bg-[#FFF9F6] border border-brand-caramel/25 rounded-2xl p-4 text-[13px] space-y-2">
             <div className="flex items-center gap-2 text-brand-caramel font-semibold">
               <Gift className="w-4 h-4" />
               <span>{lang === 'bn' ? 'বিশেষ উপহার প্যাকেজিং ও রিবন' : 'Special Gift Packaging & Silk Ribbon'}</span>
@@ -642,7 +644,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
               </p>
             )}
             {order.gift_message && (
-              <div className="bg-white/80 p-3 rounded-xl border border-brand-caramel/15 italic text-brand-chocolate">
+              <div className="bg-white/80 p-3 rounded-xl border border-brand-caramel/15 text-brand-chocolate">
                 "{order.gift_message}"
               </div>
             )}
@@ -650,7 +652,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
         )}
 
         {/* Delivery Details Summary Box */}
-        <div className="bg-brand-cream/50 rounded-2xl p-4 border border-brand-chocolate/10 text-xs space-y-2">
+        <div className="bg-brand-cream/50 rounded-2xl p-4 border border-[#E7DFD6] text-[13px] space-y-2">
           <p className="font-bold text-brand-chocolate flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-brand-caramel" />
             <span>{lang === 'bn' ? 'ডেলিভারি ঠিকানা:' : 'Delivery Destination:'}</span>
@@ -662,7 +664,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
             {order.delivery_address}, {order.area_landmark}
           </p>
           {order.delivery_instructions && (
-            <p className="text-brand-taupe italic">
+            <p className="text-brand-taupe">
               Note: {order.delivery_instructions}
             </p>
           )}

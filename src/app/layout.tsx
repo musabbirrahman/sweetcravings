@@ -3,6 +3,7 @@ import './globals.css';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { CatalogProvider } from '@/context/CatalogContext';
 import { CartProvider } from '@/context/CartContext';
+import DialogProvider from '@/components/DialogProvider';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CartDrawer from '@/components/CartDrawer';
@@ -57,7 +58,7 @@ export default function RootLayout({
   return (
     <html lang="bn">
       <head>
-        <meta name="theme-color" content="#2C1E19" />
+        <meta name="theme-color" content="#221A14" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <script
@@ -65,10 +66,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-screen flex flex-col bg-brand-cream text-brand-chocolate antialiased selection:bg-brand-caramel selection:text-white">
+      <body className="min-h-screen flex flex-col bg-brand-cream text-brand-chocolate antialiased selection:bg-brand-chocolate selection:text-white">
         <LanguageProvider>
           <CatalogProvider>
           <CartProvider>
+            <DialogProvider>
             <Navbar />
             <main className="flex-1">
               {children}
@@ -78,6 +80,7 @@ export default function RootLayout({
             <FloatingWhatsAppButton />
             <InstallPwaBanner />
             <Footer />
+            </DialogProvider>
           </CartProvider>
           </CatalogProvider>
         </LanguageProvider>

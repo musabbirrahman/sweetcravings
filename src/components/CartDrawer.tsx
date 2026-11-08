@@ -52,13 +52,13 @@ export default function CartDrawer() {
         <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col">
           
           {/* Drawer Header */}
-          <div className="p-5 border-b border-brand-chocolate/10 flex items-center justify-between bg-[#FAF7F2]">
+          <div className="p-5 border-b border-[#E7DFD6] flex items-center justify-between bg-[#FAF7F2]">
             <div className="flex items-center gap-2.5">
               <ShoppingBag className="w-5 h-5 text-brand-caramel" />
               <h2 className="font-heading text-lg font-semibold text-brand-chocolate">
                 {t('cart.title')}
               </h2>
-              <span className="bg-brand-caramel/10 text-brand-caramel text-xs px-2.5 py-0.5 rounded-full font-bold">
+              <span className="bg-brand-caramel/10 text-brand-caramel text-[13px] px-2.5 py-0.5 rounded-full font-bold">
                 {items.length}
               </span>
             </div>
@@ -73,8 +73,8 @@ export default function CartDrawer() {
 
           {/* Dynamic Free Delivery Progress Bar */}
           {subtotal > 0 && (
-            <div className="bg-[#F7EFE8]/70 px-5 py-3 border-b border-brand-chocolate/10 space-y-2">
-              <div className="flex items-center justify-between text-xs">
+            <div className="bg-[#F7EFE8]/70 px-5 py-3 border-b border-[#E7DFD6] space-y-2">
+              <div className="flex items-center justify-between text-[13px]">
                 <span className="flex items-center gap-1.5 font-medium text-brand-chocolate">
                   <Sparkles className="w-4 h-4 text-brand-caramel shrink-0" />
                   {remainingForFreeDelivery > 0 ? (
@@ -87,14 +87,14 @@ export default function CartDrawer() {
                     </span>
                   )}
                 </span>
-                <span className="font-mono text-[11px] font-semibold text-brand-taupe">
+                <span className="font-mono text-[13px] font-semibold text-brand-taupe">
                   {progressPercent}%
                 </span>
               </div>
               <div className="w-full bg-brand-chocolate/5 h-2 rounded-full overflow-hidden">
                 <div 
                   className={`h-full transition-all duration-500 rounded-full ${
-                    remainingForFreeDelivery === 0 ? 'bg-brand-forest' : 'bg-brand-caramel'
+                    remainingForFreeDelivery === 0 ? 'bg-brand-forest' : 'bg-brand-chocolate'
                   }`}
                   style={{ width: `${progressPercent}%` }}
                 />
@@ -106,20 +106,20 @@ export default function CartDrawer() {
           <div className="flex-1 overflow-y-auto p-5 space-y-3.5">
             {items.length === 0 ? (
               <div className="text-center py-20 space-y-4">
-                <div className="w-20 h-20 mx-auto bg-brand-cream rounded-3xl flex items-center justify-center text-brand-caramel border border-brand-chocolate/10">
+                <div className="w-20 h-20 mx-auto bg-brand-cream rounded-3xl flex items-center justify-center text-brand-caramel border border-[#E7DFD6]">
                   <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
                 </div>
                 <div>
                   <h3 className="font-heading text-lg font-bold text-brand-chocolate">
                     {t('cart.empty')}
                   </h3>
-                  <p className="text-xs text-brand-taupe mt-1 max-w-xs mx-auto leading-relaxed">
+                  <p className="text-[13px] text-brand-taupe mt-1 max-w-xs mx-auto leading-relaxed">
                     {t('cart.emptyDesc')}
                   </p>
                 </div>
                 <button
                   onClick={() => setIsCartOpen(false)}
-                  className="inline-block bg-brand-chocolate text-brand-cream text-xs font-bold px-6 py-3 rounded-full hover:bg-brand-chocolate transition-all btn-press shadow-soft"
+                  className="inline-block bg-brand-chocolate text-brand-cream text-[13px] font-bold px-6 py-3 rounded-full hover:bg-brand-chocolate transition-all btn-press shadow-soft"
                 >
                   {t('cart.explore')}
                 </button>
@@ -128,10 +128,10 @@ export default function CartDrawer() {
               items.map((item, idx) => (
                 <div 
                   key={`${item.productId}-${item.variantId || 'base'}-${idx}`}
-                  className="flex gap-3.5 bg-brand-cream/30 border border-brand-chocolate/10 rounded-2xl p-3.5 shadow-sm hover:border-brand-caramel/30 transition-colors"
+                  className="flex gap-3.5 bg-brand-cream/30 border border-[#E7DFD6] rounded-2xl p-3.5 shadow-sm hover:border-brand-caramel/30 transition-colors"
                 >
                   {/* Item Image */}
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-brand-cream border border-brand-chocolate/10">
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-brand-cream border border-[#E7DFD6]">
                     <Image 
                       src={item.imageUrl || '/sweet-cravings-logo.jpg'} 
                       alt={item.name_en} 
@@ -156,7 +156,7 @@ export default function CartDrawer() {
                     </div>
 
                     {(item.variantLabel_en || item.variantLabel_bn) && (
-                      <p className="text-[11px] text-brand-caramel font-semibold mt-0.5">
+                      <p className="text-[13px] text-brand-caramel font-semibold mt-0.5">
                         {lang === 'bn' ? item.variantLabel_bn : item.variantLabel_en}
                       </p>
                     )}
@@ -167,14 +167,14 @@ export default function CartDrawer() {
                       </span>
 
                       {/* Stepper */}
-                      <div className="flex items-center border border-brand-chocolate/10 bg-white rounded-xl overflow-hidden shadow-sm">
+                      <div className="flex items-center border border-[#E7DFD6] bg-white rounded-xl overflow-hidden shadow-sm">
                         <button
                           onClick={() => updateQuantity(item.productId, item.quantity - 1, item.variantId)}
                           className="px-2.5 py-1 hover:bg-brand-cream text-brand-chocolate transition-colors"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="px-2 text-xs font-bold text-brand-chocolate min-w-[20px] text-center">
+                        <span className="px-2 text-[13px] font-bold text-brand-chocolate min-w-[20px] text-center">
                           {item.quantity}
                         </span>
                         <button
@@ -193,8 +193,8 @@ export default function CartDrawer() {
 
           {/* Drawer Footer (Subtotal & Checkout CTA) */}
           {items.length > 0 && (
-            <div className="p-5 border-t border-brand-chocolate/10 bg-brand-cream/50 space-y-3.5">
-              <div className="space-y-2 text-xs sm:text-sm">
+            <div className="p-5 border-t border-[#E7DFD6] bg-brand-cream/50 space-y-3.5">
+              <div className="space-y-2 text-[13px] sm:text-sm">
                 <div className="flex justify-between text-brand-taupe">
                   <span>{t('cart.subtotal')}</span>
                   <span className="font-semibold text-brand-chocolate">৳{subtotal}</span>
@@ -211,7 +211,7 @@ export default function CartDrawer() {
                     )}
                   </span>
                 </div>
-                <div className="border-t border-brand-chocolate/10 pt-2.5 flex justify-between font-heading text-base font-bold text-brand-chocolate">
+                <div className="border-t border-[#E7DFD6] pt-2.5 flex justify-between font-heading text-base font-bold text-brand-chocolate">
                   <span>{t('cart.total')}</span>
                   <span className="text-brand-caramel font-extrabold text-xl">৳{totalAmount}</span>
                 </div>
@@ -220,7 +220,7 @@ export default function CartDrawer() {
               <Link
                 href="/checkout"
                 onClick={() => setIsCartOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-4 px-6 rounded-2xl font-bold text-sm shadow-card hover:shadow-card-hover transition-all btn-press"
+                className="w-full flex items-center justify-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white py-4 px-6 rounded-2xl font-bold text-sm shadow-card hover:shadow-card-hover transition-all btn-press"
               >
                 <span>{t('cart.checkout')}</span>
                 <ArrowRight className="w-4 h-4" />

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { Order, OrderStatus, PaymentStatus } from '@/lib/types';
+import { useConfirm, useToast } from '@/components/DialogProvider';
 import { 
   Search, 
   Phone, 
@@ -41,6 +42,8 @@ function AdminOrdersContent() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const fetchOrders = () => {
     fetch('/api/orders')
@@ -75,10 +78,10 @@ function AdminOrdersContent() {
       if (data.success) {
         fetchOrders();
       } else {
-        alert(data.error || 'Failed to update order');
+        toast(data.error || 'Failed to update order', 'error');
       }
     } catch {
-      alert('Error updating order');
+      toast('Error updating order', 'error');
     } finally {
       setUpdatingId(null);
     }
@@ -132,7 +135,7 @@ Sweet Cravings Kitchen`;
           <h1 className="font-heading text-2xl font-bold text-brand-chocolate">
             {t('admin.tabOrders')}
           </h1>
-          <p className="text-xs text-brand-taupe">
+          <p className="text-sm text-brand-taupe">
             {orders.length} total orders recorded in Sweet Cravings database
           </p>
         </div>
@@ -145,7 +148,7 @@ Sweet Cravings Kitchen`;
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search code, name, phone..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl border border-brand-chocolate/10 bg-white text-xs focus:outline-none focus:border-brand-caramel shadow-soft"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E7DFD6] bg-white text-sm focus:outline-none focus:border-brand-caramel shadow-soft"
           />
         </div>
       </div>
@@ -156,10 +159,10 @@ Sweet Cravings Kitchen`;
           <button
             key={f.id}
             onClick={() => setSelectedStatus(f.id)}
-            className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-sm font-semibold transition-all ${
               selectedStatus === f.id
                 ? 'bg-brand-chocolate text-brand-cream shadow-soft'
-                : 'bg-white border border-brand-chocolate/10 text-brand-taupe hover:text-brand-chocolate'
+                : 'bg-white border border-[#E7DFD6] text-brand-taupe hover:text-brand-chocolate'
             }`}
           >
             {lang === 'bn' ? f.labelBn : f.labelEn}
@@ -173,7 +176,7 @@ Sweet Cravings Kitchen`;
           Loading orders...
         </div>
       ) : filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-brand-chocolate/10 p-12 text-center text-brand-taupe shadow-soft">
+        <div className="bg-white rounded-2xl border border-[#E7DFD6] p-12 text-center text-brand-taupe shadow-soft">
           <p className="text-sm font-semibold">No orders found.</p>
         </div>
       ) : (
@@ -186,39 +189,39 @@ Sweet Cravings Kitchen`;
             return (
               <div
                 key={ord.id}
-                className="bg-white rounded-2xl border border-brand-chocolate/10 shadow-soft p-5 space-y-4 hover:border-brand-caramel/40 transition-colors"
+                className="bg-white rounded-2xl border border-[#E7DFD6] shadow-soft p-5 space-y-4 hover:border-brand-caramel/40 transition-colors"
               >
                 {/* Order Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-chocolate/10 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E7DFD6] pb-3">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-base font-bold text-brand-chocolate">
                       #{ord.public_code}
                     </span>
-                    <span className="text-[11px] text-brand-taupe font-mono">
+                    <span className="text-sm text-brand-taupe font-mono">
                       {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     {/* Order Status Badge */}
-                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                    <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       ord.order_status === 'new'
-                        ? 'bg-brand-cream text-brand-caramel border border-brand-chocolate/10'
+                        ? 'bg-brand-cream text-brand-caramel border border-[#E7DFD6]'
                         : ord.order_status === 'completed'
                         ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/25'
                         : ord.order_status === 'cancelled'
                         ? 'bg-brand-caramel/10 text-brand-chocolate border border-brand-chocolate/20'
-                        : 'bg-brand-cream text-brand-chocolate border border-brand-chocolate/10'
+                        : 'bg-brand-cream text-brand-chocolate border border-[#E7DFD6]'
                     }`}>
                       {ord.order_status.replace(/_/g, ' ')}
                     </span>
 
                     {/* Payment Status Badge */}
-                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                    <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                       ord.payment_status === 'confirmed'
                         ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/25'
                         : ord.payment_status === 'submitted'
-                        ? 'bg-brand-cream text-brand-caramel border border-brand-chocolate/10'
+                        ? 'bg-brand-cream text-brand-caramel border border-[#E7DFD6]'
                         : 'bg-brand-cream text-brand-taupe'
                     }`}>
                       {ord.payment_method.toUpperCase()} • {ord.payment_status}
@@ -227,21 +230,21 @@ Sweet Cravings Kitchen`;
                 </div>
 
                 {/* Customer & Location */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-brand-chocolate">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-brand-chocolate">
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-sm text-brand-chocolate">{ord.customer_name}</p>
                       {ord.completed_orders_count !== undefined && (
                         ord.completed_orders_count >= 5 ? (
-                          <span className="text-[10px] font-bold bg-brand-caramel/20 text-brand-caramel px-2 py-0.5 rounded-full border border-brand-caramel/30 flex items-center gap-0.5">
+                          <span className="text-sm font-bold bg-brand-caramel/20 text-brand-caramel px-2 py-0.5 rounded-full border border-brand-caramel/30 flex items-center gap-0.5">
                             👑 VIP ({ord.completed_orders_count} orders)
                           </span>
                         ) : ord.completed_orders_count > 0 ? (
-                          <span className="text-[10px] font-semibold bg-brand-cream text-brand-chocolate px-2 py-0.5 rounded-full border border-brand-chocolate/10">
+                          <span className="text-sm font-semibold bg-brand-cream text-brand-chocolate px-2 py-0.5 rounded-full border border-[#E7DFD6]">
                             ⭐ {ord.completed_orders_count} orders
                           </span>
                         ) : (
-                          <span className="text-[10px] font-medium bg-brand-forest/10 text-brand-forest px-1.5 py-0.5 rounded-full">
+                          <span className="text-sm font-medium bg-brand-forest/10 text-brand-forest px-1.5 py-0.5 rounded-full">
                             🌱 1st Order
                           </span>
                         )
@@ -267,7 +270,7 @@ Sweet Cravings Kitchen`;
                       </span>
                     </p>
                     {ord.delivery_instructions && (
-                      <p className="text-brand-taupe italic mt-1">
+                      <p className="text-brand-taupe mt-1">
                         Note: {ord.delivery_instructions}
                       </p>
                     )}
@@ -275,13 +278,13 @@ Sweet Cravings Kitchen`;
 
                   {/* Gift Order Details */}
                   {Boolean(ord.is_gift) && (
-                    <div className="sm:col-span-2 bg-gradient-to-r from-brand-caramel/10 via-brand-cream to-brand-cream border border-brand-caramel/30 rounded-xl p-3 text-xs space-y-1.5">
+                    <div className="sm:col-span-2 bg-gradient-to-r from-brand-caramel/10 via-brand-cream to-brand-cream border border-brand-caramel/30 rounded-xl p-3 text-sm space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 text-brand-caramel font-bold">
                           <Gift className="w-4 h-4 text-brand-caramel" />
                           <span>🎁 SURPRISE GIFT ORDER</span>
                         </div>
-                        <span className="text-[10px] bg-brand-caramel/20 text-brand-caramel px-2 py-0.5 rounded-full font-semibold">
+                        <span className="text-sm bg-brand-caramel/20 text-brand-caramel px-2 py-0.5 rounded-full font-semibold">
                           Complimentary Luxury Ribbon & Note
                         </span>
                       </div>
@@ -296,7 +299,7 @@ Sweet Cravings Kitchen`;
                         </div>
                       </div>
                       {ord.gift_message && (
-                        <div className="bg-white/80 rounded-lg p-2.5 border border-brand-caramel/25 text-brand-chocolate italic font-serif text-[13px] leading-relaxed">
+                        <div className="bg-white/80 rounded-lg p-2.5 border border-brand-caramel/25 text-brand-chocolate font-serif text-sm leading-relaxed">
                           &ldquo;{ord.gift_message}&rdquo;
                         </div>
                       )}
@@ -305,7 +308,7 @@ Sweet Cravings Kitchen`;
                 </div>
 
                 {/* Items snapshot */}
-                <div className="bg-brand-cream/50 rounded-xl p-3 text-xs space-y-1.5 border border-brand-chocolate/10">
+                <div className="bg-brand-cream/50 rounded-xl p-3 text-sm space-y-1.5 border border-[#E7DFD6]">
                   {ord.items?.map((it) => (
                     <div key={it.id} className="flex justify-between items-center text-brand-chocolate">
                       <span>
@@ -321,7 +324,7 @@ Sweet Cravings Kitchen`;
                       <span className="font-mono font-bold">-৳{ord.discount_amount}</span>
                     </div>
                   ) : null}
-                  <div className="border-t border-brand-chocolate/10 pt-1.5 flex justify-between font-bold text-brand-chocolate text-xs">
+                  <div className="border-t border-[#E7DFD6] pt-1.5 flex justify-between font-bold text-brand-chocolate text-sm">
                     <span>Total (incl. delivery ৳{ord.delivery_fee}):</span>
                     <span className="text-brand-caramel text-sm font-mono font-extrabold">৳{ord.total_amount}</span>
                   </div>
@@ -329,10 +332,10 @@ Sweet Cravings Kitchen`;
 
                 {/* TrxID if submitted */}
                 {ord.payment_submissions && ord.payment_submissions.length > 0 && (
-                  <div className="bg-brand-cream/90 border border-brand-chocolate/10 p-2.5 rounded-xl text-xs space-y-1">
+                  <div className="bg-brand-cream/90 border border-[#E7DFD6] p-2.5 rounded-xl text-sm space-y-1">
                     <span className="font-bold text-brand-chocolate block">Customer Submitted TrxID:</span>
                     {ord.payment_submissions.map((sub) => (
-                      <div key={sub.id} className="flex justify-between font-mono text-[11px] text-brand-chocolate">
+                      <div key={sub.id} className="flex justify-between font-mono text-sm text-brand-chocolate">
                         <span>TrxID: <strong>{sub.transaction_ref}</strong> ({sub.provider})</span>
                         <span className="capitalize text-brand-caramel font-bold">{sub.review_state}</span>
                       </div>
@@ -341,13 +344,13 @@ Sweet Cravings Kitchen`;
                 )}
 
                 {/* Action Controls for Sister / Admin */}
-                <div className="border-t border-brand-chocolate/10 pt-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="border-t border-[#E7DFD6] pt-3 flex flex-wrap items-center justify-between gap-3">
                   
                   {/* Direct Contact Buttons */}
                   <div className="flex items-center gap-2">
                     <a
                       href={`tel:${ord.customer_phone}`}
-                      className="inline-flex items-center gap-1.5 bg-brand-cream hover:bg-brand-cream text-brand-chocolate border border-brand-chocolate/10 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 bg-brand-cream hover:bg-brand-cream text-brand-chocolate border border-[#E7DFD6] px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
                     >
                       <Phone className="w-3.5 h-3.5 text-brand-taupe" />
                       <span>{t('admin.actionCall')}</span>
@@ -356,7 +359,7 @@ Sweet Cravings Kitchen`;
                       href={waLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-brand-forest/10 hover:bg-brand-forest/15 text-brand-forest border border-brand-forest/25 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 bg-brand-forest/10 hover:bg-brand-forest/15 text-brand-forest border border-brand-forest/25 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-brand-forest" />
                       <span>{t('admin.actionWhatsApp')}</span>
@@ -365,7 +368,7 @@ Sweet Cravings Kitchen`;
                       href={generateRiderWhatsAppUrl(ord)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-brand-caramel/10 hover:bg-brand-caramel/20 text-brand-caramel border border-brand-caramel/30 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 bg-brand-caramel/10 hover:bg-brand-caramel/20 text-brand-caramel border border-brand-caramel/30 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
                       title="Send dispatch slip to delivery rider via WhatsApp"
                     >
                       <Bike className="w-3.5 h-3.5 text-brand-caramel" />
@@ -380,7 +383,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'accepted', undefined, 'Order confirmed by kitchen')}
-                        className="bg-brand-forest hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft"
+                        className="bg-brand-forest hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all shadow-soft"
                       >
                         Accept Order
                       </button>
@@ -391,7 +394,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'preparing', undefined, 'Baking started')}
-                        className="bg-brand-caramel hover:bg-brand-caramel text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-chocolate hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <ChefHat className="w-3.5 h-3.5" />
                         <span>Start Baking</span>
@@ -403,7 +406,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'ready', undefined, 'Dessert packed & ready')}
-                        className="bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <Check className="w-3.5 h-3.5" />
                         <span>Mark Ready</span>
@@ -415,7 +418,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'out_for_delivery', undefined, 'Handed to delivery partner')}
-                        className="bg-brand-caramel hover:bg-brand-caramel text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-chocolate hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <Truck className="w-3.5 h-3.5" />
                         <span>Dispatch for Delivery</span>
@@ -427,7 +430,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, 'completed', ord.payment_method === 'cod' ? 'confirmed' : undefined, 'Delivered & fulfilled')}
-                        className="bg-brand-forest hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1"
+                        className="bg-brand-forest hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all shadow-soft flex items-center gap-1"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Mark Delivered</span>
@@ -439,7 +442,7 @@ Sweet Cravings Kitchen`;
                       <button
                         disabled={isUpdating}
                         onClick={() => handleUpdateStatus(ord.id, undefined, 'confirmed', 'Admin confirmed wallet receipt')}
-                        className="bg-brand-forest/10 hover:bg-brand-forest/20 text-brand-forest border border-brand-forest/25 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                        className="bg-brand-forest/10 hover:bg-brand-forest/20 text-brand-forest border border-brand-forest/25 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors"
                       >
                         ✓ Confirm Payment
                       </button>
@@ -449,13 +452,19 @@ Sweet Cravings Kitchen`;
                     {ord.order_status !== 'completed' && ord.order_status !== 'cancelled' && (
                       <button
                         disabled={isUpdating}
-                        onClick={() => {
-                          const reason = prompt('Please enter cancellation reason:');
-                          if (reason) {
-                            handleUpdateStatus(ord.id, 'cancelled', undefined, `Cancelled: ${reason}`);
+                        onClick={async () => {
+                          const reason = await confirm({
+                            title: 'Cancel this order?',
+                            message: 'This marks the order cancelled. It cannot be undone.',
+                            confirmLabel: 'Cancel order',
+                            destructive: true,
+                            input: { label: 'Cancellation reason', placeholder: 'e.g. Customer asked to cancel', required: true },
+                          });
+                          if (typeof reason === 'string' && reason.trim()) {
+                            handleUpdateStatus(ord.id, 'cancelled', undefined, `Cancelled: ${reason.trim()}`);
                           }
                         }}
-                        className="text-brand-taupe/60 hover:text-brand-chocolate p-1.5 rounded text-xs transition-colors"
+                        className="text-brand-taupe/60 hover:text-brand-chocolate p-1.5 rounded text-sm transition-colors"
                         title="Cancel Order"
                       >
                         <X className="w-4 h-4" />

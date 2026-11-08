@@ -43,10 +43,10 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-brand-cream flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-brand-chocolate/10 shadow-soft space-y-6 text-center">
+      <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-[#E7DFD6] shadow-soft space-y-6 text-center">
         
         {/* Brand Logo */}
-        <div className="relative w-24 h-24 mx-auto rounded-full overflow-hidden border border-brand-chocolate/10 shadow-sm bg-brand-cream">
+        <div className="relative w-24 h-24 mx-auto rounded-full overflow-hidden border border-[#E7DFD6] shadow-sm bg-brand-cream">
           <Image
             src="/sweet-cravings-logo.jpg"
             alt="Sweet Cravings"
@@ -60,13 +60,13 @@ export default function AdminLoginPage() {
           <h1 className="font-heading text-2xl font-semibold text-brand-chocolate">
             {t('admin.loginTitle')}
           </h1>
-          <p className="text-xs text-brand-taupe mt-1 leading-relaxed">
+          <p className="text-sm text-brand-taupe mt-1 leading-relaxed">
             {t('admin.loginSubtitle')}
           </p>
         </div>
 
         {error && (
-          <div className="bg-brand-caramel/10 border border-brand-chocolate/20 text-brand-chocolate text-xs p-3 rounded-xl flex items-center justify-center gap-1.5">
+          <div className="bg-brand-caramel/10 border border-brand-chocolate/20 text-brand-chocolate text-sm p-3 rounded-xl flex items-center justify-center gap-1.5">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -82,14 +82,14 @@ export default function AdminLoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('admin.passwordPlaceholder')}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/50 focus:bg-white focus:outline-none focus:border-brand-caramel text-center tracking-widest text-lg font-mono font-bold text-brand-chocolate"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E7DFD6] bg-brand-cream/50 focus:bg-white focus:outline-none focus:border-brand-caramel text-center tracking-widest text-lg font-mono font-bold text-brand-chocolate"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft transition-all"
+            className="w-full flex items-center justify-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft transition-all"
           >
             <span>{loading ? 'Verifying...' : t('admin.loginBtn')}</span>
             <ArrowRight className="w-4 h-4" />

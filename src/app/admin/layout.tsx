@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { useCatalog } from '@/context/CatalogContext';
+import { useToast } from '@/components/DialogProvider';
 import { 
   Bell, 
   ShoppingBag, 
@@ -26,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const [isStorePaused, setIsStorePaused] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(false);
+  const toast = useToast();
   const isLoginPage = pathname === '/admin/login';
 
   // Store-paused flag comes from the shared catalogue (fetched once per
@@ -52,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setIsStorePaused(newStatus);
       }
     } catch {
-      alert('Failed to update kitchen status');
+      toast('Failed to update kitchen status', 'error');
     } finally {
       setLoadingStatus(false);
     }
@@ -83,14 +85,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           
           <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9 rounded-full overflow-hidden border border-brand-chocolate/10 shrink-0 bg-brand-cream">
+            <div className="relative w-9 h-9 rounded-full overflow-hidden border border-[#E7DFD6] shrink-0 bg-brand-cream">
               <Image src="/sweet-cravings-logo.jpg" alt="Sweet Cravings" width={72} height={72} className="object-cover w-full h-full" />
             </div>
             <div>
               <span className="font-heading font-bold text-base text-brand-cream tracking-tight block">
                 Sweet Cravings Admin
               </span>
-              <span className="text-[10px] text-brand-cream/70 font-medium block">
+              <span className="text-sm text-brand-cream/70 font-medium block">
                 {lang === 'bn' ? 'অপারেটর প্যানেল • রাজশাহী' : 'Operator Panel • Rajshahi'}
               </span>
             </div>
@@ -101,9 +103,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button
               onClick={handleTogglePause}
               disabled={loadingStatus}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all shadow-sm ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm ${
                 isStorePaused
-                  ? 'bg-brand-caramel hover:bg-brand-chocolate text-white animate-pulse'
+                  ? 'bg-brand-chocolate hover:bg-brand-chocolate text-white animate-pulse'
                   : 'bg-brand-forest hover:bg-brand-chocolate text-white'
               }`}
               title="Click to toggle kitchen order acceptance"
@@ -118,7 +120,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               href="/"
               target="_blank"
-              className="hidden sm:flex items-center gap-1 text-xs text-brand-cream/90 hover:text-white px-2 py-1 rounded transition-colors"
+              className="hidden sm:flex items-center gap-1 text-sm text-brand-cream/90 hover:text-white px-2 py-1 rounded transition-colors"
             >
               <span>{lang === 'bn' ? 'দোকান' : 'Storefront'}</span>
               <ExternalLink className="w-3 h-3" />
@@ -144,7 +146,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors border-b-2 ${
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors border-b-2 ${
                   isActive
                     ? 'border-brand-caramel text-brand-cream bg-brand-chocolate/40'
                     : 'border-transparent text-brand-cream/70 hover:text-white'

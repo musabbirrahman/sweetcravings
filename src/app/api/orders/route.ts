@@ -14,6 +14,7 @@ import { Product, ProductVariant } from '@/lib/types';
 import { verifyAdminSession } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { notifyKitchenNewOrder } from '@/lib/notifications';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export const dynamic = 'force-dynamic';
 
@@ -403,8 +404,17 @@ export async function POST(request: Request) {
       throw lastTxError;
     }
 
-    // Non-blocking Kitchen Instant Notification Dispatch
-    notifyKitchenNewOrder({
+    // Kitchen notification — attached to the Worker's lifetime so it
+    // actually runs. The old code fired notifyKitchenNewOrder() without
+    // awaiting it and returned the response immediately; on Cloudflare
+    // Workers the runtime may freeze/suspend the Worker once the response
+    // is sent, so the in-flight Telegram fetch often never completed
+    // (the test endpoint awaits it, which is why the test alert worked
+    // and real orders did not). waitUntil keeps checkout fast AND lets
+    // the notification finish. Outside Workers (local `next start`) the
+    // Cloudflare context does not exist, so fall back to awaiting the
+    // dispatch with a timeout — a slow Telegram must never hang checkout.
+    const notificationPromise = notifyKitchenNewOrder({
       order: {
         public_code: publicCode,
         customer_name: customerName.trim(),
@@ -424,7 +434,29 @@ export async function POST(request: Request) {
         coupon_code: appliedCouponCode,
       },
       items: validatedItems,
-    }).catch((err) => console.error('Kitchen notification dispatch failed:', err));
+    })
+      .then((result) => {
+        if (result.success) {
+          console.log(`Kitchen notification dispatched for order ${publicCode} via: ${result.methods.join(', ')}`);
+        } else {
+          console.warn(`Kitchen notification for order ${publicCode} sent via no channel (check Telegram/SMS settings).`);
+        }
+      })
+      .catch((err) => console.error('Kitchen notification dispatch failed:', err));
+    let notificationAttached = false;
+    try {
+      getCloudflareContext().ctx.waitUntil(notificationPromise);
+      notificationAttached = true;
+    } catch {
+      // Not running on Cloudflare Workers (local dev / plain Node) —
+      // fall through to the await-with-timeout below.
+    }
+    if (!notificationAttached) {
+      await Promise.race([
+        notificationPromise,
+        new Promise((resolve) => setTimeout(resolve, 8000)),
+      ]);
+    }
 
     return NextResponse.json({
       success: true,

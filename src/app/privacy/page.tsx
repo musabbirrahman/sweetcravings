@@ -13,12 +13,12 @@ export default function PrivacyPage() {
       <div>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-caramel hover:underline mb-4"
+          className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-caramel hover:underline mb-4"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>{lang === 'bn' ? 'হোমে ফিরে যান' : 'Back to Home'}</span>
         </Link>
-        <h1 className="font-heading text-3xl font-bold text-brand-chocolate">
+        <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
           {t('privacy.title')}
         </h1>
         <p className="text-sm text-brand-taupe mt-1">
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         </p>
       </div>
 
-      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-4 text-sm text-brand-taupe leading-relaxed">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-[#E7DFD6] shadow-soft space-y-4 text-sm text-brand-taupe leading-relaxed">
         <div className="flex items-center gap-2 text-brand-forest font-bold">
           <ShieldCheck className="w-5 h-5" />
           <span>Sweet Cravings Privacy Commitment</span>
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
         <h3 className="font-heading font-bold text-brand-chocolate text-base pt-2">
           {lang === 'bn' ? 'সংগৃহীত তথ্যসমূহ:' : 'Data We Collect:'}
         </h3>
-        <ul className="list-disc list-inside space-y-1 text-xs sm:text-sm pl-2">
+        <ul className="list-disc list-inside space-y-1 text-[13px] sm:text-sm pl-2">
           <li>{lang === 'bn' ? 'গ্রাহকের পুরো নাম' : 'Customer Name'}</li>
           <li>{lang === 'bn' ? 'ডেলিভারি সমন্বয়ের জন্য ফোন ও হোয়াটসঅ্যাপ নম্বর' : 'Phone & WhatsApp number for order coordination'}</li>
           <li>{lang === 'bn' ? 'রাজশাহীর ডেলিভারি ঠিকানা ও ল্যান্ডমার্ক' : 'Rajshahi delivery address & landmark'}</li>
@@ -47,7 +47,7 @@ export default function PrivacyPage() {
         <h3 className="font-heading font-bold text-brand-chocolate text-base pt-2">
           {lang === 'bn' ? 'তথ্য অপসারণ অনুরোধ:' : 'Data Deletion Requests:'}
         </h3>
-        <p className="text-xs sm:text-sm">
+        <p className="text-[13px] sm:text-sm">
           {lang === 'bn'
             ? 'আপনি চাইলে যেকোনো সময় আমাদের অফিশিয়াল হোয়াটসঅ্যাপে মেসেজ পাঠিয়ে আপনার অতীত অর্ডারের রেকর্ড মুছে ফেলার অনুরোধ জানাতে পারেন।'
             : 'You can request deletion or anonymization of your past order history at any time by messaging our official WhatsApp.'}

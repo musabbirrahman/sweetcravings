@@ -291,7 +291,7 @@ export default function CheckoutPage() {
           <Truck className="w-10 h-10 stroke-[1.5]" />
         </div>
         <div className="space-y-2">
-          <h1 className="font-heading text-3xl font-bold text-brand-chocolate">
+          <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
             {lang === 'bn' ? 'আপনার মিষ্টির ব্যাগ খালি' : 'Your Dessert Bag is Empty'}
           </h1>
           <p className="text-sm text-brand-taupe max-w-sm mx-auto">
@@ -303,7 +303,7 @@ export default function CheckoutPage() {
         <div>
           <Link
             href="/menu"
-            className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white font-bold py-3.5 px-8 rounded-full shadow-soft hover:shadow-soft-hover transition-all"
+            className="inline-flex items-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold py-3.5 px-8 rounded-full shadow-soft hover:shadow-soft-hover transition-all"
           >
             <Sparkles className="w-4 h-4" />
             <span>{lang === 'bn' ? 'মেনু দেখুন' : 'Explore Fresh Sweets'}</span>
@@ -317,9 +317,9 @@ export default function CheckoutPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-14 space-y-8 font-sans">
       
       {/* Checkout Progress Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-brand-chocolate/10 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7DFD6] pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-brand-caramel mb-1">
+          <div className="flex items-center gap-2 text-[13px] font-semibold text-brand-caramel mb-1">
             <Link href="/menu" className="flex items-center gap-1 hover:underline text-brand-taupe">
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>{lang === 'bn' ? 'মেনুতে ফিরুন' : 'Back to Menu'}</span>
@@ -327,25 +327,25 @@ export default function CheckoutPage() {
             <span>/</span>
             <span>{lang === 'bn' ? 'নিরাপদ চেকআউট' : 'Secure Checkout'}</span>
           </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-brand-chocolate">
+          <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
             {lang === 'bn' ? 'অর্ডার ফাইনাল করুন' : 'Complete Your Order'}
           </h1>
         </div>
 
         {/* 3 Step Pill Indicator */}
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-[13px]">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-chocolate text-brand-cream font-semibold shadow-soft">
-            <span className="w-4 h-4 rounded-full bg-brand-caramel text-white text-[10px] flex items-center justify-center font-bold">1</span>
+            <span className="w-4 h-4 rounded-full bg-brand-chocolate text-white text-[13px] flex items-center justify-center font-bold">1</span>
             <span>{lang === 'bn' ? 'ঠিকানা' : 'Delivery'}</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-brand-cream" />
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cream text-brand-chocolate font-semibold">
-            <span className="w-4 h-4 rounded-full bg-brand-chocolate/5 text-brand-chocolate text-[10px] flex items-center justify-center font-bold">2</span>
+            <span className="w-4 h-4 rounded-full bg-brand-chocolate/5 text-brand-chocolate text-[13px] flex items-center justify-center font-bold">2</span>
             <span>{lang === 'bn' ? 'পেমেন্ট' : 'Payment'}</span>
           </div>
           <ChevronRight className="w-3.5 h-3.5 text-brand-cream" />
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cream text-brand-taupe/60 font-medium">
-            <span className="w-4 h-4 rounded-full bg-brand-chocolate/5 text-brand-taupe text-[10px] flex items-center justify-center font-bold">3</span>
+            <span className="w-4 h-4 rounded-full bg-brand-chocolate/5 text-brand-taupe text-[13px] flex items-center justify-center font-bold">3</span>
             <span>{lang === 'bn' ? 'কনফার্ম' : 'Bake'}</span>
           </div>
         </div>
@@ -368,9 +368,9 @@ export default function CheckoutPage() {
         <div className="lg:col-span-7 space-y-6">
           
           {/* Step 1: Customer Info */}
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
-            <div className="flex items-center gap-2.5 border-b border-brand-chocolate/10 pb-3.5">
-              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-xs">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-[#E7DFD6] shadow-soft space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-[#E7DFD6] pb-3.5">
+              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-[13px]">
                 1
               </div>
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -380,7 +380,7 @@ export default function CheckoutPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                   {t('checkout.nameLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 <div className="relative">
@@ -391,13 +391,13 @@ export default function CheckoutPage() {
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     placeholder={t('checkout.namePlaceholder')}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                   {t('checkout.phoneLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 <div className="relative">
@@ -408,10 +408,10 @@ export default function CheckoutPage() {
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder={t('checkout.phonePlaceholder')}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all"
                   />
                 </div>
-                <p className="text-[11px] text-brand-taupe mt-1">
+                <p className="text-[13px] text-brand-taupe mt-1">
                   {t('checkout.phoneHelp')}
                 </p>
               </div>
@@ -430,9 +430,9 @@ export default function CheckoutPage() {
           </div>
 
           {/* Step 2: Rajshahi Delivery Details */}
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
-            <div className="flex items-center gap-2.5 border-b border-brand-chocolate/10 pb-3.5">
-              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-xs">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-[#E7DFD6] shadow-soft space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-[#E7DFD6] pb-3.5">
+              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-[13px]">
                 2
               </div>
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -444,7 +444,7 @@ export default function CheckoutPage() {
               
               {/* Popular area chips for 1-click select */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                   {t('checkout.areaLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 
@@ -458,10 +458,10 @@ export default function CheckoutPage() {
                         key={popArea}
                         type="button"
                         onClick={() => setAreaLandmark(popArea)}
-                        className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
+                        className={`text-[13px] px-2.5 py-1 rounded-lg border transition-all ${
                           isSelected
-                            ? 'bg-brand-caramel text-white border-brand-caramel font-semibold shadow-xs'
-                            : 'bg-brand-cream/60 text-brand-chocolate hover:bg-brand-cream border-brand-chocolate/10'
+                            ? 'bg-brand-chocolate text-white border-brand-caramel font-semibold shadow-xs'
+                            : 'bg-brand-cream/60 text-brand-chocolate hover:bg-brand-cream border-[#E7DFD6]'
                         }`}
                       >
                         {shortName}
@@ -476,7 +476,7 @@ export default function CheckoutPage() {
                     required
                     value={areaLandmark}
                     onChange={(e) => setAreaLandmark(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate transition-all appearance-none cursor-pointer"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate transition-all appearance-none cursor-pointer"
                   >
                     <option value="">{t('checkout.areaSelectDefault')}</option>
                     {ALL_RAJSHAHI_AREAS.map((a) => (
@@ -488,7 +488,7 @@ export default function CheckoutPage() {
 
               {areaLandmark === 'Other Area in Rajshahi (অন্যান্য এলাকা)' && (
                 <div className="animate-fadeIn">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                  <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                     {lang === 'bn' ? 'এলাকার নাম লিখুন' : 'Specify Rajshahi Area'} <span className="text-brand-chocolate">*</span>
                   </label>
                   <input
@@ -497,13 +497,13 @@ export default function CheckoutPage() {
                     value={otherArea}
                     onChange={(e) => setOtherArea(e.target.value)}
                     placeholder={t('checkout.otherAreaPlaceholder')}
-                    className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate"
+                    className="w-full px-4 py-3 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                   {t('checkout.addressLabel')} <span className="text-brand-chocolate">*</span>
                 </label>
                 <textarea
@@ -512,13 +512,13 @@ export default function CheckoutPage() {
                   value={deliveryAddress}
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                   placeholder={t('checkout.addressPlaceholder')}
-                  className="w-full px-4 py-3 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50 transition-all resize-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                  <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                     {t('checkout.instructionsLabel')}
                   </label>
                   <input
@@ -526,12 +526,12 @@ export default function CheckoutPage() {
                     value={deliveryInstructions}
                     onChange={(e) => setDeliveryInstructions(e.target.value)}
                     placeholder={t('checkout.instructionsPlaceholder')}
-                    className="w-full px-4 py-2.5 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
+                  <label className="block text-[13px] font-bold uppercase tracking-wider text-brand-chocolate/80 mb-1.5">
                     {t('checkout.timeLabel')}
                   </label>
                   <div className="relative">
@@ -541,10 +541,10 @@ export default function CheckoutPage() {
                       value={requestedTime}
                       onChange={(e) => setRequestedTime(e.target.value)}
                       placeholder={t('checkout.timePlaceholder')}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-sm text-brand-chocolate placeholder:text-brand-taupe/50"
                     />
                   </div>
-                  <p className="text-[10px] text-brand-taupe mt-1">
+                  <p className="text-[13px] text-brand-taupe mt-1">
                     {t('checkout.timeHelp')}
                   </p>
                 </div>
@@ -554,7 +554,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Optional Gift & Surprise Delivery Module */}
-          <div className="bg-gradient-to-br from-white to-[#FDF9F5] p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-card space-y-4">
+          <div className="bg-gradient-to-br from-white to-[#FDF9F5] p-5 sm:p-7 rounded-3xl border border-[#E7DFD6] shadow-card space-y-4">
             <div className="flex items-center justify-between">
               <label 
                 htmlFor="gift-toggle"
@@ -567,7 +567,7 @@ export default function CheckoutPage() {
                   <span className="font-heading font-semibold text-sm sm:text-base text-brand-chocolate block">
                     {lang === 'bn' ? 'কাউকে উপহার বা সারপ্রাইজ পাঠাচ্ছেন?' : 'Sending as a Gift or Surprise?'}
                   </span>
-                  <span className="text-xs text-brand-taupe block">
+                  <span className="text-[13px] text-brand-taupe block">
                     {lang === 'bn' 
                       ? 'বিনামূল্যে সুন্দর ফিতা ও হাতে লেখা শুভেচ্ছা কার্ড যুক্ত করুন' 
                       : 'Complimentary silk ribbon & handwritten note card included'}
@@ -586,10 +586,10 @@ export default function CheckoutPage() {
             </div>
 
             {isGift && (
-              <div className="pt-3 border-t border-brand-chocolate/10 space-y-3.5 animate-fadeIn">
+              <div className="pt-3 border-t border-[#E7DFD6] space-y-3.5 animate-fadeIn">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1">
+                    <label className="block text-[13px] font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1">
                       {lang === 'bn' ? 'প্রাপকের নাম' : 'Recipient Name'}
                     </label>
                     <input
@@ -597,12 +597,12 @@ export default function CheckoutPage() {
                       value={recipientName}
                       onChange={(e) => setRecipientName(e.target.value)}
                       placeholder={lang === 'bn' ? 'যেমন: আয়েশা সিদ্দিকা' : 'e.g. Ayesha Siddika'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-brand-chocolate/10 bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7DFD6] bg-white focus:outline-none focus:border-brand-caramel text-[13px] sm:text-sm text-brand-chocolate"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1">
+                    <label className="block text-[13px] font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1">
                       {lang === 'bn' ? 'প্রাপকের ফোন নম্বর' : 'Recipient Phone (Optional)'}
                     </label>
                     <input
@@ -610,15 +610,15 @@ export default function CheckoutPage() {
                       value={recipientPhone}
                       onChange={(e) => setRecipientPhone(e.target.value)}
                       placeholder={lang === 'bn' ? '01XXXXXXXXX' : '01XXXXXXXXX'}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-brand-chocolate/10 bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7DFD6] bg-white focus:outline-none focus:border-brand-caramel text-[13px] sm:text-sm text-brand-chocolate"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1 flex items-center justify-between">
+                  <label className="block text-[13px] font-semibold uppercase tracking-wider text-brand-chocolate/80 mb-1 flex items-center justify-between">
                     <span>{lang === 'bn' ? 'হাতে লেখা শুভেচ্ছা বার্তা' : 'Handwritten Card Message'}</span>
-                    <span className="text-[10px] text-brand-taupe font-normal">
+                    <span className="text-[13px] text-brand-taupe font-normal">
                       {giftMessage.length}/150
                     </span>
                   </label>
@@ -630,9 +630,9 @@ export default function CheckoutPage() {
                     placeholder={lang === 'bn' 
                       ? 'যেমন: শুভ জন্মদিন প্রিয় বন্ধু! জীবনের প্রতিটি দিন মিষ্টি হোক...' 
                       : 'e.g. Happy Birthday! Wishing you a sweet day filled with joy & delicious treats...'}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-brand-chocolate/10 bg-white focus:outline-none focus:border-brand-caramel text-xs sm:text-sm text-brand-chocolate resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E7DFD6] bg-white focus:outline-none focus:border-brand-caramel text-[13px] sm:text-sm text-brand-chocolate resize-none"
                   />
-                  <p className="text-[10px] text-brand-caramel flex items-center gap-1 mt-1">
+                  <p className="text-[13px] text-brand-caramel flex items-center gap-1 mt-1">
                     <Sparkles className="w-3 h-3 shrink-0" />
                     <span>
                       {lang === 'bn' 
@@ -646,9 +646,9 @@ export default function CheckoutPage() {
           </div>
 
           {/* Step 3: Payment Method with Elevated Branded Cards */}
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-5">
-            <div className="flex items-center gap-2.5 border-b border-brand-chocolate/10 pb-3.5">
-              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-xs">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-[#E7DFD6] shadow-soft space-y-5">
+            <div className="flex items-center gap-2.5 border-b border-[#E7DFD6] pb-3.5">
+              <div className="w-7 h-7 rounded-full bg-brand-caramel/10 text-brand-caramel flex items-center justify-center font-bold text-[13px]">
                 3
               </div>
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
@@ -665,7 +665,7 @@ export default function CheckoutPage() {
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'cod'
                     ? 'border-brand-caramel bg-brand-caramel/10 shadow-soft ring-1 ring-brand-caramel/20'
-                    : 'border-brand-chocolate/10 hover:border-brand-caramel/40 bg-white'
+                    : 'border-[#E7DFD6] hover:border-brand-caramel/40 bg-white'
                 }`}
               >
                 <div className="pt-0.5">
@@ -683,11 +683,11 @@ export default function CheckoutPage() {
                       <Banknote className="w-4 h-4 text-brand-caramel" />
                       {t('checkout.codLabel')}
                     </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider bg-brand-cream px-2 py-0.5 rounded text-brand-taupe">
+                    <span className="text-[13px] font-bold uppercase tracking-wider bg-brand-cream px-2 py-0.5 rounded text-brand-taupe">
                       {lang === 'bn' ? 'জনপ্রিয়' : 'Standard'}
                     </span>
                   </div>
-                  <p className="text-xs text-brand-taupe mt-1">
+                  <p className="text-[13px] text-brand-taupe mt-1">
                     {t('checkout.codDesc')}
                   </p>
                 </div>
@@ -701,7 +701,7 @@ export default function CheckoutPage() {
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'bkash'
                     ? 'border-[#E2136E] bg-[#FFF5F8] shadow-soft ring-1 ring-[#E2136E]/20'
-                    : 'border-brand-chocolate/10 hover:border-[#E2136E]/40 bg-white'
+                    : 'border-[#E7DFD6] hover:border-[#E2136E]/40 bg-white'
                 }`}
               >
                 <div className="pt-0.5">
@@ -719,11 +719,11 @@ export default function CheckoutPage() {
                       <span className="w-2.5 h-2.5 rounded-full bg-[#E2136E] inline-block" />
                       {t('checkout.bkashLabel')}
                     </span>
-                    <span className="text-[10px] font-bold tracking-wider bg-[#E2136E]/10 text-[#E2136E] px-2 py-0.5 rounded-full">
+                    <span className="text-[13px] font-bold tracking-wider bg-[#E2136E]/10 text-[#E2136E] px-2 py-0.5 rounded-full">
                       Send Money
                     </span>
                   </div>
-                  <p className="text-xs text-brand-taupe mt-1">
+                  <p className="text-[13px] text-brand-taupe mt-1">
                     {t('checkout.bkashDesc')}
                   </p>
                 </div>
@@ -732,9 +732,9 @@ export default function CheckoutPage() {
 
               {/* bKash Details Expandable Box */}
               {paymentMethod === 'bkash' && (
-                <div className="bg-[#FFF8FA] border border-[#E2136E]/20 rounded-2xl p-4 sm:p-5 space-y-4 animate-fadeIn text-xs text-brand-chocolate ml-2">
+                <div className="bg-[#FFF8FA] border border-[#E2136E]/20 rounded-2xl p-4 sm:p-5 space-y-4 animate-fadeIn text-[13px] text-brand-chocolate ml-2">
                   <div className="flex items-center justify-between border-b border-[#E2136E]/15 pb-2.5">
-                    <div className="flex items-center gap-1.5 text-[#8C1347] font-bold text-xs uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 text-[#8C1347] font-bold text-[13px] uppercase tracking-wider">
                       <Sparkles className="w-3.5 h-3.5 text-[#E2136E]" />
                       <span>Sweet Cravings bKash Wallet</span>
                     </div>
@@ -742,7 +742,7 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => { if (bkashNumber) handleCopy(bkashNumber, 'bkash'); }}
                       disabled={!bkashNumber}
-                      className="flex items-center gap-1.5 text-xs bg-white border border-[#E2136E]/30 text-[#8C1347] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFEBF1] transition-colors"
+                      className="flex items-center gap-1.5 text-[13px] bg-white border border-[#E2136E]/30 text-[#8C1347] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFEBF1] transition-colors"
                     >
                       {copiedKey === 'bkash' ? <Check className="w-3 h-3 text-brand-forest" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedKey === 'bkash' ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'নম্বর কপি করুন' : 'Copy Number')}</span>
@@ -754,18 +754,18 @@ export default function CheckoutPage() {
                       <p className="font-mono text-lg font-extrabold text-brand-chocolate tracking-wide">
                         {bkashNumber || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                       </p>
-                      <p className="text-[11px] text-brand-taupe">
+                      <p className="text-[13px] text-brand-taupe">
                         Type: <span className="font-semibold text-brand-chocolate capitalize">{shopSettings?.bkash_type || 'Personal'}</span> (Send Money)
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-brand-taupe uppercase block">Pay Exact</span>
+                      <span className="text-[13px] text-brand-taupe uppercase block">Pay Exact</span>
                       <span className="font-heading font-extrabold text-[#8C1347] text-base">৳{payableTotal}</span>
                     </div>
                   </div>
 
                   {/* Step Instructions */}
-                  <div className="space-y-1.5 text-brand-taupe text-[11px] leading-relaxed bg-white/70 p-3 rounded-xl border border-[#E2136E]/10">
+                  <div className="space-y-1.5 text-brand-taupe text-[13px] leading-relaxed bg-white/70 p-3 rounded-xl border border-[#E2136E]/10">
                     <p className="font-bold text-brand-chocolate mb-1">
                       {lang === 'bn' ? 'পেমেন্ট নির্দেশিকা:' : 'Payment Instructions:'}
                     </p>
@@ -775,7 +775,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="block font-bold text-xs text-brand-chocolate mb-1.5">
+                    <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
                       {t('checkout.walletTrxOptional')}
                     </label>
                     <input
@@ -796,7 +796,7 @@ export default function CheckoutPage() {
                 className={`flex items-start gap-3.5 p-4 rounded-2xl border cursor-pointer transition-all ${
                   paymentMethod === 'nagad'
                     ? 'border-[#F7941D] bg-[#FFF9F2] shadow-soft ring-1 ring-[#F7941D]/20'
-                    : 'border-brand-chocolate/10 hover:border-[#F7941D]/40 bg-white'
+                    : 'border-[#E7DFD6] hover:border-[#F7941D]/40 bg-white'
                 }`}
               >
                 <div className="pt-0.5">
@@ -814,11 +814,11 @@ export default function CheckoutPage() {
                       <span className="w-2.5 h-2.5 rounded-full bg-[#F7941D] inline-block" />
                       {t('checkout.nagadLabel')}
                     </span>
-                    <span className="text-[10px] font-bold tracking-wider bg-[#F7941D]/10 text-[#F7941D] px-2 py-0.5 rounded-full">
+                    <span className="text-[13px] font-bold tracking-wider bg-[#F7941D]/10 text-[#F7941D] px-2 py-0.5 rounded-full">
                       Send Money
                     </span>
                   </div>
-                  <p className="text-xs text-brand-taupe mt-1">
+                  <p className="text-[13px] text-brand-taupe mt-1">
                     {t('checkout.nagadDesc')}
                   </p>
                 </div>
@@ -827,9 +827,9 @@ export default function CheckoutPage() {
 
               {/* Nagad Details Expandable Box */}
               {paymentMethod === 'nagad' && (
-                <div className="bg-[#FFFBF5] border border-[#F7941D]/20 rounded-2xl p-4 sm:p-5 space-y-4 animate-fadeIn text-xs text-brand-chocolate ml-2">
+                <div className="bg-[#FFFBF5] border border-[#F7941D]/20 rounded-2xl p-4 sm:p-5 space-y-4 animate-fadeIn text-[13px] text-brand-chocolate ml-2">
                   <div className="flex items-center justify-between border-b border-[#F7941D]/15 pb-2.5">
-                    <div className="flex items-center gap-1.5 text-[#A35200] font-bold text-xs uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 text-[#A35200] font-bold text-[13px] uppercase tracking-wider">
                       <Sparkles className="w-3.5 h-3.5 text-[#F7941D]" />
                       <span>Sweet Cravings Nagad Wallet</span>
                     </div>
@@ -837,7 +837,7 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => { if (nagadNumber) handleCopy(nagadNumber, 'nagad'); }}
                       disabled={!nagadNumber}
-                      className="flex items-center gap-1.5 text-xs bg-white border border-[#F7941D]/30 text-[#A35200] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFF3E3] transition-colors"
+                      className="flex items-center gap-1.5 text-[13px] bg-white border border-[#F7941D]/30 text-[#A35200] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFF3E3] transition-colors"
                     >
                       {copiedKey === 'nagad' ? <Check className="w-3 h-3 text-brand-forest" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedKey === 'nagad' ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'নম্বর কপি করুন' : 'Copy Number')}</span>
@@ -849,18 +849,18 @@ export default function CheckoutPage() {
                       <p className="font-mono text-lg font-extrabold text-brand-chocolate tracking-wide">
                         {nagadNumber || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                       </p>
-                      <p className="text-[11px] text-brand-taupe">
+                      <p className="text-[13px] text-brand-taupe">
                         Type: <span className="font-semibold text-brand-chocolate capitalize">{shopSettings?.nagad_type || 'Personal'}</span> (Send Money)
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-brand-taupe uppercase block">Pay Exact</span>
+                      <span className="text-[13px] text-brand-taupe uppercase block">Pay Exact</span>
                       <span className="font-heading font-extrabold text-[#A35200] text-base">৳{payableTotal}</span>
                     </div>
                   </div>
 
                   {/* Step Instructions */}
-                  <div className="space-y-1.5 text-brand-taupe text-[11px] leading-relaxed bg-white/70 p-3 rounded-xl border border-[#F7941D]/10">
+                  <div className="space-y-1.5 text-brand-taupe text-[13px] leading-relaxed bg-white/70 p-3 rounded-xl border border-[#F7941D]/10">
                     <p className="font-bold text-brand-chocolate mb-1">
                       {lang === 'bn' ? 'পেমেন্ট নির্দেশিকা:' : 'Payment Instructions:'}
                     </p>
@@ -870,7 +870,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <div>
-                    <label className="block font-bold text-xs text-brand-chocolate mb-1.5">
+                    <label className="block font-bold text-[13px] text-brand-chocolate mb-1.5">
                       {t('checkout.walletTrxOptional')}
                     </label>
                     <input
@@ -891,13 +891,13 @@ export default function CheckoutPage() {
 
         {/* Right Sticky Column: Order Summary & Review */}
         <div className="lg:col-span-5">
-          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-6 sticky top-28">
+          <div className="bg-white p-5 sm:p-7 rounded-3xl border border-[#E7DFD6] shadow-soft space-y-6 sticky top-28">
             
-            <div className="border-b border-brand-chocolate/10 pb-3.5 flex items-center justify-between">
+            <div className="border-b border-[#E7DFD6] pb-3.5 flex items-center justify-between">
               <h2 className="font-heading font-bold text-lg text-brand-chocolate">
                 {t('checkout.orderSummary')}
               </h2>
-              <span className="text-xs bg-brand-cream px-2.5 py-0.5 rounded-full text-brand-taupe font-semibold">
+              <span className="text-[13px] bg-brand-cream px-2.5 py-0.5 rounded-full text-brand-taupe font-semibold">
                 {items.reduce((s, i) => s + i.quantity, 0)} {lang === 'bn' ? 'আইটেম' : 'items'}
               </span>
             </div>
@@ -905,8 +905,8 @@ export default function CheckoutPage() {
             {/* Cart item breakdown */}
             <div className="space-y-3.5 max-h-64 overflow-y-auto pr-1">
               {items.map((item, idx) => (
-                <div key={idx} className="flex gap-3 items-center text-xs">
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-brand-cream shrink-0 border border-brand-chocolate/10">
+                <div key={idx} className="flex gap-3 items-center text-[13px]">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-brand-cream shrink-0 border border-[#E7DFD6]">
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
@@ -924,7 +924,7 @@ export default function CheckoutPage() {
                     <p className="font-bold text-brand-chocolate truncate">
                       {lang === 'bn' ? item.name_bn : item.name_en}
                     </p>
-                    <p className="text-brand-taupe text-[11px] mt-0.5">
+                    <p className="text-brand-taupe text-[13px] mt-0.5">
                       {item.quantity} × ৳{item.unitPrice}
                       {(item.variantLabel_en || item.variantLabel_bn) && (
                         <span> • {lang === 'bn' ? item.variantLabel_bn : item.variantLabel_en}</span>
@@ -937,26 +937,26 @@ export default function CheckoutPage() {
             </div>
 
             {/* Promo / Coupon Code Section */}
-            <div className="border-t border-brand-chocolate/10 pt-3.5 space-y-2">
-              <label className="block text-xs font-bold text-brand-chocolate flex items-center justify-between">
+            <div className="border-t border-[#E7DFD6] pt-3.5 space-y-2">
+              <label className="block text-[13px] font-bold text-brand-chocolate flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-brand-caramel" />
                   <span>{lang === 'bn' ? 'প্রোমো কোড / কুপন' : 'Have a Promo Code?'}</span>
                 </span>
                 {!appliedCoupon && (
-                  <span className="text-[10px] text-brand-taupe font-normal">
+                  <span className="text-[13px] text-brand-taupe font-normal">
                     Try: <button type="button" onClick={() => handleApplyCoupon('WELCOME50')} className="font-mono font-bold text-brand-caramel underline">WELCOME50</button>
                   </span>
                 )}
               </label>
 
               {appliedCoupon ? (
-                <div className="flex items-center justify-between bg-brand-forest/10 border border-brand-forest/20 text-brand-forest px-3.5 py-2.5 rounded-xl text-xs">
+                <div className="flex items-center justify-between bg-brand-forest/10 border border-brand-forest/20 text-brand-forest px-3.5 py-2.5 rounded-xl text-[13px]">
                   <div className="flex items-center gap-2">
                     <Check className="w-4 h-4 text-brand-forest" />
                     <div>
                       <span className="font-mono font-bold tracking-wider">{appliedCoupon.code}</span>
-                      <span className="text-brand-taupe text-[11px] block">Saved ৳{appliedCoupon.discountAmount} on this order</span>
+                      <span className="text-brand-taupe text-[13px] block">Saved ৳{appliedCoupon.discountAmount} on this order</span>
                     </div>
                   </div>
                   <button
@@ -976,19 +976,19 @@ export default function CheckoutPage() {
                       value={couponInput}
                       onChange={(e) => setCouponInput(e.target.value)}
                       placeholder={lang === 'bn' ? 'কুপন কোড লিখুন' : 'Enter coupon code'}
-                      className="flex-1 px-3 py-2 rounded-xl border border-brand-chocolate/10 bg-brand-cream/50 text-xs font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
+                      className="flex-1 px-3 py-2 rounded-xl border border-[#E7DFD6] bg-brand-cream/50 text-[13px] font-mono uppercase tracking-wider focus:bg-white focus:outline-none focus:border-brand-caramel"
                     />
                     <button
                       type="button"
                       disabled={isValidatingCoupon || !couponInput.trim()}
                       onClick={() => handleApplyCoupon()}
-                      className="bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                      className="bg-brand-chocolate hover:bg-brand-chocolate text-brand-cream px-4 py-2 rounded-xl text-[13px] font-bold transition-all disabled:opacity-50"
                     >
                       {isValidatingCoupon ? 'Checking...' : 'Apply'}
                     </button>
                   </div>
                   {couponError && (
-                    <p className="text-[11px] text-brand-chocolate animate-fadeIn flex items-center gap-1">
+                    <p className="text-[13px] text-brand-chocolate animate-fadeIn flex items-center gap-1">
                       <AlertCircle className="w-3 h-3 shrink-0" />
                       <span>{couponError}</span>
                     </p>
@@ -998,14 +998,14 @@ export default function CheckoutPage() {
             </div>
 
             {/* Price Breakdown */}
-            <div className="border-t border-brand-chocolate/10 pt-4 space-y-2.5 text-sm">
-              <div className="flex justify-between text-brand-taupe text-xs sm:text-sm">
+            <div className="border-t border-[#E7DFD6] pt-4 space-y-2.5 text-sm">
+              <div className="flex justify-between text-brand-taupe text-[13px] sm:text-sm">
                 <span>{t('cart.subtotal')}</span>
                 <span className="font-semibold text-brand-chocolate">৳{subtotal}</span>
               </div>
 
               {discountAmount > 0 && (
-                <div className="flex justify-between text-brand-forest text-xs sm:text-sm animate-fadeIn">
+                <div className="flex justify-between text-brand-forest text-[13px] sm:text-sm animate-fadeIn">
                   <span className="flex items-center gap-1.5">
                     <Tag className="w-3.5 h-3.5" />
                     <span>Coupon ({appliedCoupon?.code})</span>
@@ -1014,14 +1014,14 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              <div className="flex justify-between text-brand-taupe text-xs sm:text-sm">
+              <div className="flex justify-between text-brand-taupe text-[13px] sm:text-sm">
                 <span className="flex items-center gap-1.5">
                   <Truck className="w-3.5 h-3.5 text-brand-caramel" />
                   <span>{t('cart.deliveryFee')}</span>
                 </span>
                 <span className="font-semibold">
                   {deliveryFee === 0 ? (
-                    <span className="text-brand-forest font-bold bg-brand-forest/10 px-2 py-0.5 rounded text-xs">
+                    <span className="text-brand-forest font-bold bg-brand-forest/10 px-2 py-0.5 rounded text-[13px]">
                       {lang === 'bn' ? 'ফ্রি ডেলিভারি' : 'FREE'}
                     </span>
                   ) : (
@@ -1030,10 +1030,10 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
-              <div className="border-t border-brand-chocolate/10 pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate items-baseline">
+              <div className="border-t border-[#E7DFD6] pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate items-baseline">
                 <div>
                   <span>{t('cart.total')}</span>
-                  <span className="text-[10px] text-brand-taupe block font-normal font-sans">
+                  <span className="text-[13px] text-brand-taupe block font-normal font-sans">
                     {lang === 'bn' ? 'সকল চার্জ অন্তর্ভুক্ত' : 'Includes all local taxes'}
                   </span>
                 </div>
@@ -1048,7 +1048,7 @@ export default function CheckoutPage() {
               className={`w-full py-4 px-6 rounded-2xl font-semibold text-sm shadow-soft transition-all flex items-center justify-center gap-2 btn-press ${
                 isSubmitting
                   ? 'bg-brand-chocolate/5 text-brand-taupe cursor-wait'
-                  : 'bg-brand-caramel hover:bg-brand-chocolate text-white hover:shadow-card'
+                  : 'bg-brand-chocolate hover:bg-brand-chocolate text-white hover:shadow-card'
               }`}
             >
               {isSubmitting ? (
@@ -1065,12 +1065,12 @@ export default function CheckoutPage() {
             </button>
 
             {/* Security Guarantee */}
-            <div className="space-y-2 text-[11px] text-brand-taupe text-center pt-1 border-t border-brand-chocolate/10">
+            <div className="space-y-2 text-[13px] text-brand-taupe text-center pt-1 border-t border-[#E7DFD6]">
               <p className="flex items-center justify-center gap-1.5 text-brand-chocolate/80 font-medium">
                 <ShieldCheck className="w-4 h-4 text-brand-forest shrink-0" />
                 <span>{lang === 'bn' ? 'নিরাপদ ঘরোয়া অর্ডার • তাজা বেকিং গ্যারান্টি' : 'Safe Guest Order • Fresh Baking Guarantee'}</span>
               </p>
-              <p className="text-[10px]">
+              <p className="text-[13px]">
                 {lang === 'bn' 
                   ? 'রাজশাহীর নিজস্ব কিচেন থেকে প্রতিটি অর্ডার গ্রহণ করার পর তৈরি করা হয়।' 
                   : 'Every batch is prepared fresh upon confirmation in our Rajshahi kitchen.'}

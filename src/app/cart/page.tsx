@@ -23,10 +23,10 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-5">
-        <div className="w-24 h-24 mx-auto rounded-full bg-brand-cream flex items-center justify-center text-brand-caramel border border-brand-chocolate/10">
+        <div className="w-24 h-24 mx-auto rounded-full bg-brand-cream flex items-center justify-center text-brand-caramel border border-[#E7DFD6]">
           <ShoppingBag className="w-12 h-12 stroke-[1.5]" />
         </div>
-        <h1 className="font-heading text-3xl font-semibold text-brand-chocolate">
+        <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
           {t('cart.empty')}
         </h1>
         <p className="text-sm text-brand-taupe max-w-sm mx-auto leading-relaxed">
@@ -34,7 +34,7 @@ export default function CartPage() {
         </p>
         <Link
           href="/menu"
-          className="inline-flex items-center gap-2 bg-brand-caramel hover:bg-brand-chocolate text-white font-semibold py-3.5 px-8 rounded-full shadow-soft transition-all btn-press"
+          className="inline-flex items-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white font-semibold py-3.5 px-8 rounded-full shadow-soft transition-all btn-press"
         >
           <span>{t('cart.explore')}</span>
           <ArrowRight className="w-4 h-4" />
@@ -47,25 +47,25 @@ export default function CartPage() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-8">
       
       {/* Title */}
-      <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-4">
+      <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-4">
         <div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-semibold text-brand-chocolate">
+          <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
             {t('cart.title')}
           </h1>
-          <p className="text-xs text-brand-taupe mt-0.5">
+          <p className="text-[13px] text-brand-taupe mt-0.5">
             {items.length} {t('cart.items')}
           </p>
         </div>
         <button
           onClick={clearCart}
-          className="text-xs font-semibold text-brand-taupe hover:text-brand-chocolate transition-colors"
+          className="text-[13px] font-semibold text-brand-taupe hover:text-brand-chocolate transition-colors"
         >
           {t('cart.clearCart')}
         </button>
       </div>
 
       {/* Free delivery notice */}
-      <div className="bg-brand-cream border border-brand-chocolate/10 p-3.5 rounded-2xl flex items-center justify-between text-xs sm:text-sm">
+      <div className="bg-brand-cream border border-[#E7DFD6] p-3.5 rounded-2xl flex items-center justify-between text-[13px] sm:text-sm">
         <div className="flex items-center gap-2 text-brand-chocolate">
           <Sparkles className="w-4 h-4 text-brand-caramel shrink-0" />
           <span>
@@ -78,7 +78,7 @@ export default function CartPage() {
               : '🎉 You have unlocked Free Delivery!'}
           </span>
         </div>
-        <div className="hidden sm:flex items-center gap-1 text-xs text-brand-taupe">
+        <div className="hidden sm:flex items-center gap-1 text-[13px] text-brand-taupe">
           <MapPin className="w-3.5 h-3.5 text-brand-forest" />
           <span>Rajshahi</span>
         </div>
@@ -90,7 +90,7 @@ export default function CartPage() {
           {items.map((item, idx) => (
             <div
               key={`${item.productId}-${item.variantId || 'base'}-${idx}`}
-              className="bg-white p-4 rounded-2xl border border-brand-chocolate/10 shadow-soft flex gap-4 items-center"
+              className="bg-white p-4 rounded-2xl border border-[#E7DFD6] shadow-soft flex gap-4 items-center"
             >
               <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-brand-cream">
                 <Image
@@ -115,20 +115,20 @@ export default function CartPage() {
                 </div>
 
                 {(item.variantLabel_en || item.variantLabel_bn) && (
-                  <p className="text-xs text-brand-caramel font-medium mt-0.5">
+                  <p className="text-[13px] text-brand-caramel font-medium mt-0.5">
                     {lang === 'bn' ? item.variantLabel_bn : item.variantLabel_en}
                   </p>
                 )}
 
                 <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center border border-brand-chocolate/10 bg-brand-cream/50 rounded-lg overflow-hidden">
+                  <div className="flex items-center border border-[#E7DFD6] bg-brand-cream/50 rounded-lg overflow-hidden">
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity - 1, item.variantId)}
                       className="px-2.5 py-1 hover:bg-brand-cream text-brand-chocolate transition-colors"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="px-3 text-xs font-bold text-brand-chocolate">
+                    <span className="px-3 text-[13px] font-bold text-brand-chocolate">
                       {item.quantity}
                     </span>
                     <button
@@ -150,8 +150,8 @@ export default function CartPage() {
 
         {/* Order Summary Card */}
         <div className="md:col-span-5">
-          <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-5 sticky top-28">
-            <h2 className="font-heading font-bold text-lg text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
+          <div className="bg-white p-6 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-5 sticky top-28">
+            <h2 className="font-heading font-bold text-lg text-brand-chocolate border-b border-[#E7DFD6] pb-3">
               {t('checkout.orderSummary')}
             </h2>
 
@@ -172,7 +172,7 @@ export default function CartPage() {
                   )}
                 </span>
               </div>
-              <div className="border-t border-brand-chocolate/10 pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate">
+              <div className="border-t border-[#E7DFD6] pt-3 flex justify-between font-heading text-lg font-bold text-brand-chocolate">
                 <span>{t('cart.total')}</span>
                 <span className="text-brand-caramel font-extrabold text-xl">৳{totalAmount}</span>
               </div>
@@ -180,7 +180,7 @@ export default function CartPage() {
 
             <Link
               href="/checkout"
-              className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft hover:shadow-soft-hover transition-all"
+              className="w-full flex items-center justify-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft hover:shadow-soft-hover transition-all"
             >
               <span>{t('cart.checkout')}</span>
               <ArrowRight className="w-4 h-4" />
@@ -188,7 +188,7 @@ export default function CartPage() {
 
             <Link
               href="/menu"
-              className="block text-center text-xs font-semibold text-brand-caramel hover:underline"
+              className="block text-center text-[13px] font-semibold text-brand-caramel hover:underline"
             >
               {lang === 'bn' ? '← আরও ডেজার্ট যোগ করুন' : '← Continue Shopping'}
             </Link>

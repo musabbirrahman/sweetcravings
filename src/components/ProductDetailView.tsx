@@ -94,16 +94,16 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
       {/* Back to menu */}
       <Link
         href="/menu"
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-taupe hover:text-brand-chocolate transition-colors"
+        className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-taupe hover:text-brand-chocolate transition-colors"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         <span>{t('menu.backToMenu')}</span>
       </Link>
 
-      <div className="bg-white rounded-3xl overflow-hidden border border-brand-chocolate/10 shadow-card">
+      <div className="bg-white rounded-3xl overflow-hidden border border-[#E7DFD6] shadow-card">
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Product Image */}
-          <div className="relative h-72 sm:h-96 md:h-auto md:min-h-[480px] bg-brand-cream overflow-hidden">
+          <div className="relative h-72 sm:h-96 md:h-auto md:min-h-[480px] bg-[#EFE9E2] overflow-hidden">
             <Image
               src={detailImageUrl(product.image_url)}
               alt={product.name_en}
@@ -114,27 +114,25 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
             />
             {!isAvailable && (
               <div className="absolute inset-0 bg-brand-chocolate/60 flex items-center justify-center">
-                <span className="bg-brand-chocolate text-white font-bold text-xs uppercase px-3.5 py-1.5 rounded-full shadow-md tracking-wider">
+                <span className="bg-brand-chocolate text-white font-bold text-[13px] uppercase px-3.5 py-1.5 rounded-full shadow-md tracking-wider">
                   {t('menu.soldOut')}
                 </span>
               </div>
             )}
-            <div className="absolute top-3 left-3">
-              <span className="bg-brand-chocolate/70 text-brand-cream text-[10px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                {lang === 'bn' ? product.category_name_bn : product.category_name_en}
-              </span>
-            </div>
           </div>
 
           {/* Details Column */}
           <div className="p-6 sm:p-8 flex flex-col justify-between space-y-5">
             <div className="space-y-4">
               <div>
-                <div className="flex items-center gap-1.5 text-xs text-brand-caramel font-semibold mb-1">
+                <p className="text-[13px] font-semibold text-brand-caramel mb-1">
+                  {lang === 'bn' ? product.category_name_bn : product.category_name_en}
+                </p>
+                <div className="flex items-center gap-1.5 text-[13px] text-brand-taupe font-medium mb-1">
                   <Clock className="w-3.5 h-3.5" />
                   <span>{lang === 'bn' ? product.lead_time_bn : product.lead_time_en}</span>
                 </div>
-                <h1 className="font-heading text-2xl sm:text-3xl font-bold text-brand-chocolate leading-tight">
+                <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate leading-[1.15]">
                   {lang === 'bn' ? product.name_bn : product.name_en}
                 </h1>
                 <p className="text-sm text-brand-taupe mt-2 leading-relaxed">
@@ -147,7 +145,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
 
               {/* Unavailable notice */}
               {!isAvailable && (
-                <div className="flex items-start gap-2 text-brand-taupe bg-brand-cream/90 p-3 rounded-2xl border border-brand-chocolate/10 text-xs">
+                <div className="flex items-start gap-2 text-brand-taupe bg-brand-cream/90 p-3 rounded-2xl border border-[#E7DFD6] text-[13px]">
                   <X className="w-4 h-4 shrink-0 mt-0.5 text-brand-chocolate" />
                   <span>
                     <strong className="text-brand-chocolate">{t('menu.unavailable')}.</strong>{' '}
@@ -160,8 +158,8 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
 
               {/* Variants Selection (if any) — selectable cards */}
               {isAvailable && product.variants && product.variants.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-brand-chocolate/10">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-brand-taupe block">
+                <div className="space-y-2 pt-2 border-t border-[#E7DFD6]">
+                  <label className="text-[13px] font-bold uppercase tracking-wider text-brand-taupe block">
                     {t('menu.options')}
                   </label>
                   <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t('menu.options')}>
@@ -175,14 +173,14 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
                           role="radio"
                           aria-checked={isSelected}
                           onClick={() => setSelectedVariant(v)}
-                          className={`relative flex flex-col items-start gap-1 px-4 py-3 rounded-2xl border text-xs sm:text-sm font-medium transition-all ${
+                          className={`relative flex flex-col items-start gap-1 px-4 py-3 rounded-2xl border text-[13px] sm:text-sm font-medium transition-all ${
                             isSelected
                               ? 'border-brand-caramel bg-brand-caramel/10 text-brand-chocolate font-bold shadow-sm ring-1 ring-brand-caramel'
-                              : 'border-brand-chocolate/10 hover:border-brand-caramel/40 text-brand-taupe hover:text-brand-chocolate'
+                              : 'border-[#E7DFD6] hover:border-brand-caramel/40 text-brand-taupe hover:text-brand-chocolate'
                           }`}
                         >
                           {isSelected && (
-                            <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-caramel text-white flex items-center justify-center">
+                            <span className="absolute top-2 right-2 w-5 h-5 rounded-full bg-brand-chocolate text-white flex items-center justify-center">
                               <Check className="w-3 h-3" />
                             </span>
                           )}
@@ -200,7 +198,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
               {/* Today's batch — shown only when stock is low, and it
                   shows what sold, not a full bar when nothing sold. */}
               {showBatchBar && (
-                <div className="bg-brand-cream rounded-2xl p-3 border border-brand-chocolate/10 text-xs space-y-1.5">
+                <div className="bg-brand-cream rounded-2xl p-3 border border-[#E7DFD6] text-[13px] space-y-1.5">
                   <div className="flex items-center justify-between text-brand-chocolate font-medium">
                     <span className="font-bold">
                       {lang === 'bn' ? 'আজকের ব্যাচ' : "Today's batch"}
@@ -213,7 +211,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
                   </div>
                   <div className="w-full bg-brand-chocolate/5 h-2 rounded-full overflow-hidden">
                     <div
-                      className="bg-brand-caramel h-full rounded-full transition-all duration-500"
+                      className="bg-brand-chocolate h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, Math.max(0, (soldToday / batchLimit) * 100))}%` }}
                     />
                   </div>
@@ -221,7 +219,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
               )}
 
               {/* Ingredients & Allergens Information */}
-              <div className="space-y-2.5 pt-2 border-t border-brand-chocolate/10 text-xs">
+              <div className="space-y-2.5 pt-2 border-t border-[#E7DFD6] text-[13px]">
                 {(product.ingredients_en || product.ingredients_bn) && (
                   <p className="text-brand-taupe leading-relaxed">
                     <strong className="text-brand-chocolate">{t('menu.ingredients')}:</strong>{' '}
@@ -230,7 +228,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
                 )}
 
                 {(product.allergens_en || product.allergens_bn) && (
-                  <div className="flex items-start gap-2 text-brand-taupe bg-brand-cream/90 p-3 rounded-2xl border border-brand-chocolate/10">
+                  <div className="flex items-start gap-2 text-brand-taupe bg-brand-cream/90 p-3 rounded-2xl border border-[#E7DFD6]">
                     <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-brand-caramel" />
                     <span>
                       <strong className="text-brand-chocolate">{t('menu.allergens')}:</strong>{' '}
@@ -242,9 +240,9 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
             </div>
 
             {/* Bottom Controls */}
-            <div className="pt-4 border-t border-brand-chocolate/10 flex items-center justify-between gap-3">
+            <div className="pt-4 border-t border-[#E7DFD6] flex items-center justify-between gap-3">
               {/* Stepper */}
-              <div className="flex items-center border border-brand-chocolate/10 bg-brand-cream/50 rounded-2xl overflow-hidden shadow-sm">
+              <div className="flex items-center border border-[#E7DFD6] bg-brand-cream/50 rounded-2xl overflow-hidden shadow-sm">
                 <button
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   disabled={!isAvailable || batchSoldOut}
@@ -275,7 +273,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
                     ? 'bg-brand-forest text-white'
                     : !isAvailable || batchSoldOut
                     ? 'bg-brand-cream text-brand-taupe/40 cursor-not-allowed'
-                    : 'bg-brand-caramel hover:bg-brand-chocolate text-white'
+                    : 'bg-brand-chocolate hover:bg-brand-chocolate text-white'
                 }`}
               >
                 {isAdded ? (
@@ -297,7 +295,7 @@ export default function ProductDetailView({ product, related = [] }: ProductDeta
             </div>
 
             {/* Delivery & payment strip */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-4 text-xs text-brand-taupe border-t border-brand-chocolate/10">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-4 text-[13px] text-brand-taupe border-t border-[#E7DFD6]">
               <span className="flex items-center gap-1.5 font-medium">
                 <Truck className="w-4 h-4 text-brand-caramel shrink-0" />
                 <span>

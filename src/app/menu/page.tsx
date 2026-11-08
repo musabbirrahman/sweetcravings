@@ -73,11 +73,10 @@ function MenuContent() {
       
       {/* Header Banner */}
       <div className="text-center max-w-2xl mx-auto space-y-3 relative">
-        <div className="inline-flex items-center gap-1.5 bg-brand-caramel/10 text-brand-caramel text-xs font-bold px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-xs">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{lang === 'bn' ? 'তাজা ঘরোয়া মেনু' : 'Fresh Homemade Patisserie'}</span>
-        </div>
-        <h1 className="font-heading text-3xl sm:text-5xl font-semibold text-brand-chocolate tracking-tight">
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-brand-caramel">
+          {lang === 'bn' ? 'তাজা ঘরোয়া মেনু' : 'Fresh Homemade Patisserie'}
+        </p>
+        <h1 className="font-heading text-[32px] sm:text-[40px] font-bold text-brand-chocolate tracking-tight leading-[1.15]">
           {t('menu.title')}
         </h1>
         <p className="text-sm sm:text-base text-brand-taupe leading-[1.78]">
@@ -85,7 +84,7 @@ function MenuContent() {
         </p>
 
         {/* Lead time & Freshness reassurance chip */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-brand-taupe">
+        <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-[13px] text-brand-taupe">
           <span className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-brand-caramel" />
             <span>{lang === 'bn' ? 'অর্ডার পাওয়ার পর তাজা বেকিং' : 'Baked fresh upon order'}</span>
@@ -99,7 +98,7 @@ function MenuContent() {
       </div>
 
       {/* Filter, Search and Sort Bar */}
-      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-4">
+      <div className="border-y border-[#E7DFD6] py-4 space-y-4">
         
         {/* Search & Sort Controls */}
         <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -112,7 +111,7 @@ function MenuContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('menu.searchPlaceholder')}
-              className="w-full pl-10 pr-10 py-2.5 rounded-full border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/60 transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-full border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel focus:ring-2 focus:ring-brand-caramel/10 text-sm text-brand-chocolate placeholder:text-brand-taupe/60 transition-all"
             />
             {searchQuery && (
               <button
@@ -131,7 +130,7 @@ function MenuContent() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-full border border-brand-chocolate/10 bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-xs font-semibold text-brand-chocolate cursor-pointer transition-all"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-full border border-[#E7DFD6] bg-brand-cream/40 focus:bg-white focus:outline-none focus:border-brand-caramel text-[13px] font-semibold text-brand-chocolate cursor-pointer transition-all"
             >
               <option value="featured">{lang === 'bn' ? 'জনপ্রিয় ডেজার্ট' : 'Featured Desserts'}</option>
               <option value="price-asc">{lang === 'bn' ? 'মূল্য: কম থেকে বেশি' : 'Price: Low to High'}</option>
@@ -141,21 +140,17 @@ function MenuContent() {
         </div>
 
         {/* Categories Tab Scroll with Dynamic Item Counts */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none justify-start sm:justify-center border-t border-brand-chocolate/10 pt-3">
+        <div className="flex flex-wrap items-center gap-2 pb-1.5 justify-start sm:justify-center border-t border-[#E7DFD6] pt-3">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${
               selectedCategory === 'all'
-                ? 'bg-brand-caramel text-white shadow-soft'
+                ? 'bg-brand-chocolate text-white'
                 : 'bg-brand-cream/70 text-brand-chocolate hover:bg-brand-cream border border-transparent'
             }`}
           >
             <span>{t('menu.allCategories')}</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-              selectedCategory === 'all' ? 'bg-white/20 text-white' : 'bg-brand-chocolate/5 text-brand-taupe'
-            }`}>
-              {categoryCounts.all || 0}
-            </span>
+            <span className={`text-[13px] ${selectedCategory === 'all' ? 'text-brand-cream/70' : 'text-brand-taupe'}`}>({categoryCounts.all || 0})</span>
           </button>
           
           {categories.map((cat) => {
@@ -165,18 +160,14 @@ function MenuContent() {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`whitespace-nowrap px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-all flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-brand-caramel text-white shadow-soft'
+                    ? 'bg-brand-chocolate text-white'
                     : 'bg-brand-cream/70 text-brand-chocolate hover:bg-brand-cream border border-transparent'
                 }`}
               >
                 <span>{lang === 'bn' ? cat.name_bn : cat.name_en}</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-brand-chocolate/5 text-brand-taupe'
-                }`}>
-                  {count}
-                </span>
+                <span className={`text-[13px] ${isSelected ? 'text-brand-cream/70' : 'text-brand-taupe'}`}>({count})</span>
               </button>
             );
           })}
@@ -185,14 +176,14 @@ function MenuContent() {
       </div>
 
       {/* Result Count Banner */}
-      <div className="flex items-center justify-between text-xs text-brand-taupe px-1">
+      <div className="flex items-center justify-between text-[13px] text-brand-taupe px-1">
         <span>
           {lang === 'bn' 
             ? `${filteredProducts.length}টি তাজা মিষ্টি দেখাচ্ছে` 
             : `Showing ${filteredProducts.length} artisan desserts`}
         </span>
         {searchQuery && (
-          <span className="italic">
+          <span className="">
             {lang === 'bn' ? 'খুঁজছেন:' : 'Search:'} &ldquo;{searchQuery}&rdquo;
           </span>
         )}
@@ -202,11 +193,11 @@ function MenuContent() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-3xl h-80 animate-pulse border border-brand-chocolate/10" />
+            <div key={i} className="bg-white rounded-3xl h-80 animate-pulse border border-[#E7DFD6]" />
           ))}
         </div>
       ) : filteredProducts.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-brand-chocolate/10 p-8 space-y-4 shadow-soft max-w-md mx-auto">
+        <div className="text-center py-20 bg-white rounded-3xl border border-[#E7DFD6] p-8 space-y-4 shadow-soft max-w-md mx-auto">
           <div className="w-16 h-16 mx-auto rounded-full bg-brand-cream flex items-center justify-center text-brand-caramel">
             <Cake className="w-8 h-8 stroke-[1.5]" />
           </div>
@@ -214,13 +205,13 @@ function MenuContent() {
             <h3 className="font-heading font-bold text-lg text-brand-chocolate">
               {lang === 'bn' ? 'কোনো ডেজার্ট পাওয়া যায়নি' : 'No Desserts Found'}
             </h3>
-            <p className="text-brand-taupe text-xs">
+            <p className="text-brand-taupe text-[13px]">
               {t('menu.empty')}
             </p>
           </div>
           <button
             onClick={() => { setSelectedCategory('all'); setSearchQuery(''); }}
-            className="inline-flex items-center gap-1.5 bg-brand-caramel text-white text-xs font-bold py-2.5 px-6 rounded-full shadow-soft hover:bg-brand-caramel transition-all"
+            className="inline-flex items-center gap-1.5 bg-brand-chocolate text-white text-[13px] font-bold py-2.5 px-6 rounded-full shadow-soft hover:bg-brand-chocolate transition-all"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>{lang === 'bn' ? 'সকল ডেজার্ট দেখুন' : 'Show All Sweets'}</span>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { ShopSettings, Coupon } from '@/lib/types';
+import { useConfirm, useToast } from '@/components/DialogProvider';
 import { 
   Save, 
   Download, 
@@ -22,6 +23,8 @@ export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
   const [successNotice, setSuccessNotice] = useState(false);
 
   // Backup restore: a file chosen here replaces ALL current shop data
@@ -118,9 +121,11 @@ export default function AdminSettingsPage() {
     e.preventDefault();
 
     if (settings && (bkashNumber !== settings.bkash_number || nagadNumber !== settings.nagad_number)) {
-      const confirmed = window.confirm(
-        `Please confirm wallet number changes:\nbKash: ${bkashNumber}\nNagad: ${nagadNumber}\nAre these correct?`
-      );
+      const confirmed = await confirm({
+        title: 'Confirm wallet number changes',
+        message: `bKash: ${bkashNumber}\nNagad: ${nagadNumber}\nAre these correct?`,
+        confirmLabel: 'Yes, save',
+      });
       if (!confirmed) return;
     }
 
@@ -156,7 +161,7 @@ export default function AdminSettingsPage() {
         fetchSettings();
       }
     } catch {
-      alert('Failed to save settings');
+      toast('Failed to save settings', 'error');
     } finally {
       setSaving(false);
     }
@@ -192,7 +197,13 @@ export default function AdminSettingsPage() {
   };
 
   const handleDeleteCoupon = async (id: number, code: string) => {
-    if (!window.confirm(`Delete coupon "${code}"?`)) return;
+    const ok = await confirm({
+      title: 'Delete coupon?',
+      message: `Delete coupon "${code}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/admin/coupons?id=${id}`, { method: 'DELETE' });
       if (res.ok) fetchCoupons();
@@ -222,10 +233,10 @@ export default function AdminSettingsPage() {
         setShowAddCoupon(false);
         fetchCoupons();
       } else {
-        alert(data.error || 'Failed to create coupon');
+        toast(data.error || 'Failed to create coupon', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Error creating coupon');
+      toast(err.message || 'Error creating coupon', 'error');
     } finally {
       setCreatingCoupon(false);
     }
@@ -239,9 +250,12 @@ export default function AdminSettingsPage() {
     if (!restoreFile) return;
     // Explicit confirmation: a restore replaces everything currently
     // in the shop (menu, orders, settings) with the backup's contents.
-    const confirmed = window.confirm(
-      `Restore this backup (${restoreFile.name})?\n\nThis REPLACES all current shop data — menu, orders and settings — with the backup's contents. Today's orders and changes made after the backup will be lost. Coupons are not part of a backup and stay as they are.\n\nAre you sure?`
-    );
+    const confirmed = await confirm({
+      title: 'Restore this backup?',
+      message: `Restore this backup (${restoreFile.name})?\n\nThis REPLACES all current shop data — menu, orders and settings — with the backup's contents. Today's orders and changes made after the backup will be lost. Coupons are not part of a backup and stay as they are.`,
+      confirmLabel: 'Restore backup',
+      destructive: true,
+    });
     if (!confirmed) return;
 
     setRestoring(true);
@@ -272,19 +286,19 @@ export default function AdminSettingsPage() {
     <div className="space-y-6 max-w-4xl font-sans">
       
       {/* Title & Backup */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-chocolate/10 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E7DFD6] pb-4">
         <div>
           <h1 className="font-heading text-2xl font-bold text-brand-chocolate">
             {t('admin.tabSettings')}
           </h1>
-          <p className="text-xs text-brand-taupe mt-0.5">
+          <p className="text-sm text-brand-taupe mt-0.5">
             Configure delivery fees, payment wallets, kitchen notifications, and promo codes
           </p>
         </div>
 
         <button
           onClick={handleBackupDownload}
-          className="inline-flex items-center gap-1.5 bg-white hover:bg-brand-cream border border-brand-chocolate/10 text-brand-chocolate text-xs font-bold py-2 px-3.5 rounded-xl shadow-xs transition-colors self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 bg-white hover:bg-brand-cream border border-[#E7DFD6] text-brand-chocolate text-sm font-bold py-2 px-3.5 rounded-xl shadow-xs transition-colors self-start sm:self-auto"
         >
           <Download className="w-3.5 h-3.5 text-brand-caramel" />
           <span>Download JSON Backup</span>
@@ -292,18 +306,18 @@ export default function AdminSettingsPage() {
       </div>
 
       {successNotice && (
-        <div className="bg-brand-forest/10 border border-brand-forest/20 text-brand-forest p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+        <div className="bg-brand-forest/10 border border-brand-forest/20 text-brand-forest p-3.5 rounded-xl text-sm font-bold flex items-center gap-2 animate-fadeIn">
           <Check className="w-4 h-4" />
           <span>Settings saved successfully!</span>
         </div>
       )}
 
       {/* Restore Backup */}
-      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-3">
-        <h2 className="font-heading font-bold text-base text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-3">
+        <h2 className="font-heading font-bold text-base text-brand-chocolate border-b border-[#E7DFD6] pb-3">
           Restore from Backup
         </h2>
-        <p className="text-xs text-brand-taupe leading-relaxed">
+        <p className="text-sm text-brand-taupe leading-relaxed">
           Choose a backup JSON file downloaded from this shop. Restoring replaces all current
           menu, orders and settings with the backup&apos;s contents. The file is checked first —
           if it is not a valid backup, nothing changes. Coupons are not part of a backup and stay as they are.
@@ -313,22 +327,22 @@ export default function AdminSettingsPage() {
             type="file"
             accept=".json,application/json"
             onChange={(e) => { setRestoreFile(e.target.files ? e.target.files[0] : null); setRestoreMsg(null); }}
-            className="flex-1 px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white text-xs text-brand-chocolate file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-caramel/10 file:text-brand-chocolate file:font-bold file:text-xs"
+            className="flex-1 px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white text-sm text-brand-chocolate file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-caramel/10 file:text-brand-chocolate file:font-bold file:text-sm"
           />
           <button
             type="button"
             onClick={handleRestore}
             disabled={!restoreFile || restoring}
-            className="bg-brand-chocolate hover:bg-brand-caramel text-white px-5 py-2 rounded-lg text-xs font-bold shadow-soft disabled:opacity-40 transition-colors"
+            className="bg-brand-chocolate hover:bg-brand-chocolate text-white px-5 py-2 rounded-lg text-sm font-bold shadow-soft disabled:opacity-40 transition-colors"
           >
             {restoring ? 'Restoring...' : 'Restore Backup'}
           </button>
         </div>
         {restoreFile && (
-          <p className="text-[11px] text-brand-taupe">Selected: <strong className="text-brand-chocolate">{restoreFile.name}</strong></p>
+          <p className="text-sm text-brand-taupe">Selected: <strong className="text-brand-chocolate">{restoreFile.name}</strong></p>
         )}
         {restoreMsg && (
-          <div className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+          <div className={`p-3.5 rounded-xl text-sm font-bold flex items-center gap-2 ${
             restoreMsg.type === 'success'
               ? 'bg-brand-forest/10 border border-brand-forest/20 text-brand-forest'
               : 'bg-red-50 border border-red-200 text-red-700'
@@ -343,19 +357,19 @@ export default function AdminSettingsPage() {
       <form onSubmit={handleSave} className="space-y-6">
         
         {/* Delivery Rates */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-4">
-          <h2 className="font-heading font-bold text-base text-brand-chocolate border-b border-brand-chocolate/10 pb-3">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
+          <h2 className="font-heading font-bold text-base text-brand-chocolate border-b border-[#E7DFD6] pb-3">
             Rajshahi Delivery Fees
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <label className="block font-bold text-brand-chocolate mb-1">Standard Delivery Fee (BDT)</label>
               <input
                 type="number"
                 value={deliveryFee}
                 onChange={(e) => setDeliveryFee(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
               />
             </div>
 
@@ -365,22 +379,22 @@ export default function AdminSettingsPage() {
                 type="number"
                 value={freeThreshold}
                 onChange={(e) => setFreeThreshold(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
               />
             </div>
           </div>
         </div>
 
         {/* Instant Kitchen Notifications (Telegram / SMS) */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-4">
-          <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-3">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-3">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-brand-caramel" />
               <h2 className="font-heading font-bold text-base text-brand-chocolate">
                 Instant Kitchen Order Notifications
               </h2>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-brand-chocolate">
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-brand-chocolate">
               <input
                 type="checkbox"
                 checked={notificationsEnabled}
@@ -391,7 +405,7 @@ export default function AdminSettingsPage() {
             </label>
           </div>
 
-          <div className="text-xs text-brand-taupe space-y-3">
+          <div className="text-sm text-brand-taupe space-y-3">
             <p className="leading-relaxed">
               Receive a private instant push alert on your phone the moment a customer places an order.
             </p>
@@ -406,7 +420,7 @@ export default function AdminSettingsPage() {
                   value={telegramToken}
                   onChange={(e) => setTelegramToken(e.target.value)}
                   placeholder="e.g. 123456789:ABCdefGhIJKlmNo"
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50 font-mono text-xs"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono text-sm"
                 />
               </div>
 
@@ -419,13 +433,13 @@ export default function AdminSettingsPage() {
                   value={telegramChatId}
                   onChange={(e) => setTelegramChatId(e.target.value)}
                   placeholder="e.g. 987654321"
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50 font-mono text-xs"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono text-sm"
                 />
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-              <p className="text-[11px] text-brand-taupe">
+              <p className="text-sm text-brand-taupe">
                 Tip: Create a free bot on Telegram via @BotFather and get your chat ID from @userinfobot.
               </p>
 
@@ -433,7 +447,7 @@ export default function AdminSettingsPage() {
                 type="button"
                 onClick={handleTestNotification}
                 disabled={testingNotification || !telegramToken || !telegramChatId}
-                className="inline-flex items-center gap-1.5 bg-brand-cream hover:bg-brand-cream text-brand-chocolate border border-brand-chocolate/10 px-3 py-1.5 rounded-xl font-bold text-xs transition-colors self-start disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 bg-brand-cream hover:bg-brand-cream text-brand-chocolate border border-[#E7DFD6] px-3 py-1.5 rounded-xl font-bold text-sm transition-colors self-start disabled:opacity-50"
               >
                 <Send className="w-3 h-3 text-brand-caramel" />
                 <span>{testingNotification ? 'Sending...' : 'Test Kitchen Alert'}</span>
@@ -441,7 +455,7 @@ export default function AdminSettingsPage() {
             </div>
 
             {testNotificationMsg && (
-              <div className={`p-3 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+              <div className={`p-3 rounded-xl text-sm font-semibold flex items-center gap-2 ${
                 testNotificationMsg.type === 'success'
                   ? 'bg-brand-forest/10 text-brand-forest border border-brand-forest/20'
                   : 'bg-brand-caramel/10 text-brand-chocolate border border-brand-chocolate/20'
@@ -456,10 +470,10 @@ export default function AdminSettingsPage() {
         {/* bKash & Nagad Settings */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* bKash */}
-          <div className="bg-white p-5 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-4">
-            <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-2.5">
+          <div className="bg-white p-5 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-2.5">
               <span className="font-heading font-bold text-sm text-[#8C1347]">bKash Configuration</span>
-              <label className="flex items-center gap-1.5 text-xs cursor-pointer font-semibold">
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer font-semibold">
                 <input
                   type="checkbox"
                   checked={bkashEnabled}
@@ -470,14 +484,14 @@ export default function AdminSettingsPage() {
               </label>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-sm">
               <div>
                 <label className="block font-bold text-brand-chocolate mb-1">Account Number</label>
                 <input
                   type="text"
                   value={bkashNumber}
                   onChange={(e) => setBkashNumber(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50 font-mono"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono"
                 />
               </div>
 
@@ -486,7 +500,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={bkashType}
                   onChange={(e) => setBkashType(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                 >
                   <option value="personal">Personal (Send Money)</option>
                   <option value="merchant">Merchant (Make Payment)</option>
@@ -496,10 +510,10 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* Nagad */}
-          <div className="bg-white p-5 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-4">
-            <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-2.5">
+          <div className="bg-white p-5 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-2.5">
               <span className="font-heading font-bold text-sm text-[#A35200]">Nagad Configuration</span>
-              <label className="flex items-center gap-1.5 text-xs cursor-pointer font-semibold">
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer font-semibold">
                 <input
                   type="checkbox"
                   checked={nagadEnabled}
@@ -510,14 +524,14 @@ export default function AdminSettingsPage() {
               </label>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-sm">
               <div>
                 <label className="block font-bold text-brand-chocolate mb-1">Account Number</label>
                 <input
                   type="text"
                   value={nagadNumber}
                   onChange={(e) => setNagadNumber(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50 font-mono"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono"
                 />
               </div>
 
@@ -526,7 +540,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={nagadType}
                   onChange={(e) => setNagadType(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                 >
                   <option value="personal">Personal (Send Money)</option>
                   <option value="merchant">Merchant (Make Payment)</option>
@@ -537,11 +551,11 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Contact & COD */}
-        <div className="bg-white p-5 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-4 text-xs">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-brand-cream/50 border border-brand-chocolate/10">
+        <div className="bg-white p-5 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-4 text-sm">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-brand-cream/50 border border-[#E7DFD6]">
             <div>
               <span className="font-bold text-brand-chocolate block">Cash on Delivery (COD)</span>
-              <span className="text-brand-taupe text-[11px]">Customers pay cash upon doorstep delivery</span>
+              <span className="text-brand-taupe text-sm">Customers pay cash upon doorstep delivery</span>
             </div>
             <input
               type="checkbox"
@@ -557,7 +571,7 @@ export default function AdminSettingsPage() {
               type="text"
               value={whatsappNumber}
               onChange={(e) => setWhatsappNumber(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50 font-mono text-xs"
+              className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono text-sm"
             />
           </div>
         </div>
@@ -565,7 +579,7 @@ export default function AdminSettingsPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft transition-all"
+          className="w-full flex items-center justify-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white py-3.5 px-6 rounded-xl font-bold text-sm shadow-soft transition-all"
         >
           <Save className="w-4 h-4" />
           <span>{saving ? 'Saving...' : t('admin.saveChanges')}</span>
@@ -573,8 +587,8 @@ export default function AdminSettingsPage() {
       </form>
 
       {/* Promo Codes & Coupons Management Section */}
-      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-brand-chocolate/10 shadow-soft space-y-5">
-        <div className="flex items-center justify-between border-b border-brand-chocolate/10 pb-3">
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7DFD6] shadow-soft space-y-5">
+        <div className="flex items-center justify-between border-b border-[#E7DFD6] pb-3">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-brand-caramel" />
             <h2 className="font-heading font-bold text-base text-brand-chocolate">
@@ -585,7 +599,7 @@ export default function AdminSettingsPage() {
           <button
             type="button"
             onClick={() => setShowAddCoupon(!showAddCoupon)}
-            className="inline-flex items-center gap-1 bg-brand-chocolate text-brand-cream hover:bg-brand-chocolate px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs transition-colors"
+            className="inline-flex items-center gap-1 bg-brand-chocolate text-brand-cream hover:bg-brand-chocolate px-3 py-1.5 rounded-xl text-sm font-bold shadow-xs transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>{showAddCoupon ? 'Cancel' : 'New Coupon'}</span>
@@ -594,7 +608,7 @@ export default function AdminSettingsPage() {
 
         {/* Add Coupon Form Drawer */}
         {showAddCoupon && (
-          <form onSubmit={handleCreateCoupon} className="p-4 bg-brand-cream/60 rounded-2xl border border-brand-chocolate/10 space-y-3 animate-fadeIn text-xs">
+          <form onSubmit={handleCreateCoupon} className="p-4 bg-brand-cream/60 rounded-2xl border border-[#E7DFD6] space-y-3 animate-fadeIn text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block font-bold text-brand-chocolate mb-1">Coupon Code</label>
@@ -604,7 +618,7 @@ export default function AdminSettingsPage() {
                   value={newCouponCode}
                   onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
                   placeholder="e.g. SPECIAL50"
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white font-mono uppercase"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white font-mono uppercase"
                 />
               </div>
 
@@ -613,7 +627,7 @@ export default function AdminSettingsPage() {
                 <select
                   value={newDiscountType}
                   onChange={(e) => setNewDiscountType(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                 >
                   <option value="fixed">Fixed BDT Amount (৳)</option>
                   <option value="percentage">Percentage (%)</option>
@@ -629,7 +643,7 @@ export default function AdminSettingsPage() {
                   required
                   value={newDiscountVal}
                   onChange={(e) => setNewDiscountVal(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                 />
               </div>
             </div>
@@ -642,7 +656,7 @@ export default function AdminSettingsPage() {
                   value={newMinOrder}
                   onChange={(e) => setNewMinOrder(e.target.value)}
                   placeholder="e.g. 500"
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                 />
               </div>
 
@@ -654,7 +668,7 @@ export default function AdminSettingsPage() {
                     value={newMaxDiscount}
                     onChange={(e) => setNewMaxDiscount(e.target.value)}
                     placeholder="e.g. 150"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                   />
                 </div>
               )}
@@ -664,7 +678,7 @@ export default function AdminSettingsPage() {
               <button
                 type="submit"
                 disabled={creatingCoupon}
-                className="bg-brand-forest hover:bg-brand-chocolate text-white px-5 py-2 rounded-xl font-bold transition-all"
+                className="bg-brand-chocolate hover:bg-brand-chocolate text-white px-5 py-2 rounded-xl font-bold transition-all"
               >
                 {creatingCoupon ? 'Creating...' : 'Save Coupon'}
               </button>
@@ -675,31 +689,31 @@ export default function AdminSettingsPage() {
         {/* Coupons List Table */}
         <div className="space-y-2">
           {loadingCoupons ? (
-            <p className="text-xs text-brand-taupe py-4 text-center">Loading promo codes...</p>
+            <p className="text-sm text-brand-taupe py-4 text-center">Loading promo codes...</p>
           ) : coupons.length === 0 ? (
-            <p className="text-xs text-brand-taupe py-4 text-center">No promo codes created yet.</p>
+            <p className="text-sm text-brand-taupe py-4 text-center">No promo codes created yet.</p>
           ) : (
             <div className="space-y-2">
               {coupons.map((c) => (
                 <div
                   key={c.id}
-                  className="p-3.5 rounded-xl border border-brand-chocolate/10 flex items-center justify-between gap-3 text-xs bg-white hover:bg-brand-cream/30 transition-colors"
+                  className="p-3.5 rounded-xl border border-[#E7DFD6] flex items-center justify-between gap-3 text-sm bg-white hover:bg-brand-cream/30 transition-colors"
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-extrabold text-sm text-brand-chocolate tracking-wider">
                         {c.code}
                       </span>
-                      <span className="bg-brand-caramel/10 text-brand-caramel font-bold px-2 py-0.5 rounded text-[10px]">
+                      <span className="bg-brand-caramel/10 text-brand-caramel font-bold px-2 py-0.5 rounded text-sm">
                         {c.discount_type === 'fixed' ? `৳${c.discount_value} OFF` : `${c.discount_value}% OFF`}
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <span className={`px-2 py-0.5 rounded text-sm font-bold ${
                         c.active ? 'bg-brand-forest/10 text-brand-forest' : 'bg-brand-cream text-brand-taupe'
                       }`}>
                         {c.active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-brand-taupe">
+                    <p className="text-sm text-brand-taupe">
                       Min order: ৳{c.min_order_amount} • Used {c.times_used} times
                       {c.max_discount_amount ? ` • Max cap: ৳${c.max_discount_amount}` : ''}
                     </p>

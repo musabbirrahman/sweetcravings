@@ -80,6 +80,8 @@ ${itemsSummary}
           text,
           parse_mode: 'Markdown',
         }),
+        // A slow Telegram must never hang checkout.
+        signal: AbortSignal.timeout(8000),
       });
 
       if (res.ok) {
@@ -100,6 +102,7 @@ ${itemsSummary}
       const res = await fetch(settings.sms_gateway_url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           api_key: settings.sms_api_key,
           sender_id: settings.sms_sender_id || 'SweetCraving',

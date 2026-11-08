@@ -17,7 +17,7 @@ export default function ErrorBoundary({
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-16 text-center font-sans">
-      <div className="max-w-md w-full bg-white p-8 sm:p-10 rounded-3xl border border-brand-chocolate/10 shadow-soft space-y-6">
+      <div className="max-w-md w-full bg-white p-8 sm:p-10 rounded-3xl border border-[#E7DFD6] shadow-soft space-y-6">
         
         <div className="w-16 h-16 mx-auto rounded-full bg-brand-caramel/10 text-brand-chocolate flex items-center justify-center">
           <AlertCircle className="w-8 h-8" />
@@ -27,7 +27,7 @@ export default function ErrorBoundary({
           <h1 className="font-heading text-2xl font-bold text-brand-chocolate">
             Something Went Wrong
           </h1>
-          <p className="text-xs sm:text-sm text-brand-taupe leading-relaxed">
+          <p className="text-[13px] sm:text-sm text-brand-taupe leading-relaxed">
             We encountered an unexpected issue while loading this page. Our kitchen team has been alerted.
           </p>
         </div>
@@ -35,7 +35,7 @@ export default function ErrorBoundary({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
             onClick={() => reset()}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand-caramel hover:bg-brand-caramel text-white font-bold px-6 py-3 rounded-full text-xs sm:text-sm shadow-soft transition-all"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold px-6 py-3 rounded-full text-[13px] sm:text-sm shadow-soft transition-all"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Try Again</span>
@@ -43,7 +43,7 @@ export default function ErrorBoundary({
 
           <Link
             href="/contact"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand-forest hover:bg-[#1A3F2C] text-white font-bold px-6 py-3 rounded-full text-xs sm:text-sm shadow-soft transition-all"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold px-6 py-3 rounded-full text-[13px] sm:text-sm shadow-soft transition-all"
           >
             <MessageCircle className="w-4 h-4" />
             <span>Contact Support</span>

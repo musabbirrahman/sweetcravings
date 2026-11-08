@@ -34,10 +34,10 @@ export default function FloatingWhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with Sweet Cravings on WhatsApp"
-      className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 bg-[#25D366] hover:bg-[#20BA5A] text-white p-3.5 sm:px-4 sm:py-3 rounded-full shadow-card hover:shadow-card-hover flex items-center gap-2 transition-all duration-300 transform hover:scale-105 active:scale-95 group"
+      className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 bg-white hover:bg-[#FBF9F6] text-brand-chocolate border border-[#E7DFD6] p-3.5 sm:px-4 sm:py-3 rounded-full shadow-card hover:shadow-card-hover flex items-center gap-2 transition-all duration-300 transform hover:scale-105 active:scale-95 group"
     >
-      <MessageCircle className="w-5 h-5 fill-current" />
-      <span className="hidden sm:inline font-bold text-xs tracking-wide">
+      <MessageCircle className="w-5 h-5 text-brand-forest fill-current" />
+      <span className="hidden sm:inline font-bold text-[13px] tracking-wide">
         {lang === 'bn' ? 'হোয়াটসঅ্যাপে সাহায্য' : 'WhatsApp Us'}
       </span>
     </a>

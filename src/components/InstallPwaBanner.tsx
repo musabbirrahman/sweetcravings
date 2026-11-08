@@ -121,14 +121,14 @@ export default function InstallPwaBanner() {
             <h4 className="font-bold text-sm text-brand-cream leading-snug">
               {lang === 'bn' ? 'সরাসরি অ্যাপে অর্ডার করুন' : 'Install Sweet Cravings App'}
             </h4>
-            <p className="text-[12px] text-brand-cream/80 leading-tight mt-0.5">
+            <p className="text-[13px] text-brand-cream/80 leading-tight mt-0.5">
               {lang === 'bn' 
                 ? 'দ্রুত রি-অর্ডার ও লাইভ ট্র্যাক করতে হোম স্ক্রিনে অ্যাপ যুক্ত করুন।'
                 : 'Add to home screen for faster ordering & live delivery tracking in Rajshahi.'}
             </p>
 
             {showIOSGuide ? (
-              <div className="mt-2.5 pt-2 border-t border-white/10 text-[11px] text-brand-cream/90 space-y-1">
+              <div className="mt-2.5 pt-2 border-t border-white/10 text-[13px] text-brand-cream/90 space-y-1">
                 <p className="flex items-center gap-1 font-semibold text-brand-cream">
                   <Share className="w-3.5 h-3.5" />
                   <span>Safari Install Instructions:</span>
@@ -142,14 +142,14 @@ export default function InstallPwaBanner() {
               <div className="mt-3 flex items-center gap-2">
                 <button
                   onClick={handleInstallClick}
-                  className="bg-brand-caramel hover:bg-brand-caramel text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-soft flex items-center gap-1.5 active:scale-95"
+                  className="bg-brand-chocolate hover:bg-brand-chocolate text-white px-3.5 py-1.5 rounded-lg text-[13px] font-bold transition-all shadow-soft flex items-center gap-1.5 active:scale-95"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>{lang === 'bn' ? 'অ্যাপ নিন' : 'Install App'}</span>
                 </button>
                 <button
                   onClick={handleDismiss}
-                  className="text-white/60 hover:text-white px-2.5 py-1.5 rounded-lg text-xs transition-colors"
+                  className="text-white/60 hover:text-white px-2.5 py-1.5 rounded-lg text-[13px] transition-colors"
                 >
                   {lang === 'bn' ? 'পরে' : 'Maybe Later'}
                 </button>

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useLanguage } from '@/context/LanguageContext';
 import { Product, Category } from '@/lib/types';
+import { useConfirm, useToast } from '@/components/DialogProvider';
 import { Plus, Search, Trash2, Pencil, X } from 'lucide-react';
 
 export default function AdminProductsPage() {
@@ -15,6 +16,8 @@ export default function AdminProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const confirm = useConfirm();
+  const toast = useToast();
 
   // Edit-mode state (only used when editing an existing dessert)
   const [status, setStatus] = useState<'published' | 'sold_out' | 'draft'>('published');
@@ -204,12 +207,18 @@ export default function AdminProductsPage() {
         fetchCatalog();
       }
     } catch {
-      alert('Failed to update status');
+      toast('Failed to update status', 'error');
     }
   };
 
   const handleArchive = async (id: number) => {
-    if (!confirm('Are you sure you want to archive this dessert? It will be safely hidden from storefront while preserving past orders.')) {
+    const ok = await confirm({
+      title: 'Archive this dessert?',
+      message: 'It will be safely hidden from the storefront while preserving past orders.',
+      confirmLabel: 'Archive',
+      destructive: true,
+    });
+    if (!ok) {
       return;
     }
     try {
@@ -218,7 +227,7 @@ export default function AdminProductsPage() {
         fetchCatalog();
       }
     } catch {
-      alert('Failed to archive product');
+      toast('Failed to archive product', 'error');
     }
   };
 
@@ -244,7 +253,7 @@ export default function AdminProductsPage() {
         const uploadData = await uploadRes.json();
         setUploadingPhoto(false);
         if (!uploadRes.ok || !uploadData.success || !uploadData.url) {
-          alert(uploadData.error || 'Photo upload failed. Please try a different photo.');
+          toast(uploadData.error || 'Photo upload failed. Please try a different photo.', 'error');
           setSubmitting(false);
           return;
         }
@@ -295,10 +304,10 @@ export default function AdminProductsPage() {
         closeModal();
         fetchCatalog();
       } else {
-        alert(data.error || 'Failed to save dessert');
+        toast(data.error || 'Failed to save dessert', 'error');
       }
     } catch {
-      alert('Error saving dessert');
+      toast('Error saving dessert', 'error');
     } finally {
       setSubmitting(false);
       setUploadingPhoto(false);
@@ -323,14 +332,14 @@ export default function AdminProductsPage() {
           <h1 className="font-heading text-2xl font-bold text-brand-chocolate">
             {t('admin.tabProducts')}
           </h1>
-          <p className="text-xs text-brand-taupe">
+          <p className="text-sm text-brand-taupe">
             Manage your homemade dessert catalog, prices, and availability
           </p>
         </div>
 
         <button
           onClick={openAddModal}
-          className="flex items-center gap-1.5 bg-brand-caramel hover:bg-brand-caramel text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-soft transition-all self-start sm:self-auto"
+          className="flex items-center gap-1.5 bg-brand-chocolate hover:bg-brand-chocolate text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-soft transition-all self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>{t('admin.addProduct')}</span>
@@ -345,7 +354,7 @@ export default function AdminProductsPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search dessert name..."
-          className="w-full pl-9 pr-3 py-2 rounded-xl border border-brand-chocolate/10 bg-white text-xs focus:outline-none focus:border-brand-caramel shadow-soft"
+          className="w-full pl-9 pr-3 py-2 rounded-xl border border-[#E7DFD6] bg-white text-sm focus:outline-none focus:border-brand-caramel shadow-soft"
         />
       </div>
 
@@ -361,7 +370,7 @@ export default function AdminProductsPage() {
             return (
               <div
                 key={p.id}
-                className="bg-white rounded-2xl border border-brand-chocolate/10 shadow-soft overflow-hidden flex flex-col justify-between"
+                className="bg-white rounded-2xl border border-[#E7DFD6] shadow-soft overflow-hidden flex flex-col justify-between"
               >
                 <div className="relative h-44 w-full bg-brand-cream">
                   <Image
@@ -373,7 +382,7 @@ export default function AdminProductsPage() {
                   <div className="absolute top-2.5 right-2.5">
                     <button
                       onClick={() => handleToggleStatus(p)}
-                      className={`text-[11px] font-bold px-3 py-1 rounded-full shadow-sm backdrop-blur-md transition-colors ${
+                      className={`text-sm font-bold px-3 py-1 rounded-full shadow-sm backdrop-blur-md transition-colors ${
                         isAvailable
                           ? 'bg-brand-forest text-white'
                           : 'bg-brand-chocolate text-white'
@@ -383,7 +392,7 @@ export default function AdminProductsPage() {
                       {isAvailable ? 'Available' : 'Sold Out'}
                     </button>
                   </div>
-                  <div className="absolute bottom-2.5 left-2.5 bg-brand-chocolate/75 backdrop-blur-md text-brand-cream text-[10px] font-medium px-2 py-0.5 rounded-full border border-white/10">
+                  <div className="absolute bottom-2.5 left-2.5 bg-brand-chocolate/75 backdrop-blur-md text-brand-cream text-sm font-medium px-2 py-0.5 rounded-full border border-white/10">
                     {p.category_name_en}
                   </div>
                 </div>
@@ -393,20 +402,25 @@ export default function AdminProductsPage() {
                     <h3 className="font-heading font-bold text-brand-chocolate text-base">
                       {p.name_en}
                     </h3>
-                    <p className="text-xs text-brand-caramel font-semibold">
+                    <p className="text-sm text-brand-caramel font-semibold">
                       {p.name_bn}
                     </p>
-                    <p className="text-xs text-brand-taupe mt-1 line-clamp-2">
+                    <p className="text-sm text-brand-taupe mt-1 line-clamp-2">
                       {p.description_en}
                     </p>
 
-                    <div className="flex items-center justify-between text-[11px] text-brand-taupe bg-brand-cream/50 px-2.5 py-1.5 rounded-lg border border-brand-chocolate/10 mt-2">
+                    <div className="flex items-center justify-between text-sm text-brand-taupe bg-brand-cream/50 px-2.5 py-1.5 rounded-lg border border-[#E7DFD6] mt-2">
                       <span>Daily Batch Limit: <strong className="text-brand-chocolate">{p.daily_batch_limit ?? 15}</strong></span>
                       <button
                         type="button"
                         onClick={async () => {
-                          const val = prompt('Enter daily batch limit:', String(p.daily_batch_limit ?? 15));
-                          if (val && !isNaN(parseInt(val, 10))) {
+                          const val = await confirm({
+                            title: 'Daily batch limit',
+                            message: `How many of this dessert can be baked today?`,
+                            confirmLabel: 'Save limit',
+                            input: { label: 'Daily batch limit', defaultValue: String(p.daily_batch_limit ?? 15), required: true, inputType: 'number' },
+                          });
+                          if (typeof val === 'string' && val.trim() && !isNaN(parseInt(val, 10))) {
                             await fetch('/api/admin/products', {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' },
@@ -422,7 +436,7 @@ export default function AdminProductsPage() {
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-brand-chocolate/10 flex items-center justify-between">
+                  <div className="pt-3 border-t border-[#E7DFD6] flex items-center justify-between">
                     <span className="font-mono text-base font-bold text-brand-chocolate">
                       ৳{p.base_price}
                     </span>
@@ -430,7 +444,7 @@ export default function AdminProductsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openEditModal(p)}
-                        className="flex items-center gap-1 text-xs font-semibold text-brand-chocolate border border-brand-chocolate/10 rounded-lg px-2.5 py-1.5 hover:bg-brand-cream"
+                        className="flex items-center gap-1 text-sm font-semibold text-brand-chocolate border border-[#E7DFD6] rounded-lg px-2.5 py-1.5 hover:bg-brand-cream"
                         title="Edit dessert"
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -462,13 +476,13 @@ export default function AdminProductsPage() {
           onClick={closeModal}
         >
           <div
-            className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl animate-fadeIn border border-brand-chocolate/10"
+            className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl animate-fadeIn border border-[#E7DFD6]"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
             aria-label={editingProduct ? 'Edit dessert' : 'Add dessert'}
           >
-            <div className="flex items-start justify-between gap-3 border-b border-brand-chocolate/10 pb-3">
+            <div className="flex items-start justify-between gap-3 border-b border-[#E7DFD6] pb-3">
               <h2 className="font-heading font-bold text-xl text-brand-chocolate">
                 {editingProduct ? `Edit “${editingProduct.name_en}”` : t('admin.addProduct')}
               </h2>
@@ -482,7 +496,7 @@ export default function AdminProductsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveProduct} className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-brand-chocolate mb-1">Name (English) *</label>
@@ -492,7 +506,7 @@ export default function AdminProductsPage() {
                     value={nameEn}
                     onChange={(e) => setNameEn(e.target.value)}
                     placeholder="e.g. Pistachio Kheer"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
                 <div>
@@ -503,7 +517,7 @@ export default function AdminProductsPage() {
                     value={nameBn}
                     onChange={(e) => setNameBn(e.target.value)}
                     placeholder="যেমন: পেস্তা ক্ষীর"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
               </div>
@@ -514,7 +528,7 @@ export default function AdminProductsPage() {
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(parseInt(e.target.value, 10))}
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>{c.name_en} ({c.name_bn})</option>
@@ -528,7 +542,7 @@ export default function AdminProductsPage() {
                     required
                     value={basePrice}
                     onChange={(e) => setBasePrice(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 font-mono bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] font-mono bg-brand-cream/50"
                   />
                 </div>
               </div>
@@ -541,7 +555,7 @@ export default function AdminProductsPage() {
                     value={leadTimeEn}
                     onChange={(e) => setLeadTimeEn(e.target.value)}
                     placeholder="e.g. 4 hours lead time"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
                 <div>
@@ -551,7 +565,7 @@ export default function AdminProductsPage() {
                     value={leadTimeBn}
                     onChange={(e) => setLeadTimeBn(e.target.value)}
                     placeholder="যেমন: ৪ ঘন্টা সময় প্রয়োজন"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
               </div>
@@ -562,14 +576,14 @@ export default function AdminProductsPage() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => handlePhotoSelect(e.target.files ? e.target.files[0] : null)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white text-brand-chocolate file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-caramel/10 file:text-brand-chocolate file:font-bold file:text-xs"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white text-brand-chocolate file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-brand-caramel/10 file:text-brand-chocolate file:font-bold file:text-sm"
                 />
-                <p className="text-[11px] text-brand-taupe mt-1">JPG, PNG or WebP, under 5 MB. It is resized to at most 1200px wide when saved.</p>
+                <p className="text-sm text-brand-taupe mt-1">JPG, PNG or WebP, under 5 MB. It is resized to at most 1200px wide when saved.</p>
                 {photoError && (
-                  <p className="text-[11px] text-brand-chocolate font-semibold mt-1">{photoError}</p>
+                  <p className="text-sm text-brand-chocolate font-semibold mt-1">{photoError}</p>
                 )}
                 {photoPreview && (
-                  <div className="mt-2 relative w-full h-40 rounded-xl overflow-hidden border border-brand-chocolate/10 bg-brand-cream">
+                  <div className="mt-2 relative w-full h-40 rounded-xl overflow-hidden border border-[#E7DFD6] bg-brand-cream">
                     <Image src={photoPreview} alt="Photo preview" fill className="object-cover" />
                   </div>
                 )}
@@ -582,10 +596,10 @@ export default function AdminProductsPage() {
                   value={imageUrl}
                   onChange={(e) => setImageUrl(e.target.value)}
                   placeholder="/sweet-cravings-logo.jpg or https://..."
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                 />
                 {imageUrl && !photoPreview && (
-                  <div className="mt-2 relative w-full h-40 rounded-xl overflow-hidden border border-brand-chocolate/10 bg-brand-cream">
+                  <div className="mt-2 relative w-full h-40 rounded-xl overflow-hidden border border-[#E7DFD6] bg-brand-cream">
                     <Image src={imageUrl} alt="Image preview" fill className="object-cover" />
                   </div>
                 )}
@@ -597,7 +611,7 @@ export default function AdminProductsPage() {
                   rows={2}
                   value={descriptionEn}
                   onChange={(e) => setDescriptionEn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                 />
               </div>
 
@@ -607,7 +621,7 @@ export default function AdminProductsPage() {
                   rows={2}
                   value={descriptionBn}
                   onChange={(e) => setDescriptionBn(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                  className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                 />
               </div>
 
@@ -619,7 +633,7 @@ export default function AdminProductsPage() {
                     value={ingredientsEn}
                     onChange={(e) => setIngredientsEn(e.target.value)}
                     placeholder="e.g. Fresh milk, eggs, sugar..."
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
                 <div>
@@ -629,7 +643,7 @@ export default function AdminProductsPage() {
                     value={ingredientsBn}
                     onChange={(e) => setIngredientsBn(e.target.value)}
                     placeholder="যেমন: তাজা দুধ, ডিম, চিনি..."
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
               </div>
@@ -642,7 +656,7 @@ export default function AdminProductsPage() {
                     value={allergensEn}
                     onChange={(e) => setAllergensEn(e.target.value)}
                     placeholder="e.g. Contains Milk, Eggs"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
                 <div>
@@ -652,7 +666,7 @@ export default function AdminProductsPage() {
                     value={allergensBn}
                     onChange={(e) => setAllergensBn(e.target.value)}
                     placeholder="যেমন: দুধ ও ডিম রয়েছে"
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                   />
                 </div>
               </div>
@@ -661,7 +675,7 @@ export default function AdminProductsPage() {
               <div>
                 <label className="block font-bold text-brand-chocolate mb-1">Sizes / Options</label>
                 {variants.length === 0 && (
-                  <p className="text-[11px] text-brand-taupe mb-2">No sizes yet — the dessert sells at the base price above.</p>
+                  <p className="text-sm text-brand-taupe mb-2">No sizes yet — the dessert sells at the base price above.</p>
                 )}
                 <div className="space-y-2">
                   {variants.map((v, idx) => (
@@ -671,14 +685,14 @@ export default function AdminProductsPage() {
                         value={v.labelEn}
                         onChange={(e) => setVariants(variants.map((x, i) => (i === idx ? { ...x, labelEn: e.target.value } : x)))}
                         placeholder="Size (English)"
-                        className="w-full px-2 py-1.5 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                        className="w-full px-2 py-1.5 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                       />
                       <input
                         type="text"
                         value={v.labelBn}
                         onChange={(e) => setVariants(variants.map((x, i) => (i === idx ? { ...x, labelBn: e.target.value } : x)))}
                         placeholder="সাইজ (বাংলা)"
-                        className="w-full px-2 py-1.5 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50"
+                        className="w-full px-2 py-1.5 rounded-lg border border-[#E7DFD6] bg-brand-cream/50"
                       />
                       <input
                         type="number"
@@ -686,7 +700,7 @@ export default function AdminProductsPage() {
                         onChange={(e) => setVariants(variants.map((x, i) => (i === idx ? { ...x, priceAdjustment: e.target.value } : x)))}
                         placeholder="+৳"
                         title="Extra price over the base price (৳)"
-                        className="w-full px-2 py-1.5 rounded-lg border border-brand-chocolate/10 bg-brand-cream/50 font-mono"
+                        className="w-full px-2 py-1.5 rounded-lg border border-[#E7DFD6] bg-brand-cream/50 font-mono"
                       />
                       <button
                         type="button"
@@ -714,7 +728,7 @@ export default function AdminProductsPage() {
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as 'published' | 'sold_out' | 'draft')}
-                    className="w-full px-3 py-2 rounded-lg border border-brand-chocolate/10 bg-white"
+                    className="w-full px-3 py-2 rounded-lg border border-[#E7DFD6] bg-white"
                   >
                     <option value="published">Available</option>
                     <option value="sold_out">Sold Out</option>
@@ -723,18 +737,18 @@ export default function AdminProductsPage() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-brand-chocolate/10">
+              <div className="flex justify-end gap-2 pt-3 border-t border-[#E7DFD6]">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="px-4 py-2 rounded-lg border border-brand-chocolate/10 text-brand-taupe font-semibold hover:bg-brand-cream"
+                  className="px-4 py-2 rounded-lg border border-[#E7DFD6] text-brand-taupe font-semibold hover:bg-brand-cream"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-brand-caramel hover:bg-brand-caramel text-white px-5 py-2 rounded-lg font-bold shadow-soft"
+                  className="bg-brand-chocolate hover:bg-brand-chocolate text-white px-5 py-2 rounded-lg font-bold shadow-soft"
                 >
                   {uploadingPhoto ? 'Uploading photo...' : submitting ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Dessert'}
                 </button>

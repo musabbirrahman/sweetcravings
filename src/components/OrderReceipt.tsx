@@ -71,7 +71,7 @@ export default function OrderReceipt({
       <div style={{ textAlign: 'center', paddingBottom: 16 }}>
         <div
           style={{
-            fontFamily: "'Fraunces Variable', Georgia, serif",
+            fontFamily: "'Hind Siliguri', system-ui, sans-serif",
             fontSize: 30,
             fontWeight: 700,
             color: ink,

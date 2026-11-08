@@ -14,7 +14,7 @@ export default function AboutPage() {
       
       {/* Hero Header */}
       <div className="text-center space-y-4 max-w-2xl mx-auto">
-        <div className="inline-flex items-center gap-2 bg-brand-caramel/10 text-brand-caramel text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
+        <div className="inline-flex items-center gap-2 bg-brand-caramel/10 text-brand-caramel text-[13px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">
           <Heart className="w-3.5 h-3.5 fill-brand-chocolate/20 text-brand-chocolate" />
           <span>{lang === 'bn' ? 'আমাদের গল্প ও দর্শন' : 'Our Story & Philosophy'}</span>
         </div>
@@ -43,10 +43,10 @@ export default function AboutPage() {
         </div>
 
         <div className="space-y-4 text-center md:text-left z-10">
-          <div className="inline-block bg-white/10 text-brand-cream text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
+          <div className="inline-block bg-white/10 text-brand-cream text-[13px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
             Rajshahi, Bangladesh
           </div>
-          <p className="font-editorial text-2xl sm:text-3xl text-brand-cream italic tracking-normal">
+          <p className="font-editorial text-2xl sm:text-3xl text-brand-cream tracking-normal">
             {lang === 'bn' ? '“একটু মিষ্টি, অনেকটা আনন্দ।”' : '“A Little Sweetness, A Lot of Happiness.”'}
           </p>
           <p className="text-sm sm:text-base text-brand-cream/85 leading-relaxed font-normal">
@@ -60,91 +60,91 @@ export default function AboutPage() {
 
       {/* 4 Pillars of Excellence */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+        <div className="bg-white p-6 rounded-2xl border border-[#E7DFD6] shadow-xs space-y-3">
           <div className="w-10 h-10 rounded-xl bg-brand-caramel/10 text-brand-caramel flex items-center justify-center">
             <Award className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">100% Real Dairy</h3>
-          <p className="text-xs text-brand-taupe leading-relaxed">
+          <p className="text-[13px] text-brand-taupe leading-relaxed">
             Only genuine cow milk, dairy butter, and high-fat cream. We never use dalda or artificial fats.
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+        <div className="bg-white p-6 rounded-2xl border border-[#E7DFD6] shadow-xs space-y-3">
           <div className="w-10 h-10 rounded-xl bg-brand-forest/10 text-brand-forest flex items-center justify-center">
             <Clock className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">Small-Batch Fresh</h3>
-          <p className="text-xs text-brand-taupe leading-relaxed">
+          <p className="text-[13px] text-brand-taupe leading-relaxed">
             Every creation is prepared specifically for your order confirmation. Never pre-made or frozen.
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+        <div className="bg-white p-6 rounded-2xl border border-[#E7DFD6] shadow-xs space-y-3">
           <div className="w-10 h-10 rounded-xl bg-brand-cream text-brand-caramel flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">Gourmet Ingredients</h3>
-          <p className="text-xs text-brand-taupe leading-relaxed">
+          <p className="text-[13px] text-brand-taupe leading-relaxed">
             Imported Dutch cocoa powder, Belgian chocolate, and pure vanilla extract for true flavor depth.
           </p>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-brand-chocolate/10 shadow-xs space-y-3">
+        <div className="bg-white p-6 rounded-2xl border border-[#E7DFD6] shadow-xs space-y-3">
           <div className="w-10 h-10 rounded-xl bg-brand-caramel/10 text-brand-chocolate flex items-center justify-center">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <h3 className="font-heading font-bold text-base text-brand-chocolate">Surgical Hygiene</h3>
-          <p className="text-xs text-brand-taupe leading-relaxed">
+          <p className="text-[13px] text-brand-taupe leading-relaxed">
             Prepared in a sanitized home kitchen environment with food-grade temperature-safe packaging.
           </p>
         </div>
       </div>
 
       {/* Kitchen Standards Checklist */}
-      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-brand-chocolate/10 shadow-soft space-y-8">
+      <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E7DFD6] shadow-soft space-y-8">
         <div className="text-center space-y-2 max-w-xl mx-auto">
-          <span className="text-xs font-bold uppercase tracking-widest text-brand-caramel">
+          <span className="text-[13px] font-bold uppercase tracking-widest text-brand-caramel">
             Commitment to Purity
           </span>
           <h2 className="font-heading text-2xl sm:text-4xl font-bold text-brand-chocolate">
             {t('about.standardsTitle')}
           </h2>
-          <p className="text-xs sm:text-sm text-brand-taupe">
+          <p className="text-[13px] sm:text-sm text-brand-taupe">
             {lang === 'bn' ? 'খাবারের মান ও স্বাস্থ্যবিধিতে আমরা আপসহীন' : 'Zero compromises on hygiene & ingredient integrity'}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-[#E7DFD6]">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards1')}</p>
-              <p className="text-xs text-brand-taupe mt-0.5">Every ingredient is inspected and certified clean.</p>
+              <p className="text-[13px] text-brand-taupe mt-0.5">Every ingredient is inspected and certified clean.</p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-[#E7DFD6]">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards2')}</p>
-              <p className="text-xs text-brand-taupe mt-0.5">Prepared exclusively after order confirmation.</p>
+              <p className="text-[13px] text-brand-taupe mt-0.5">Prepared exclusively after order confirmation.</p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-[#E7DFD6]">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards3')}</p>
-              <p className="text-xs text-brand-taupe mt-0.5">Dispatched in insulated, chilled containers.</p>
+              <p className="text-[13px] text-brand-taupe mt-0.5">Dispatched in insulated, chilled containers.</p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-brand-chocolate/10">
+          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-brand-cream/50 border border-[#E7DFD6]">
             <CheckCircle2 className="w-5 h-5 text-brand-forest shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-brand-chocolate">{t('about.standards4')}</p>
-              <p className="text-xs text-brand-taupe mt-0.5">Full accountability with sister-led craftsmanship.</p>
+              <p className="text-[13px] text-brand-taupe mt-0.5">Full accountability with sister-led craftsmanship.</p>
             </div>
           </div>
         </div>
@@ -154,7 +154,7 @@ export default function AboutPage() {
       <div className="text-center pt-4">
         <Link
           href="/menu"
-          className="inline-flex items-center gap-2.5 bg-brand-caramel hover:bg-brand-caramel text-white font-bold py-4 px-9 rounded-full shadow-card hover:shadow-card-hover transition-all text-sm btn-press"
+          className="inline-flex items-center gap-2.5 bg-brand-chocolate hover:bg-brand-chocolate text-white font-bold py-4 px-9 rounded-full shadow-card hover:shadow-card-hover transition-all text-sm btn-press"
         >
           <span>{t('hero.ctaMenu')}</span>
           <ArrowRight className="w-4 h-4" />
