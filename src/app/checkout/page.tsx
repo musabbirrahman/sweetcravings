@@ -826,13 +826,13 @@ export default function CheckoutPage() {
                     className="w-4 h-4 text-brand-caramel focus:ring-brand-caramel cursor-pointer"
                   />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-brand-chocolate flex items-center gap-1.5">
-                      <Banknote className="w-4 h-4 text-brand-caramel" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-brand-chocolate flex items-center gap-1.5 min-w-0">
+                      <Banknote className="w-4 h-4 text-brand-caramel shrink-0" />
                       {t('checkout.codLabel')}
                     </span>
-                    <span className="text-[13px] font-bold uppercase tracking-wider bg-brand-cream px-2 py-0.5 rounded text-brand-taupe">
+                    <span className={`text-[13px] font-bold ${lang === 'bn' ? '' : 'uppercase tracking-wider'} bg-brand-cream px-2 py-0.5 rounded text-brand-taupe shrink-0 whitespace-nowrap`}>
                       {lang === 'bn' ? 'জনপ্রিয়' : 'Standard'}
                     </span>
                   </div>
@@ -862,13 +862,13 @@ export default function CheckoutPage() {
                     className="w-4 h-4 text-[#E2136E] focus:ring-[#E2136E] cursor-pointer"
                   />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-[#8C1347] flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#E2136E] inline-block" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-[#8C1347] flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#E2136E] inline-block shrink-0" />
                       {t('checkout.bkashLabel')}
                     </span>
-                    <span className="text-[13px] font-bold tracking-wider bg-[#E2136E]/10 text-[#E2136E] px-2 py-0.5 rounded-full">
+                    <span className="text-[13px] font-bold tracking-wider bg-[#E2136E]/10 text-[#E2136E] px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                       Send Money
                     </span>
                   </div>
@@ -882,24 +882,24 @@ export default function CheckoutPage() {
               {/* bKash Details Expandable Box */}
               {paymentMethod === 'bkash' && (
                 <div className="bg-[#FFF8FA] border border-[#E2136E]/20 rounded-2xl p-4 sm:p-5 space-y-4 animate-fadeIn text-[13px] text-brand-chocolate ml-2">
-                  <div className="flex items-center justify-between border-b border-[#E2136E]/15 pb-2.5">
-                    <div className="flex items-center gap-1.5 text-[#8C1347] font-bold text-[13px] uppercase tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5 text-[#E2136E]" />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2136E]/15 pb-2.5">
+                    <div className="flex items-center gap-1.5 text-[#8C1347] font-bold text-[13px] uppercase tracking-wider min-w-0">
+                      <Sparkles className="w-3.5 h-3.5 text-[#E2136E] shrink-0" />
                       <span>Sweet Cravings bKash Wallet</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { if (bkashNumber) handleCopy(bkashNumber, 'bkash'); }}
                       disabled={!bkashNumber}
-                      className="flex items-center gap-1.5 text-[13px] bg-white border border-[#E2136E]/30 text-[#8C1347] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFEBF1] transition-colors"
+                      className="flex items-center gap-1.5 text-[13px] bg-white border border-[#E2136E]/30 text-[#8C1347] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFEBF1] transition-colors shrink-0 whitespace-nowrap ml-auto"
                     >
                       {copiedKey === 'bkash' ? <Check className="w-3 h-3 text-brand-forest" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedKey === 'bkash' ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'নম্বর কপি করুন' : 'Copy Number')}</span>
                     </button>
                   </div>
 
-                  <div className="bg-white p-3.5 rounded-xl border border-[#E2136E]/15 flex items-center justify-between">
-                    <div>
+                  <div className="bg-white p-3.5 rounded-xl border border-[#E2136E]/15 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <div className="min-w-0">
                       <p className="font-mono text-lg font-extrabold text-brand-chocolate tracking-wide">
                         {bkashNumber || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                       </p>
@@ -907,7 +907,7 @@ export default function CheckoutPage() {
                         Type: <span className="font-semibold text-brand-chocolate capitalize">{shopSettings?.bkash_type || 'Personal'}</span> (Send Money)
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0 ml-auto">
                       <span className="text-[13px] text-brand-taupe uppercase block">Pay Exact</span>
                       <span className="font-heading font-extrabold text-[#8C1347] text-base">৳{payableTotal}</span>
                     </div>
@@ -983,13 +983,13 @@ export default function CheckoutPage() {
                     className="w-4 h-4 text-[#F7941D] focus:ring-[#F7941D] cursor-pointer"
                   />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-[#A35200] flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#F7941D] inline-block" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm text-[#A35200] flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#F7941D] inline-block shrink-0" />
                       {t('checkout.nagadLabel')}
                     </span>
-                    <span className="text-[13px] font-bold tracking-wider bg-[#F7941D]/10 text-[#F7941D] px-2 py-0.5 rounded-full">
+                    <span className="text-[13px] font-bold tracking-wider bg-[#F7941D]/10 text-[#F7941D] px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                       Send Money
                     </span>
                   </div>
@@ -1003,24 +1003,24 @@ export default function CheckoutPage() {
               {/* Nagad Details Expandable Box */}
               {paymentMethod === 'nagad' && (
                 <div className="bg-[#FFFBF5] border border-[#F7941D]/20 rounded-2xl p-4 sm:p-5 space-y-4 animate-fadeIn text-[13px] text-brand-chocolate ml-2">
-                  <div className="flex items-center justify-between border-b border-[#F7941D]/15 pb-2.5">
-                    <div className="flex items-center gap-1.5 text-[#A35200] font-bold text-[13px] uppercase tracking-wider">
-                      <Sparkles className="w-3.5 h-3.5 text-[#F7941D]" />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F7941D]/15 pb-2.5">
+                    <div className="flex items-center gap-1.5 text-[#A35200] font-bold text-[13px] uppercase tracking-wider min-w-0">
+                      <Sparkles className="w-3.5 h-3.5 text-[#F7941D] shrink-0" />
                       <span>Sweet Cravings Nagad Wallet</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => { if (nagadNumber) handleCopy(nagadNumber, 'nagad'); }}
                       disabled={!nagadNumber}
-                      className="flex items-center gap-1.5 text-[13px] bg-white border border-[#F7941D]/30 text-[#A35200] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFF3E3] transition-colors"
+                      className="flex items-center gap-1.5 text-[13px] bg-white border border-[#F7941D]/30 text-[#A35200] px-3 py-1 rounded-full font-bold shadow-xs hover:bg-[#FFF3E3] transition-colors shrink-0 whitespace-nowrap ml-auto"
                     >
                       {copiedKey === 'nagad' ? <Check className="w-3 h-3 text-brand-forest" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedKey === 'nagad' ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'নম্বর কপি করুন' : 'Copy Number')}</span>
                     </button>
                   </div>
 
-                  <div className="bg-white p-3.5 rounded-xl border border-[#F7941D]/15 flex items-center justify-between">
-                    <div>
+                  <div className="bg-white p-3.5 rounded-xl border border-[#F7941D]/15 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <div className="min-w-0">
                       <p className="font-mono text-lg font-extrabold text-brand-chocolate tracking-wide">
                         {nagadNumber || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                       </p>
@@ -1028,7 +1028,7 @@ export default function CheckoutPage() {
                         Type: <span className="font-semibold text-brand-chocolate capitalize">{shopSettings?.nagad_type || 'Personal'}</span> (Send Money)
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0 ml-auto">
                       <span className="text-[13px] text-brand-taupe uppercase block">Pay Exact</span>
                       <span className="font-heading font-extrabold text-[#A35200] text-base">৳{payableTotal}</span>
                     </div>

@@ -563,8 +563,8 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                 : (shopSettings?.bkash_type || 'Personal');
 
               return (
-                <div className="bg-brand-cream/80 p-4 rounded-2xl border border-[#E7DFD6] flex items-center justify-between">
-                  <div>
+                <div className="bg-brand-cream/80 p-4 rounded-2xl border border-[#E7DFD6] flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <div className="min-w-0">
                     <p className="font-mono text-xl font-extrabold text-brand-chocolate">
                       {walletNum || (lang === 'bn' ? 'নম্বর এখনো দেওয়া হয়নি' : 'Number not set yet')}
                     </p>
@@ -578,7 +578,7 @@ export default function OrderConfirmationPage({ params }: { params: { publicCode
                   <button
                     type="button"
                     onClick={() => handleCopyPhone(walletNum)}
-                    className="flex items-center gap-1.5 text-[13px] bg-white border border-[#E7DFD6] text-brand-chocolate px-3 py-1.5 rounded-xl font-bold shadow-xs hover:bg-brand-cream transition-colors"
+                    className="flex items-center gap-1.5 text-[13px] bg-white border border-[#E7DFD6] text-brand-chocolate px-3 py-1.5 rounded-xl font-bold shadow-xs hover:bg-brand-cream transition-colors shrink-0 whitespace-nowrap ml-auto"
                   >
                     {copiedPhone ? <Check className="w-3.5 h-3.5 text-brand-forest" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedPhone ? (lang === 'bn' ? 'কপি হয়েছে' : 'Copied') : (lang === 'bn' ? 'নম্বর কপি' : 'Copy')}</span>

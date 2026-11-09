@@ -31,16 +31,16 @@ export default function LoyaltyStampCard({ loyalty, onApplyCoupon, isApplied }: 
 
       {/* Header */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 border-b border-white/10">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="w-10 h-10 rounded-2xl bg-brand-caramel/25 border border-brand-caramel/40 flex items-center justify-center shrink-0">
             <Award className="w-5 h-5 text-brand-cream" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-heading font-bold text-base sm:text-lg text-brand-cream">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <h4 className="font-heading font-bold text-base sm:text-lg text-brand-cream min-w-0">
                 {lang === 'bn' ? 'সুইট রিওয়ার্ডস স্ট্যাম্প কার্ড' : 'Sweet Rewards Loyalty Card'}
               </h4>
-              <span className="text-[13px] font-bold uppercase tracking-wider bg-brand-caramel/30 text-brand-cream border border-brand-caramel/40 px-2 py-0.5 rounded-full">
+              <span className="text-[13px] font-bold bg-brand-caramel/30 text-brand-cream border border-brand-caramel/40 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                 {lang === 'bn' ? loyalty.tierBn : loyalty.tier}
               </span>
             </div>
