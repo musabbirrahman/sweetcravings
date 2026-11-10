@@ -1,34 +1,46 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "sweet-cravings",
-  "compatibility_date": "2026-11-07",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "vars": {
-    // NEXTJS_ENV tells the adapter which Next.js .env file to load
-    // during `npm run preview` / deploy. It defaults to "production".
-    "NEXTJS_ENV": "production",
-    "NEXT_PUBLIC_BASE_URL": "https://sweet-cravings.musabbirrahman.workers.dev",
-    "TURSO_DATABASE_URL": "libsql://sweetcravings-musabbirrahman.aws-ap-south-1.turso.io"
-  },
-  // Self-reference service binding: lets the Worker call itself, which
-  // the adapter uses for server-side fetches.
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "sweet-cravings"
-    }
-  ]
-  // NOTE: no R2 bucket and no Images binding on purpose.
-  // - Incremental cache: the adapter's default (dummy) cache is used;
-  //   R2 needs a payment method on file, which the owner does not have.
-  // - Images: next/image runs with `unoptimized: true` (see
-  //   next.config.js), so no Cloudflare Images plan is needed.
-  // Secrets and env vars (ADMIN_PASSWORD, NEXT_PUBLIC_BASE_URL,
-  // TURSO_DATABASE_URL, TURSO_AUTH_TOKEN) are set in the Cloudflare
-  // dashboard, never in this file — see DEPLOY.md.
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "sweet-cravings",
+	"compatibility_date": "2026-11-07",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		// NEXTJS_ENV tells the adapter which Next.js .env file to load
+		// during `npm run preview` / deploy. It defaults to "production".
+		"NEXTJS_ENV": "production",
+		"NEXT_PUBLIC_BASE_URL": "https://sweetcravingsrajshahi.com",
+		"TURSO_DATABASE_URL": "libsql://sweetcravings-musabbirrahman.aws-ap-south-1.turso.io"
+	},
+	// Self-reference service binding: lets the Worker call itself, which
+	// the adapter uses for server-side fetches.
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "sweet-cravings"
+		}
+	],
+	"routes": [
+		{
+			"pattern": "sweetcravingsrajshahi.com",
+			"zone_name": "sweetcravingsrajshahi.com",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": true,
+	"preview_urls": true
+	// NOTE: no R2 bucket and no Images binding on purpose.
+	// - Incremental cache: the adapter's default (dummy) cache is used;
+	//   R2 needs a payment method on file, which the owner does not have.
+	// - Images: next/image runs with `unoptimized: true` (see
+	//   next.config.js), so no Cloudflare Images plan is needed.
+	// Secrets and env vars (ADMIN_PASSWORD, NEXT_PUBLIC_BASE_URL,
+	// TURSO_DATABASE_URL, TURSO_AUTH_TOKEN) are set in the Cloudflare
+	// dashboard, never in this file — see DEPLOY.md.
 }
