@@ -135,6 +135,18 @@ export default function Footer() {
           <p>© {new Date().getFullYear()} Sweet Cravings Homemade Desserts. Rajshahi, Bangladesh.</p>
           <p>Baked with care for dessert lovers.</p>
         </div>
+        {/* Developer credit — kept in English in both languages */}
+        <p className="mt-3 text-[12px] text-brand-cream/40">
+          Built by{' '}
+          <a
+            href="https://musabbirrahman.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-brand-cream/70 underline decoration-white/20 underline-offset-2 hover:text-white"
+          >
+            Musabbir Rahman
+          </a>
+        </p>
       </div>
     </footer>
   );

@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   title: 'Sweet Cravings | Homemade Desserts Rajshahi',
   description: 'A Little Sweetness, A Lot of Happiness. Artisanal homemade desserts, signature flans, jar cakes, and gourmet delights delivered across Rajshahi City.',
   keywords: ['Sweet Cravings', 'Rajshahi desserts', 'homemade flan', 'caramel custard', 'jar cakes Rajshahi', 'Rajshahi bakery'],
+  authors: [{ name: 'Musabbir Rahman', url: 'https://musabbirrahman.vercel.app' }],
   manifest: '/manifest.json',
   icons: {
     icon: '/sweet-cravings-logo.jpg',
@@ -55,6 +56,20 @@ export default function RootLayout({
     currenciesAccepted: 'BDT',
   };
 
+  // Website authorship — the shop is the sister's business; this credits
+  // the developer of the site itself (footer carries the visible credit).
+  const jsonLdWebsite = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Sweet Cravings Homemade Desserts',
+    url: process.env.NEXT_PUBLIC_BASE_URL || 'https://sweetcravingsrajshahi.com',
+    author: {
+      '@type': 'Person',
+      name: 'Musabbir Rahman',
+      url: 'https://musabbirrahman.vercel.app',
+    },
+  };
+
   return (
     <html lang="bn">
       <head>
@@ -64,6 +79,10 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebsite) }}
         />
       </head>
       <body className="min-h-screen flex flex-col bg-brand-cream text-brand-chocolate antialiased selection:bg-brand-chocolate selection:text-white">
