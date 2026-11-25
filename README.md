@@ -6,7 +6,7 @@
 
 An artisanal, mobile-first bilingual dessert storefront and operations management system tailored for **Sweet Cravings** in Rajshahi.
 
-Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, and a zero-latency ACID relational SQLite database powered by Node.js native `node:sqlite`.
+Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, and **Turso** (cloud SQLite) — with a local SQLite file (`node:sqlite`) for offline development. Live at **https://sweetcravingsrajshahi.com**.
 
 ---
 
@@ -53,6 +53,7 @@ Built with **Next.js 14 (App Router)**, **TypeScript**, **Tailwind CSS**, and a 
   - Active in-kitchen and out-for-delivery counter.
 - **Emergency Kitchen Capacity Switch**:
   - One-click toggle between **"Accepting Orders"** and **"Kitchen Busy / Orders Paused"** to halt checkout when kitchen capacity is full.
+- **Daily order caps & loyalty**: Tiered daily order caps protect the kitchen from overload, and a loyalty reward gives ৳150 off after 5 completed orders (min order ৳200).
 - **Orders Manager (`/admin/orders`)**:
   - One readable order per smartphone screen.
   - One-tap **Call Customer** (`tel:`) and **WhatsApp** prefilled chat.
@@ -89,4 +90,4 @@ http://localhost:3000
 - Track Order: `http://localhost:3000/track`
 - Admin Operations Portal: `http://localhost:3000/admin` (requires `ADMIN_PASSWORD` to be set — see `.env.example`)
 
-> **Deployment is not decided yet.** The site currently runs locally with its built-in SQLite file (`data/sweetcravings.db`). The Turso code and migration script are leftovers from the starter and are not wired in — the app does not use them. Do not deploy to Vercel Hobby for this shop (see the blueprint); decide the deployment shape first.
+> **Live:** https://sweetcravingsrajshahi.com — the shop runs on Turso (cloud SQLite) in production; locally it uses the built-in SQLite file (`data/sweetcravings.db`) with zero config.
